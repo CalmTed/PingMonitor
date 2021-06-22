@@ -1,3 +1,13 @@
+html{
+  --status-red:#ec2e2e;
+  --status-yellow:#d47705;
+  --status-green:#2ab728;
+  --status-blue:#2b66af;
+  --status-pink:#a828b7;
+  --status-white:#888;
+
+  user-select: none;
+}
 body{
   margin: 0;
   background: #222;
@@ -6,21 +16,40 @@ body{
 }
 .table{
   width: 100%;
-  height: 100vh;
 }
 .row{
-  width: 100%;
-  height: 120px;
-  border-bottom: 1px solid #aaa;
+  --row-color:var(--status-white);
+  height: 20vh;
+  background-color: #2d2c2c;
+  margin: 0.4%;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #212020;
   display: flex;
+  transition: all 0.1s ease;
+  border: 2px solid var(--row-color);
+}
+.row[status='unchecked']{
+  --row-color:var(--status-white);
+}
+.row[status='checking']{
+  --row-color:var(--status-yellow);
+}
+.row[status='online']{
+  --row-color:var(--status-green);
+}
+.row[status='timeout'],.row[status='error']{
+  --row-color:var(--status-red);
+}
+.row[paused='true']{
+  filter: grayscale(0.8);
 }
 .row-column{
-  width: 150px;
+  width: 15%;
 }
 .row-picture{
   width: 100%;
-  height: 80%;
-  background-size: 67%;
+  height: 72%;
+  background-size: 13vh;
   background-repeat: no-repeat;
   background-position-x: center;
   background-position-y: 70%;
@@ -30,17 +59,45 @@ body{
   justify-content: center;
   display: flex;
   font-variant-caps: all-small-caps;
+  font-size: 115%;
 }
-
-.row-status{
+.row-address{
+  width: 100%;
+  justify-content: center;
+  display: flex;
+  font-variant-caps: all-small-caps;
+  font-size: 70%;
+  opacity: 0.6;
+}
+.row-status,.row-ping,.row-connection{
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
+  flex-wrap: wrap;
+  align-content: center;
+}
+.row-connection{
+  width: 20vw;
 }
 .row-status-span{
-  background: #ec2e2e;
-  padding: 7px 16px;
+  background-color: var(--row-color);
+  padding: 4% 7%;
+  font-size: 111%;
   border-radius: 4px;
   font-variant-caps: all-small-caps;
+  box-shadow: 0 0 18px 0px #222;
+}
+.row-ping label,.row-connection label{
+  line-height: 150%;
+  width: 100%;
+  color: #777;
+  font-size: 90%;
+  font-variant-caps: all-small-caps;
+}
+.row-ping label span,.row-connection label span{
+  color: #fff;
+  font-size: 112%;
+  margin-left: 4pt;
+  word-spacing: -1px;
 }
