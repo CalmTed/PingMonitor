@@ -4,13 +4,18 @@ var axios = require('http');
 var os = require("os");
 var networkInterfaces = os.networkInterfaces();
 
-var myIp = networkInterfaces['Wi-Fi'][1].address
+try {
+   var myIp = networkInterfaces['Wi-Fi'][1].address
+} catch(e){
+  console.log('Network error no wifi connections');
+}
 
 function createWindow () {
   const win = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 1000,
     icon: __dirname + '/assets/PM.ico',
+    fullscreen:true,
     //skipTaskbar:true,
     title:'PingMonitor',
     autoHideMenuBar:true,
