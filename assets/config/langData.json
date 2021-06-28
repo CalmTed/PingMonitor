@@ -1,0 +1,31 @@
+{
+  "Dellay":"Затримка",
+  "Update time":"Оновлення",
+  "Uptime":"Час роботи",
+  "Last Connection Lost":"Остання втрата зв'язку",
+  "Last Connection Found":"Останнє відновлення зв 'язку",
+  "Last Out of Connection":"Останій час без зв'язку",
+  "Total Out of Connection":"Загальний час без зв'язку",
+
+  "Change picture":"Змінити зображення",
+  "Pause pinging":"Призупинити пінгування",
+  "Remove row":"Видалити строку",
+  "Add new row":"Додати строку",
+  "Change address":"Змінити адресу",
+  "Change name":"Змінити назву",
+  "Change update time":"Змінити час оновлення",
+
+  "ms":"мс",
+  "s":"c",
+  "m":"хв",
+  "h":"год",
+
+  "unchecked":"Не перевірено",
+  "timeout":"timeout",
+  "offline":"offline",
+  "online":"online",
+  "error":"error",
+  "paused":"Призупинено",
+
+  "":""
+}
