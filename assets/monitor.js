@@ -34,7 +34,7 @@ class Row {
     this.totalOutOfConnection = 0;
 
     this.isDisabled = false;
-    this.isPaused = false;
+    this.isPaused = true;
     this.isChecking = false;
     this.pingTimeStrategy = {
 
@@ -49,6 +49,7 @@ class Row {
     this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column tools"><div class="row-tools"> <div class="row-tool tool-pause-row" title="${translate('Pause pinging')}"></div><div class="row-tool tool-remove-row" title="2x ${translate('Remove row')}"></div> </div></div>`));
     parent.append(this.rowDom);
+    if(this.isPaused){this.render()};//for initial pausing
     this.pinging();
     checkRowsNumber();//for Eco mode
   }
@@ -92,7 +93,7 @@ class Row {
       $(this).html(`<input rowId="${rowOBJ.id}"  value="${rowOBJ.pingIP}">`)
       $('.row-address input').focus();
       $('.row-address input').on('blur',function(){
-        if( $(this).val().length>7 && $(this).val().length<30){
+        if( $(this).val().length>6 && $(this).val().length<30){
           data.rows[$(this).attr('rowId')].changeProp('pingIP',$(this).val());
         }else{
           data.rows[$(this).attr('rowId')].changeProp('pingIP',data.rows[$(this).attr('rowId')].pingIP);
@@ -144,9 +145,8 @@ class Row {
   }
   render(){
     /*                                                               */
-    /*     CANT CHANGE HTML OF THIS OBJECT OUTSIDE OF THIS METHOD    */
+    /*    CAN'T CHANGE HTML OF OBJECT OUTSIDE OF THIS METHOD         */
     /*                                                               */
-
     //col1
     $(`.row-${this.id} .row-picture`).css("background-image",`url('${data.pics[this.picture]}')`);
     $(`.row-${this.id} .row-name`).html(this.name);
@@ -200,10 +200,12 @@ class Row {
     if(this.isPaused){
       if($(`.row-${this.id}.paused`).length == 0){
         $(`.row-${this.id}`).addClass('paused')
+        $(`.row-${this.id} .tool-pause-row`).attr('title',translate('Restart pinging'))
       }
       $(`.row-${this.id} .row-status-span`).html(translate('paused'))
     }else if(!this.isPaused && $(`.row-${this.id}.paused`).length != 0){
       $(`.row-${this.id}`).removeClass('paused')
+      $(`.row-${this.id} .tool-pause-row`).attr('title',translate('Pause pinging'))
     }
   }
   remove(){
@@ -249,15 +251,24 @@ class Row {
           _this.changeProp('lastConnectionLost', new Date());
         }
         //on offline
-        if(['offline','error','timeout'].indexOf(res.status) > -1 && res.status == _this.status && _this.lastConnectionLost != 0){
+        if(['offline','error','timeout'].indexOf(res.status) > -1){
           let now = new Date();
-          _this.changeProp('lastOutOfConnection', now.getTime() - _this.lastConnectionLost.getTime());
+          if(_this.lastConnectionLost == 0){
+            _this.changeProp('lastConnectionLost', new Date());
+          }
+          if(res.status == _this.status){
+            _this.changeProp('lastOutOfConnection', now.getTime() - _this.lastConnectionLost.getTime());
+          }
         }
         //on founding connection
         if(['offline','error','timeout'].indexOf(_this.status) > -1 /* if was offline */ && /* but now online*/ ['online'].indexOf(res.status) > -1 ){
+          console.log('got online');
           _this.changeProp('lastConnectionFound',new Date());
+          if(_this.lastConnectionLost == 0){
+            _this.changeProp('lastConnectionLost', new Date());
+          }
           _this.changeProp('lastOutOfConnection', _this.lastConnectionFound.getTime() - _this.lastConnectionLost.getTime());
-            _this.changeProp('totalOutOfConnection', _this.totalOutOfConnection + _this.lastOutOfConnection);
+          _this.changeProp('totalOutOfConnection', _this.totalOutOfConnection + _this.lastOutOfConnection);
         }
 
         _this.changeProp('_status',status);
@@ -287,12 +298,6 @@ function createPage(){
   initialRows.forEach((row)=>{
       data.rows.push(new Row(row.type,row.name,row.picture,row.address,row.updatetime))
   })
-  // let newRow = new Row('server','random','0','12.17.193.102','20')
-  // data.rows.push(newRow)
-  // newRow = new Row('server','local','1','192.168.68.101','5')
-  // data.rows.push(newRow)
-  // newRow = new Row('server','tooway','2','88.88.88.88','10')
-  // data.rows.push(newRow)
 
   data.rows.forEach(
     (row) => {
@@ -328,6 +333,7 @@ translate = function(a){
 async function ping(ip,rowId ,callback) {
   var result = await ipcRenderer.invoke('ping', ip, rowId);
   result = JSON.parse(result);
+  console.log(result);
   callback(result)
 }
 
@@ -369,7 +375,7 @@ function readDir(callback){
     console.error(e);
     initialRows = [{type:'server',name:'New server',picture:0,address:'192.168.0.1'}];
   }
-  //lenguidge
+  //language
   try{
     data.lang = JSON.parse(fs.readFileSync(langDataFile, 'utf8', (err, retData) => {
       if (err) {

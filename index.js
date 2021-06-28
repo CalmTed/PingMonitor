@@ -1,6 +1,5 @@
 const { app, BrowserWindow,ipcMain } = require('electron')
 var ping = require('ping');
-var axios = require('http');
 var os = require("os");
 var networkInterfaces = os.networkInterfaces();
 
@@ -51,6 +50,7 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
   if(res.packetLoss == '100.000'){
     status = 'timeout';
   }
+  console.log(res);
   var result = JSON.stringify({'status':status,'rowId':rowId,'pingDelay':res.avg,'packetLoss':res.packetLoss})
   return result;
 })
@@ -59,3 +59,5 @@ async function pinging(ip,rowId){
   const result = await ping.promise.probe(ip, {timeout: 10})
   return result;
 }
+//networkInterfaces['Loopback Pseudo-Interface 1'][1].address = '127.0.0.2';
+//console.log(JSON.stringify(networkInterfaces));
