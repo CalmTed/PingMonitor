@@ -1,12 +1,8 @@
+const fs = require("fs");
 var data = {}
-data.rows = []
-data.pics = {
-  'server':'assets/server.png',
-  'computer':'assets/computer.png',
-  'tooway':'assets/tooway.png',
-  'direct':'assets/tooway.png',
-  'r402':'assets/tooway.png',
-}
+data.rows = [];
+data.pics =[];
+var initialRows = [];
 
 class Row {
   _status = 'unchecked';
@@ -21,7 +17,7 @@ class Row {
     this.id = data.rows.length;
     this.type = type;
     this.name = name;
-    this.picture = picture;
+    this.picture = Number(picture);
 
     this.pingIP = pingIP;
     this.pingDellayTime = 0;
@@ -46,7 +42,8 @@ class Row {
   }
   create(parent){
     this.rowDom = $(`<div class="row row-${this.id}" rowId="${this.id}" status="${this.status}"></div>`);//${data.pics[row.picture]}
-    this.rowDom.append($(`<div class="row-column"><div class="row-picture" alt="${this.type}" style="background-image:url('${data.pics[this.picture]}')"></div><div class="row-name">${this.name}</div><div class="row-address">${this.pingIP}</div></div>`));
+    console.log(data.pics[this.picture]);
+    this.rowDom.append($(`<div class="row-column"><div class="row-picture" title="${translate('Change picture')}" alt="${this.type}" style="background-image:url('${data.pics[this.picture]}')"></div><div class="row-name">${this.name}</div><div class="row-address">${this.pingIP}</div></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-status-span">${translate(this.status)}</span></div> </div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-ping"><label>${translate('Dellay')}: <span class="row-ping-dellay"></span></label><label>${translate('Update time')}: <span class="row-ping-updatetime">${translate(this.pingUpdateTime)} ${translate('s')}</span></label><label>${translate('Uptime')}: <span class="row-uptime"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
@@ -57,6 +54,20 @@ class Row {
   }
   createRowEventListeners(){
     //adding eventlisteners for editing fields
+    //picture
+    $(`.row-${this.id} .row-picture`).on('dblclick',function(){
+      let colDOM = $(this).parent()[0]
+      let rowDOM = $($(colDOM).parent()[0])
+      let rowId = rowDOM.attr('rowId');
+      let rowOBJ = data.rows[rowId];
+
+      let nextPic = rowOBJ.picture + 1;
+      if(nextPic>data.pics.length-1){
+        nextPic = 0;
+      }
+      console.log(nextPic);
+      data.rows[rowOBJ.id].changeProp('picture',nextPic);
+    });
     //name
     $(`.row-${this.id} .row-name`).on('dblclick',function(){
       let colDOM = $(this).parent()[0]
@@ -138,6 +149,7 @@ class Row {
     /*                                                               */
 
     //col1
+    $(`.row-${this.id} .row-picture`).css("background-image",`url('${data.pics[this.picture]}')`);
     $(`.row-${this.id} .row-name`).html(this.name);
     $(`.row-${this.id} .row-address`).html(this.pingIP);
     //col2
@@ -226,7 +238,6 @@ class Row {
     }
   }
   pinging(){
-    console.log('ping');
     if(!this.isChecking && !this.isPaused){
         this.changeProp('isChecking','true');
       ping(this.pingIP,this.id,function(res){
@@ -268,18 +279,22 @@ class Row {
   }
 }
 
-
-let newRow = new Row('server','random','server','12.17.193.102','20')
-data.rows.push(newRow)
-newRow = new Row('server','local','computer','192.168.68.101','5')
-data.rows.push(newRow)
-newRow = new Row('server','tooway','tooway','88.88.88.88','10')
-data.rows.push(newRow)
-
-createPage = function(){
+function createPage(){
   var root = $('.root')
+  root.html('');
   let monitorTable = $('<div class="table"></div>')
-  root.append(monitorTable)
+  root.append(monitorTable);
+  //adding initial rows
+  initialRows.forEach((row)=>{
+      data.rows.push(new Row(row.type,row.name,row.picture,row.address,row.updatetime))
+  })
+  // let newRow = new Row('server','random','0','12.17.193.102','20')
+  // data.rows.push(newRow)
+  // newRow = new Row('server','local','1','192.168.68.101','5')
+  // data.rows.push(newRow)
+  // newRow = new Row('server','tooway','2','88.88.88.88','10')
+  // data.rows.push(newRow)
+
   data.rows.forEach(
     (row) => {
       row.create($(monitorTable))
@@ -288,13 +303,17 @@ createPage = function(){
   newRowBtn = $('<div class="new-row-btn">+</div>');
   root.append(newRowBtn)
   $('.new-row-btn').on('click',function () {
-    data.rows.push( new Row('server','New server','server','192.168.0.1','10') );
+    data.rows.push( new Row('server','New server','0','192.168.0.1','10') );
     data.rows[data.rows.length-1].create($(monitorTable))
     data.rows[data.rows.length-1].createRowEventListeners()
   })
 }
 $(document).ready(function(){
-  createPage();
+  $('.root').html('<h1 style="text-align:center;display:flex;justify-content:center;align-items:center;height:100vh;">Reading files...<h1>');
+   readDir(function(ret){
+    data.pics = ret.pics;
+    createPage();
+  })
 });
 
 translate = function(a){
@@ -307,10 +326,45 @@ async function ping(ip,rowId ,callback) {
   callback(result)
 }
 
-checkRowsNumber = function(){
+function checkRowsNumber(){
   if(data.rows.length > 5){
     $('.table').addClass('eco');
   }else{
     $('.table').removeClass('eco');
   }
+}
+
+function readDir(callback){
+  let build = false;
+  if(build){
+    picsDir = 'resources/app/assets/icons';
+    initialRowsFile = 'resources/app/assets/config/initialRows.json'
+    picsDirLocal = 'assets/icons';
+  }else{
+    picsDir = 'assets/icons';
+    initialRowsFile = 'assets/config/initialRows.json'
+    picsDirLocal = picsDir;
+  }
+  ret = {};
+  //initial rows
+  try{
+    initialRows = JSON.parse(fs.readFileSync(initialRowsFile, 'utf8', (err, retData) => {
+      if (err) {
+        initialRows = [{type:'server',name:'New server',picture:0,address:'192.168.0.1',updatetime:10}];
+        console.log('ERROR reading initialRowsFile at '+initialRowsFile);
+      }
+    }));
+    console.log(initialRows);
+  }catch(e){
+    console.error(e);
+    initialRows = [{type:'server',name:'New server',picture:0,address:'192.168.0.1'}];
+  }
+  //pictures
+  ret.pics = [];
+  fs.readdir(picsDir,  (err, dir) => {
+    for(let filePath of dir){
+        ret.pics.push(picsDirLocal+'/'+filePath);
+      }
+      return callback(ret);
+    });
 }

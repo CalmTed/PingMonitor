@@ -105,6 +105,7 @@ body::-webkit-scrollbar-thumb {
   background-repeat: no-repeat;
   background-position-x: center;
   background-position-y: 70%;
+  cursor: pointer;
 }
 .row-name{
   width: 100%;
@@ -112,7 +113,7 @@ body::-webkit-scrollbar-thumb {
   display: flex;
   font-variant-caps: all-small-caps;
   font-size: 125%;
-  cursor: pointer;
+  cursor: text;
 }
 .row-address{
   width: 100%;
@@ -120,7 +121,7 @@ body::-webkit-scrollbar-thumb {
   display: flex;
   font-size: 90%;
   opacity: 0.6;
-  cursor: pointer;
+  cursor: text;
 }
 .row-status,.row-ping,.row-connection{
   display: flex;
@@ -152,7 +153,7 @@ body::-webkit-scrollbar-thumb {
   word-spacing: -1px;
 }
 .row-ping-updatetime{
-  cursor: pointer;
+  cursor: text;
 }
 .row-name input,.row-address input,.row-ping-updatetime input{
   background-color: transparent;

@@ -27,7 +27,7 @@ function createWindow () {
       contextIsolation: false
     }
   })
-  win.webContents.openDevTools()
+//  win.webContents.openDevTools()
   win.loadFile('index.html')
   //win.webContents.on('did-navigate',(e)=>{console.log(e._getURL );});
 }
