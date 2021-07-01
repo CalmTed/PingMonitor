@@ -351,7 +351,7 @@ function createPage(){
   })
 }
 $(document).ready(function(){
-  $('.root').html('<h1 style="text-align:center;display:flex;justify-content:center;align-items:center;height:100vh;">Reading files...<h1>');
+  $('.root').html('<div style="background-image: url(assets/icons/PM.png);width: 300px;height: 100vh;background-size: 294px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%;  ">Reading files...<h1>');
    readDir(function(ret){
     data.pics = ret.pics;
     createPage();
@@ -387,7 +387,7 @@ function readDir(callback){
 
   /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
 
-  let build = false;
+  let build = true;
 
   if(build){
     picsDir = 'resources/app/assets/icons';
