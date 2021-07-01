@@ -69,6 +69,7 @@ body::-webkit-scrollbar-thumb {
   font-size: 140%;
 }
 .row{
+  --row-time:10s;
   --row-color:var(--status-white);
   min-height: 150px;
   background-color: #2d2c2c;
@@ -78,9 +79,11 @@ body::-webkit-scrollbar-thumb {
   display: flex;
   transition: all 0.1s ease;
   border: 2px solid var(--row-color);
+  animation: blinking-border var(--row-time) ease infinite;
 }
 .row[status='unchecked']{
   --row-color:var(--status-white);
+  animation-play-state: paused;
 }
 .row[status='checking']{
   --row-color:var(--status-yellow);
@@ -94,6 +97,7 @@ body::-webkit-scrollbar-thumb {
 .row.paused{
   filter: grayscale(0.8);
   opacity: 0.8;
+  animation-play-state: paused;
 }
 .row-column{
   min-width: 20%;
@@ -138,6 +142,10 @@ body::-webkit-scrollbar-thumb {
   border-radius: 4px;
   font-variant-caps: all-small-caps;
   box-shadow: 0 0 18px 0px #222;
+  animation: blinking-bg var(--row-time) ease infinite;
+}
+.row.paused .row-status-span,.row[status='unchecked'] .row-status-span{
+  animation-play-state: paused;
 }
 .row-ping label,.row-connection label{
   line-height: 150%;
@@ -208,4 +216,20 @@ body::-webkit-scrollbar-thumb {
   content: '||';
   font-weight: bolder;
   letter-spacing: 3px;
+}
+@keyframes blinking-border{
+  0%,90%{
+    border-color: var(--row-color);
+  }
+  100%{
+    border-color: transparent;
+  }
+}
+@keyframes blinking-bg{
+  0%,90%{
+    background-color: var(--row-color);
+  }
+  100%{
+    background-color: transparent;
+  }
 }

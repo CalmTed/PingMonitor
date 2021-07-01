@@ -37,7 +37,11 @@ class Row {
     this.isPaused = true;
     this.isChecking = false;
     this.pingTimeStrategy = {
-
+      'offline':'2',
+      'online':'20',
+      'timeout':'5',
+      'error':'10',
+      'default':'10'
     }
     this.rowDom = ''
   }
@@ -49,7 +53,7 @@ class Row {
     this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column tools"><div class="row-tools"> <div class="row-tool tool-pause-row" title="${translate('Pause pinging')}"></div><div class="row-tool tool-remove-row" title="2x ${translate('Remove row')}"></div> </div></div>`));
     parent.append(this.rowDom);
-    if(this.isPaused){this.render()};//for initial pausing
+    if(this.isPaused){this.render([])};//for initial pausing
     this.pinging();
     checkRowsNumber();//for Eco mode
   }
@@ -143,59 +147,85 @@ class Row {
       }
     });
   }
-  render(){
+  render(list = ['picture','name','pingIP','status','pingDellayTime','pingUpdateTime','packetsSent','packetsResived','packetsLost','lastConnectionLost','lastConnectionFound','lastOutOfConnection','totalOutOfConnection']){
     /*                                                               */
     /*    CAN'T CHANGE HTML OF OBJECT OUTSIDE OF THIS METHOD         */
     /*                                                               */
-    //col1
-    $(`.row-${this.id} .row-picture`).css("background-image",`url('${data.pics[this.picture]}')`);
-    $(`.row-${this.id} .row-name`).html(this.name);
-    $(`.row-${this.id} .row-address`).html(this.pingIP);
-    //col2
-    $(`.row-${this.id}`).attr('status',this.status);
-    $(`.row-${this.id} .row-status-span`).html(translate(this.status));
-    //col3
-    if(['unknown','NaN'].indexOf(this.pingDellayTime)){
-      $(`.row-${this.id} .row-ping-dellay`).html(`${Math.round(this.pingDellayTime)} ${translate('ms')}`);
-    }else{
-      $(`.row-${this.id} .row-ping-dellay`).html(`-`);
-    }
-    $(`.row-${this.id} .row-ping-updatetime`).html(`${this.pingUpdateTime} ${translate('s')}`);
-    let uptime = Math.round(100/this.packetsSent*this.packetsResived*100)/100;
-    if(uptime === NaN){ uptime = 0 }
-    $(`.row-${this.id} .row-uptime`).html(`${uptime} %`).attr('title','S:'+(this.packetsSent)+' R:'+(this.packetsResived)+' L:'+(this.packetsLost));
-    //col4
-    if(this.lastConnectionLost !=0 ){
-      $(`.row-${this.id} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${this.lastConnectionLost.getMinutes()}:${this.lastConnectionLost.getSeconds()}`);
-      $(`.row-${this.id} .row-last-conn-lost`).attr('title',this.lastConnectionLost);
-    }else{
-      $(`.row-${this.id} .row-last-conn-lost`).html(`-`);
-    }
-    if(this.lastConnectionFound !=0 ){
-      $(`.row-${this.id} .row-last-conn-found`).html(`${this.lastConnectionFound.getHours()}:${this.lastConnectionFound.getMinutes()}:${this.lastConnectionFound.getSeconds()}`);
-      $(`.row-${this.id} .row-last-conn-found`).attr('title',this.lastConnectionFound);
-    }else{
-      $(`.row-${this.id} .row-last-conn-found`).html(`-`);
-    }
-    let toFormat = function(t){
-      if(t<1000){
-        return t+' '+translate('ms');
-      }else if(t<60000){
-        return Math.floor(t/1000)+' '+translate('s');
-      }else if(t<360000){
-        return Math.floor(t/60000)+' '+translate('m');
+    let needToUpdate = function(param){
+      if(list.indexOf(param) > -1 ){
+        return true;
       }else{
-        return Math.floor(t/360000)+' '+translate('h');
+        return false;
       }
     }
-    $(`.row-${this.id} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
-    if(this.lastConnectionFound < this.lastConnectionLost){
-      //when out of connection
-      $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection + this.lastOutOfConnection));
-    }else{
-      $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
+    //col1
+    if(needToUpdate('picture') && $(`.row-${this.id} .row-picture`).css("background-image") != `url('${data.pics[this.picture]}')`){
+      $(`.row-${this.id} .row-picture`).css("background-image",`url('${data.pics[this.picture]}')`);
     }
+    if(needToUpdate('name') && $(`.row-${this.id} .row-name`).html() != this.name){
+      $(`.row-${this.id} .row-name`).html(this.name);
+    }
+    if(needToUpdate('pingIP') && $(`.row-${this.id} .row-address`).html() != this.pingIP){
+      $(`.row-${this.id} .row-address`).html(this.pingIP);
+    }
+    //col2
+    if(needToUpdate('status')){
+      $(`.row-${this.id}`).attr('status',this.status);
+      $(`.row-${this.id} .row-status-span`).html(translate(this.status));
+    }
+    //col3
+    if(needToUpdate('pingDellayTime')){
+      if(['unknown','NaN'].indexOf(this.pingDellayTime)){
+        $(`.row-${this.id} .row-ping-dellay`).html(`${Math.round(this.pingDellayTime)} ${translate('ms')}`);
+      }else{
+        $(`.row-${this.id} .row-ping-dellay`).html(`-`);
+      }
+    }
+    if(needToUpdate('pingUpdateTime') && $(`.row-${this.id} .row-ping-updatetime`).html() != `${this.pingUpdateTime} ${translate('s')}`){
+      $(`.row-${this.id} .row-ping-updatetime`).html(`${this.pingUpdateTime} ${translate('s')}`);
+      $(`.row-${this.id}`).css('--row-time',this.pingUpdateTime+'s')
 
+    }
+    if(needToUpdate('packetsSent') || needToUpdate('packetsResived') || needToUpdate('packetsLost')){
+      let uptime = 0
+      if(this.packetsSent*this.packetsResived != 0){
+        let uptime = Math.round(100/this.packetsSent*this.packetsResived*100)/100;
+      }
+      $(`.row-${this.id} .row-uptime`).html(`${uptime} %`).attr('title','S:'+(this.packetsSent)+' R:'+(this.packetsResived)+' L:'+(this.packetsLost));
+    }
+    //col4
+    if(needToUpdate('lastConnectionLost') || needToUpdate('lastConnectionFound') || needToUpdate('lastOutOfConnection')|| needToUpdate('totalOutOfConnection')){
+      if(this.lastConnectionLost !=0 ){
+        $(`.row-${this.id} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${this.lastConnectionLost.getMinutes()}:${this.lastConnectionLost.getSeconds()}`);
+        $(`.row-${this.id} .row-last-conn-lost`).attr('title',this.lastConnectionLost);
+      }else{
+        $(`.row-${this.id} .row-last-conn-lost`).html(`-`);
+      }
+      if(this.lastConnectionFound !=0 ){
+        $(`.row-${this.id} .row-last-conn-found`).html(`${this.lastConnectionFound.getHours()}:${this.lastConnectionFound.getMinutes()}:${this.lastConnectionFound.getSeconds()}`);
+        $(`.row-${this.id} .row-last-conn-found`).attr('title',this.lastConnectionFound);
+      }else{
+        $(`.row-${this.id} .row-last-conn-found`).html(`-`);
+      }
+      let toFormat = function(t){
+        if(t<1000){
+          return t+' '+translate('ms');
+        }else if(t<60000){
+          return Math.floor(t/1000)+' '+translate('s');
+        }else if(t<360000){
+          return Math.floor(t/60000)+' '+translate('m');
+        }else{
+          return Math.floor(t/360000)+' '+translate('h');
+        }
+      }
+      $(`.row-${this.id} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
+      if(this.lastConnectionFound < this.lastConnectionLost){
+        //when out of connection
+        $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection + this.lastOutOfConnection));
+      }else{
+        $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
+      }
+    }
     //pausing
     if(this.isPaused){
       if($(`.row-${this.id}.paused`).length == 0){
@@ -206,6 +236,7 @@ class Row {
     }else if(!this.isPaused && $(`.row-${this.id}.paused`).length != 0){
       $(`.row-${this.id}`).removeClass('paused')
       $(`.row-${this.id} .tool-pause-row`).attr('title',translate('Pause pinging'))
+      this.render()
     }
   }
   remove(){
@@ -228,13 +259,10 @@ class Row {
     checkRowsNumber();//for Eco mode
   }
   changeProp(prop,value){
-    if(prop == 'id'){
-
-    }
     if(this[prop] !== value || /* white list */ ['name','pingUpdateTime','pingIP'].indexOf(prop) !== -1){
       this[prop] = value;
       if(/* black list */['packetsSent','packetsLost','packetsResived','isChecking'].indexOf(prop) == -1){
-        this.render()
+        this.render(prop);
       }
     }
   }
@@ -262,7 +290,7 @@ class Row {
         }
         //on founding connection
         if(['offline','error','timeout'].indexOf(_this.status) > -1 /* if was offline */ && /* but now online*/ ['online'].indexOf(res.status) > -1 ){
-          console.log('got online');
+
           _this.changeProp('lastConnectionFound',new Date());
           if(_this.lastConnectionLost == 0){
             _this.changeProp('lastConnectionLost', new Date());
@@ -280,7 +308,12 @@ class Row {
           _this.changeProp('packetsLost',_this.packetsLost+1);
         }
         _this.changeProp('isChecking',false);
-        setTimeout(()=>{_this.pinging()},_this.pingUpdateTime*1000)
+        if(_this.pingTimeStrategy[_this.status] != undefined){
+          _this.changeProp('pingUpdateTime',_this.pingTimeStrategy[_this.status]);
+        }else{
+          _this.changeProp('pingUpdateTime',_this.pingTimeStrategy['default']);
+        }
+        setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000)
       })
     }else{
       this.changeProp('isChecking',false);
@@ -307,7 +340,12 @@ function createPage(){
   newRowBtn = $('<div class="new-row-btn" title="'+translate("Add new row")+'">+</div>');
   root.append(newRowBtn)
   $('.new-row-btn').on('click',function () {
-    data.rows.push( new Row('server','New server','0','192.168.0.1','10') );
+    let lastRow = data.rows[data.rows.length-1];
+    let newData = new Row('server','New server','0','192.168.0.1','10')
+    if(lastRow != undefined){
+      newData = new Row(lastRow.type,lastRow.name,lastRow.picture,lastRow.pingIP,lastRow.pingUpdateTime);
+    }
+    data.rows.push( newData );
     data.rows[data.rows.length-1].create($(monitorTable))
     data.rows[data.rows.length-1].createRowEventListeners()
   })
@@ -323,7 +361,7 @@ $(document).ready(function(){
 translate = function(a){
   let trans = a;
   if( typeof data.lang[a] == 'undefined'){
-    console.error('No translation for word: "'+a+'"');
+    console.warn('No translation for word: "'+a+'"');
   }else{
     trans = data.lang[a];
   }
@@ -333,7 +371,7 @@ translate = function(a){
 async function ping(ip,rowId ,callback) {
   var result = await ipcRenderer.invoke('ping', ip, rowId);
   result = JSON.parse(result);
-  console.log(result);
+  console.debug(new Date(),'Row-'+result.rowId,result.status,result.pingDelay,data.rows[result.rowId].name,data.rows[result.rowId].pingIP);
   callback(result)
 }
 
