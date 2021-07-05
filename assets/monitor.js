@@ -3,7 +3,11 @@ var data = {}
 data.rows = [];
 data.pics =[];
 data.lang = [];
-var initialRows = [];
+var config = [];
+
+/*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
+var build = true;
+/*===============================================================*/
 
 class Row {
   _status = 'unchecked';
@@ -33,16 +37,9 @@ class Row {
     this.lastOutOfConnection = 0;
     this.totalOutOfConnection = 0;
 
-    this.isDisabled = false;
-    this.isPaused = true;
+    this.isPaused = config.initialPause;
     this.isChecking = false;
-    this.pingTimeStrategy = {
-      'offline':'2',
-      'online':'20',
-      'timeout':'5',
-      'error':'10',
-      'default':'10'
-    }
+    this.pingTimeStrategy = config.defaultPingTimeStrategy;
     this.rowDom = ''
   }
   create(parent){
@@ -116,7 +113,11 @@ class Row {
       $('.row-ping-updatetime input').focus();
       $('.row-ping-updatetime input').on('blur',function(){
         if( ($(this).val()*1)>1 && ($(this).val()*1)<1000){
-          data.rows[$(this).attr('rowId')].changeProp('pingUpdateTime',$(this).val());
+          let _this = data.rows[$(this).attr('rowId')];
+          _this.changeProp('pingUpdateTime',$(this).val());
+          let strat = _this.pingTimeStrategy;
+          strat[_this.status] = $(this).val();
+          _this.changeProp('pingTimeStrategy',strat);
         }else{
           data.rows[$(this).attr('rowId')].changeProp('pingUpdateTime',data.rows[$(this).attr('rowId')].pingUpdateTime);
         }
@@ -328,7 +329,7 @@ function createPage(){
   let monitorTable = $('<div class="table"></div>')
   root.append(monitorTable);
   //adding initial rows
-  initialRows.forEach((row)=>{
+  config.initialRows.forEach((row)=>{
       data.rows.push(new Row(row.type,row.name,row.picture,row.address,row.updatetime))
   })
 
@@ -341,7 +342,8 @@ function createPage(){
   root.append(newRowBtn)
   $('.new-row-btn').on('click',function () {
     let lastRow = data.rows[data.rows.length-1];
-    let newData = new Row('server','New server','0','192.168.0.1','10')
+      newRowData = config.defaultNewRow;
+    let newData = new Row(newRowData.type,newRowData.name,newRowData.picture,newRowData.pingIP,newRowData.pingUpdateTime)
     if(lastRow != undefined){
       newData = new Row(lastRow.type,lastRow.name,lastRow.picture,lastRow.pingIP,lastRow.pingUpdateTime);
     }
@@ -385,39 +387,37 @@ function checkRowsNumber(){
 
 function readDir(callback){
 
-  /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-
-  let build = true;
-
   if(build){
     picsDir = 'resources/app/assets/icons';
     picsDirLocal = 'assets/icons';
-    initialRowsFile = 'resources/app/assets/config/initialRows.json'
     langDataFile = 'resources/app/assets/config/langData.json'
+    configFile = 'resources/app/assets/config/config.json'
   }else{
     picsDir = 'assets/icons';
     picsDirLocal = picsDir;
-    initialRowsFile = 'assets/config/initialRows.json'
     langDataFile = 'assets/config/langData.json'
+    configFile = 'assets/config/config.json'
   }
   ret = {};
-  //initial rows
+  //config
   try{
-    initialRows = JSON.parse(fs.readFileSync(initialRowsFile, 'utf8', (err, retData) => {
+    config = JSON.parse(fs.readFileSync(configFile, 'utf8', (err, retData) => {
       if (err) {
-        initialRows = [{type:'server',name:'New server',picture:0,address:'192.168.0.1',updatetime:10}];
-        console.error('ERROR reading initialRowsFile at '+initialRowsFile);
+        config = [];
+        console.error('ERROR reading config at: '+configFile);
+        console.error(err);
       }
     }));
   }catch(e){
     console.error(e);
-    initialRows = [{type:'server',name:'New server',picture:0,address:'192.168.0.1'}];
+    config = [];
   }
   //language
   try{
     data.lang = JSON.parse(fs.readFileSync(langDataFile, 'utf8', (err, retData) => {
       if (err) {
-        console.error('ERROR reading initialRowsFile at '+initialRowsFile);
+        console.error('ERROR reading langDataFile at '+langDataFile);
+        console.error(err);
       }
     }));
   }catch(e){

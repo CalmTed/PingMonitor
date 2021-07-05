@@ -50,6 +50,9 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
   if(res.packetLoss == '100.000'){
     status = 'timeout';
   }
+  if(res.alive && res.packetLoss == '0.000'){
+    status = 'offline';
+  }
   console.log(res);
   var result = JSON.stringify({'status':status,'rowId':rowId,'pingDelay':res.avg,'packetLoss':res.packetLoss})
   return result;

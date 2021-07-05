@@ -12,6 +12,12 @@
     "picture":"1",
     "address":"104.27.194.88",
     "updatetime":"10"
+  },
+  {
+    "type":"server",
+    "name":"self",
+    "picture":"1",
+    "address":"192.186.130.2",
+    "updatetime":"10"
   }
-
 ]

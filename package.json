@@ -13,6 +13,7 @@
     "electron": "^13.1.2",
     "electron-packager": "^15.2.0",
     "jquery": "^3.6.0",
+    "network-config": "^2.3.0",
     "ping": "^0.4.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2"

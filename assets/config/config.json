@@ -1,0 +1,41 @@
+{
+  "lang":"ua",
+  "initialPause":"true",
+  "defaultPingTimeStrategy":{
+      "offline":"2",
+      "online":"20",
+      "timeout":"5",
+      "error":"10",
+      "default":"10"
+    },
+  "defaultNewRow":{
+      "type":"2",
+      "name":"20",
+      "picture":"0",
+      "pingIP":"10",
+      "pingUpdateTime":"10"
+    },
+    "initialRows": [
+      {
+        "type":"server",
+        "name":"Google dns",
+        "picture":"1",
+        "address":"74.125.31.100",
+        "updatetime":"10"
+      },
+      {
+        "type":"server",
+        "name":"whatismyip.com",
+        "picture":"1",
+        "address":"104.27.194.88",
+        "updatetime":"10"
+      },
+      {
+        "type":"server",
+        "name":"self",
+        "picture":"1",
+        "address":"192.186.130.2",
+        "updatetime":"10"
+      }
+    ]
+}

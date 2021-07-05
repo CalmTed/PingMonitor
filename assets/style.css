@@ -91,7 +91,7 @@ body::-webkit-scrollbar-thumb {
 .row[status='online']{
   --row-color:var(--status-green);
 }
-.row[status='timeout'],.row[status='error']{
+.row[status='timeout'],.row[status='error'],.row[status='offline']{
   --row-color:var(--status-red);
 }
 .row.paused{
