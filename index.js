@@ -14,17 +14,17 @@ function createWindow () {
     width: 1200,
     height: 1000,
     icon: __dirname + '/assets/PM.ico',
-    fullscreen:true,
-    //skipTaskbar:true,
     title:'PingMonitor',
     autoHideMenuBar:true,
-    devTools:true,
     scrollBounce:true,
     offscreen:true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     }
+    // fullscreen:true,
+    // skipTaskbar:true,
+    // devTools:true,
   })
 //  win.webContents.openDevTools()
   win.loadFile('index.html')
@@ -53,6 +53,9 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
   if(res.alive && res.packetLoss == '0.000'){
     status = 'offline';
   }
+
+  console.log('-------');
+  console.log(new Date());
   console.log(res);
   var result = JSON.stringify({'status':status,'rowId':rowId,'pingDelay':res.avg,'packetLoss':res.packetLoss})
   return result;
