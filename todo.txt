@@ -1,0 +1,33 @@
+Design
+[+] show more intuitevely when it pings 210921
+[+] better fluidity
+[+] play\pause icon
+[] 2 cols in small screen
+[] other icons
+[] super ECO without icons with R.l>10 and status=online
+  [] tools alignment
+  [] rows width alignment
+  [] hide label text| change to icons?
+UX
+! [] Save all data in localStorage
+! [] Save all setting as and load from file (reactive replacing)
+! [] Save to initial rows
+  [] save to stats only 4 or more lost packets
+  []
+[] Dellay stats (min,max,avg,now) graph
+[] Add settings
+  [] initial rows
+  [] PTS (basedOnType,auto,fullCustom)
+  [] new row (custom,last)
+  [] color and size
+  [] subnets
+[] sorting rows
+[] ip search
+Network
+[] show network settings
+[] change network settings
+[] add autoChange for 2 or more networks
+
+Bugs
+[+] Dont show ping dellay in russian win?
+[] Cant change updateTime in 2s Row

@@ -1,34 +1,39 @@
 {
   "lang":"ua",
-  "initialPause":"true",
+  "colorMode":"dark",
+  "scale":"100",
+  "initialPause":"false",
+  "pingTimeStrategyType":"auto",
   "defaultPingTimeStrategy":{
-      "offline":"2",
-      "online":"20",
-      "timeout":"5",
+      "offline":"10",
+      "online":"10",
+      "timeout":"10",
       "error":"10",
       "default":"10"
     },
+  "defaultNewRow":"custom",
   "defaultNewRow":{
-      "type":"2",
-      "name":"20",
+      "name":"Row",
       "picture":"0",
-      "pingIP":"10",
+      "pingIP":"192.168.0.1",
       "pingUpdateTime":"10"
     },
     "initialRows": [
       {
         "type":"server",
-        "name":"Google dns",
+        "name":"Self",
         "picture":"1",
-        "address":"74.125.31.100",
-        "updatetime":"10"
+        "address":"localhost",
+        "updatetime":"10",
+        "isPaused":"false"
       },
       {
         "type":"server",
-        "name":"whatismyip.com",
+        "name":"error",
         "picture":"1",
-        "address":"104.27.194.88",
-        "updatetime":"10"
+        "address":"192.169.0.1",
+        "updatetime":"10",
+        "isPaused":"false"
       },
       {
         "type":"server",
@@ -37,5 +42,8 @@
         "address":"192.186.130.2",
         "updatetime":"10"
       }
+    ],
+    "subnets":[
+
     ]
 }

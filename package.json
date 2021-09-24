@@ -3,9 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "icon":"assets/icons/PM_nofill.ico",
   "scripts": {
     "start": "electron .",
-    "build": "electron-packager ."
+    "pack": "electron-packager .",
+    "build": "electron-builder --dir"
+  },
+  "build":{
+    "target":"portable",
+    "icon":"assets/icons/PM_nofill.ico"
   },
   "author": "",
   "license": "ISC",
