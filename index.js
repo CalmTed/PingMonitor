@@ -1,6 +1,9 @@
-const { app, BrowserWindow,ipcMain } = require('electron')
-var network = require('network-config');
+const { app, BrowserWindow,ipcMain,dialog,Notification } = require('electron')
+
 var ping = require('ping');
+const fs = require("fs");
+
+
 var os = require("os");
 var networkInterfaces = os.networkInterfaces();
 
@@ -88,9 +91,9 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
     status = 'online';
   }
 
-  console.log('-------');
-  console.log(new Date());
-  console.log(res);
+  // console.log('-------');
+  // console.log(new Date());
+  // console.log(res);
   var result = JSON.stringify({'status':status,'rowId':rowId,'pingDelay':pingDelay,'packetLoss':res.packetLoss,'output':res.output,'full':JSON.stringify(res)})
   return result;
 })
@@ -102,36 +105,82 @@ async function pinging(ip,rowId){
 //networkInterfaces['Loopback Pseudo-Interface 1'][1].address = '127.0.0.2';
 //console.log(JSON.stringify(networkInterfaces));
 
-ipcMain.handle('checkNetwork', async (event) => {
-  var ret = {};
-  network.interfaces(function(err, interfaces){
-      ret = interfaces;
-  });
-  return JSON.stringify(ret);
-})
-
-ipcMain.handle('changeNetwork', async (event , name , mode , ip , netmask , broadcast , gateway) => {
-  if(mode = 'dhcp'){
-    network.configure(name, {
-        ip: ip,
-        netmask:netmask,
-        broadcast: broadcast,
-        gateway: gateway,
-        restart: true
-    }, function(err){
-      console.log(err);
-      var result = 'maybe it changed';
-      return result;
-    })
-  }else if(mode == 'dhcp'){
-    network.configure(name, {
-        dhcp: true,
-        restart: false
-    }, function(err){
-      console.log(err);
-      var result = 'maybe it changed';
-      return result;
+ipcMain.handle('saveFile', async (e,name,text,winName) => {
+  text = JSON.parse(text);
+  let rowsToSave = JSON.stringify(text.rows)
+  // console.log();
+  text.hash = cyrb53(rowsToSave)
+  text = JSON.stringify(text,undefined,4);
+  dialog.showSaveDialog({
+    filters: [{
+      name: 'JSON file',
+      extensions: ['json']
+    }],
+    title: winName,
+    defaultPath: name
+    // properties: ['saveFile']
+  }).then(fileName => {
+    fs.writeFile(fileName.filePath, text, function(err) {
+        if (err) return console.log(err);
+        // let not = new Notification({
+        //   title:'Saved',
+        //   body:'Config saved'
+        //
+        // })
+        // not.show()
     });
-  }
-
+  }).catch(err => {
+    console.log(err)
+  });
 })
+
+ipcMain.handle('openFile', async (e,winName) => {
+  ret = await dialog.showOpenDialog({
+    filters: [{
+      name: 'JSON file',
+      extensions: ['json']
+    }],
+    title: winName,
+    properties: ['openFile']
+  }).then((result) => {
+    if(!result.canceled){
+      let filepath = result.filePaths[0];
+      let data = {};
+      //clearing name
+      //async didnt want to work
+      data.text = fs.readFileSync(filepath, 'utf-8', (err, d) => {
+        return d;
+      });
+      if(JSON.parse(data.text).progName == 'PingMonitor'){
+        if(JSON.parse(data.text).hash != cyrb53(JSON.stringify(JSON.parse(data.text).rows))){
+          let n = new Notification({
+            title:'Зверни увагу',
+            body:'Конфіг був змінений вручну'
+          })
+          n.show();
+        }
+        return data;
+      }else{
+        return 'canceled';
+      }
+    }else{
+      return 'canceled'
+    }
+  }).catch(err => {
+    console.log(err)
+  });
+
+  return ret;
+})
+
+const cyrb53 = function(str, seed = 0) {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0, ch; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1>>>0);
+};

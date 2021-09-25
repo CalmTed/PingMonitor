@@ -27,20 +27,32 @@ body::-webkit-scrollbar-thumb {
   background-color: #555;
   border: 1px solid transparent;
 }
-.new-row-btn{
+.bottom-tools{
+  display: flex;
+  justify-content: center;
+}
+.new-row-btn,.full-screen-btn,.pause-all-btn{
   width: 20%;
-  margin: 0.8% 40%;
+  margin: 5pt;
   min-height: 45px;
   background-color: #2d2c2c;
   border-radius: 8px;
   box-shadow: 0 0 10px #212020;
   display: flex;
   transition: all 0.1s ease;
-  font-size: 150%;
+  font-size: 200%;
   justify-content: center;
   align-items: center;
 }
-.new-row-btn:hover{
+.new-row-btn span{
+  font-size: 12pt;
+  margin-left: 6pt;
+}
+.full-screen-btn,.pause-all-btn{
+  width: 15%;
+  font-size: 12pt;
+}
+.new-row-btn:hover,.full-screen-btn:hover,.pause-all-btn:hover{
   cursor: pointer;
   box-shadow: 0px 5px 20px #1e1e1e;
   transform: translate(0px,-1px);
@@ -57,16 +69,29 @@ body::-webkit-scrollbar-thumb {
   width: calc(50% - 15px);
   min-height: 140px;
 }
+/* @media(min-width:1280px){
+  .row{
+    width: calc(50% - 15px);
+    min-height: 140px;
+  }
+} */
 /* one col on small width */
 @media(max-width:1280px){
   .table.eco .row{
     width: calc(100% - 15px);
   }
+  .row{
+    min-width: 641px;
+  }
 }
 /* tree colls */
 @media(min-width:2100px){
+  .row{
+    width: calc(33.38% - 15px);
+
+  }
   .table.eco .row{
-    width: calc(33% - 15px);
+    width: calc(33.3% - 15px);
   }
 }
 
@@ -249,7 +274,7 @@ body::-webkit-scrollbar-thumb {
   width: 20%;
 }
 .row-column.tools{
-  min-width:60px;
+  min-width:40px;
   justify-content: flex-end;
   display: flex;
   max-width: 60px;
@@ -280,7 +305,7 @@ body::-webkit-scrollbar-thumb {
   transform: translate(0px,-1px);
 }
 .row-tools .tool-remove-row::before{
-  content: 'X';
+  content: '✖';
 }
 .row .tool-pause-row::before{
   content: '';
@@ -322,6 +347,15 @@ body::-webkit-scrollbar-thumb {
   margin-left: -14px;
   width: 10px;
   height: 10px;
+}
+.row.muted .tool-mute-row::before{
+  /* content: '🔇'; */
+  content: '🔈';
+  filter: grayscale(1);
+}
+.row .tool-mute-row::before{
+  filter: grayscale(1);
+  content: '🔊';
 }
 .row{
   border-color: var(--row-color);

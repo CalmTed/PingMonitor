@@ -1,8 +1,9 @@
 {
-  "lang":"ua",
+  "langCode":"ua",
   "colorMode":"dark",
   "scale":"100",
-  "initialPause":"false",
+  "timeToAlarm":"60",
+  "initialPause":true,
   "pingTimeStrategyType":"auto",
   "defaultPingTimeStrategy":{
       "offline":"10",
@@ -16,7 +17,8 @@
       "name":"Row",
       "picture":"0",
       "pingIP":"192.168.0.1",
-      "pingUpdateTime":"10"
+      "pingUpdateTime":"10",
+      "isPaused":false
     },
     "initialRows": [
       {
@@ -25,15 +27,14 @@
         "picture":"1",
         "address":"localhost",
         "updatetime":"10",
-        "isPaused":"false"
+        "isPaused":false
       },
       {
         "type":"server",
         "name":"error",
         "picture":"1",
         "address":"192.169.0.1",
-        "updatetime":"10",
-        "isPaused":"false"
+        "updatetime":"10"
       },
       {
         "type":"server",

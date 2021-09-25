@@ -6,7 +6,8 @@ data.lang = [];
 var config = [];
 
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-var build = false;
+// var build = false;
+var build = true;
 var debug = true;
 /*===============================================================*/
 
@@ -36,9 +37,9 @@ class Row {
     this.lastConnectionFound = 0;
     this.lastOutOfConnection = 0;
     this.totalOutOfConnection = 0;
-    console.log(isPaused);
     this.isPaused = isPaused;
     this.isChecking = false;
+    this.isMuted = false;
     this.pingTimeStrategy = config.defaultPingTimeStrategy;
     this.rowDom = ''
   }
@@ -48,9 +49,16 @@ class Row {
     //this.rowDom.append($(`<div class="row-column"></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-status-span">${translate(this.status)}</span></div> <div class="row-ping"><label>${translate('Dellay')}: <span class="row-ping-dellay"></span></label><label>${translate('Update time')}: <span class="row-ping-updatetime" title="2x ${translate('Change update time')}">${this.pingUpdateTime} ${translate('s')}</span></label><label>${translate('Uptime')}: <span class="row-uptime"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
-    this.rowDom.append($(`<div class="row-column tools"><div class="row-tools"> <div class="row-tool tool-pause-row" title="${translate('Pause pinging')}"></div><div class="row-tool tool-remove-row" title="2x ${translate('Remove row')}"></div> </div></div>`));
+    this.rowDom.append($(`<div class="row-column tools"><div class="row-tools">\
+                            <div class="row-tool tool-pause-row" title="${translate('Pause pinging')}"></div>\
+                            <div class="row-tool tool-mute-row" title="${translate('Mute row')}"></div>\
+                            <div class="row-tool tool-remove-row" title="2x ${translate('Remove row')}"></div>\
+                          </div></div>`));
+    this.rowDom.append($(`<div class="player-block"><audio class="player" preload loop src="assets/alarm.wav" type="audio/wav"></audio></div>`));
     parent.append(this.rowDom);
-    if(this.isPaused){this.render()};//for initial pausing
+    if(this.isPaused){
+      this.render()
+    };//for initial pausing
     this.pinging();
     checkRowsNumber();//for Eco mode
   }
@@ -77,11 +85,19 @@ class Row {
       let rowOBJ = data.rows[rowId];
       $(this).html(`<input rowId="${rowOBJ.id}"  value="${rowOBJ.name}"> `)
       $('.row-name input').focus();
-      $('.row-name input').on('blur',function(){
-        if($(this).val().length>1 && $(this).val().length<20){
-          data.rows[$(this).attr('rowId')].changeProp('name',$(this).val());
+      let finEdit = (_this)=>{
+        if($(_this).val().length>1 && $(_this).val().length<20){
+          data.rows[$(_this).attr('rowId')].changeProp('name',$(_this).val());
         }else{
-          data.rows[$(this).attr('rowId')].changeProp('name',data.rows[$(this).attr('rowId')].name);
+          data.rows[$(_this).attr('rowId')].changeProp('name',data.rows[$(_this).attr('rowId')].name);
+        }
+      }
+      $('.row-name input').on('blur',function(){
+        finEdit(this)
+      })
+      $('.row-name input').on('keypress',function(e){
+        if(e.which == 13){
+          finEdit(this)
         }
       })
     });
@@ -93,11 +109,19 @@ class Row {
       let rowOBJ = data.rows[rowId];
       $(this).html(`<input rowId="${rowOBJ.id}"  value="${rowOBJ.pingIP}">`)
       $('.row-address input').focus();
-      $('.row-address input').on('blur',function(){
-        if( $(this).val().length>6 && $(this).val().length<30){
-          data.rows[$(this).attr('rowId')].changeProp('pingIP',$(this).val());
+      let finEdit = (_this)=>{
+        if( $(_this).val().length>6 && $(_this).val().length<30){
+          data.rows[$(_this).attr('rowId')].changeProp('pingIP',$(_this).val());
         }else{
-          data.rows[$(this).attr('rowId')].changeProp('pingIP',data.rows[$(this).attr('rowId')].pingIP);
+          data.rows[$(_this).attr('rowId')].changeProp('pingIP',data.rows[$(_this).attr('rowId')].pingIP);
+        }
+      }
+      $('.row-address input').on('blur',function(){
+        finEdit(this);
+      })
+      $('.row-address input').on('keypress',function(e){
+        if(e.which == 13){
+          finEdit(this);
         }
       })
     });
@@ -111,15 +135,26 @@ class Row {
       let rowOBJ = data.rows[rowId];
       $(this).html(`<input rowId="${rowOBJ.id}"  value="${rowOBJ.pingUpdateTime}"> `)
       $('.row-ping-updatetime input').focus();
-      $('.row-ping-updatetime input').on('blur',function(){
-        if( ($(this).val()*1)>1 && ($(this).val()*1)<1000){
-          let _this = data.rows[$(this).attr('rowId')];
-          _this.changeProp('pingUpdateTime',$(this).val());
+      $('.row-ping-updatetime input').select();
+      let finEdit = (__this)=>{
+        if( ($(__this).val()*1)>1 && ($(__this).val()*1)<1000){
+          let _this = data.rows[$(__this).attr('rowId')];
+          _this.changeProp('pingUpdateTime',$(__this).val());
           let strat = _this.pingTimeStrategy;
-          strat[_this.status] = $(this).val();
-          _this.changeProp('pingTimeStrategy',strat);
+          strat[_this.status] = $(__this).val();
+          if(_this.pingTimeStrategy != strat){
+            _this.changeProp('pingTimeStrategy',strat);
+          }
         }else{
-          data.rows[$(this).attr('rowId')].changeProp('pingUpdateTime',data.rows[$(this).attr('rowId')].pingUpdateTime);
+          data.rows[$(__this).attr('rowId')].changeProp('pingUpdateTime',data.rows[$(__this).attr('rowId')].pingUpdateTime);
+        }
+      }
+      $('.row-ping-updatetime input').on('blur',function(){
+        finEdit(this)
+      })
+      $('.row-ping-updatetime input').on('keypress',function(e){
+        if(e.which == 13){
+          finEdit(this)
         }
       })
     });
@@ -145,6 +180,20 @@ class Row {
       }else{
         rowOBJ.changeProp('isPaused',false);
         rowOBJ.pinging();//restart pinging
+      }
+    });
+    $(`.row-${this.id} .tool-mute-row`).on('click',function(){
+      let toolsDOM = $(this).parent()[0]
+      let colDOM = $(toolsDOM).parent()[0]
+      let rowDOM = $($(colDOM).parent()[0])
+      let rowId = rowDOM.attr('rowId');
+      let rowOBJ = data.rows[rowId];
+      if(!rowOBJ.isMuted){
+        rowOBJ.changeProp('isMuted',true);
+        $('.player')[0].pause();
+      }else{
+        rowOBJ.changeProp('isMuted',false);
+
       }
     });
   }
@@ -184,16 +233,15 @@ class Row {
     }
     //col3
     if(needToUpdate('pingDellayTime')){
-      if(['unknown','NaN'].indexOf(this.pingDellayTime)){
+      if(['unknown','NaN',-1].indexOf(this.pingDellayTime) == -1){
         $(`.row-${this.id} .row-ping-dellay`).html(`${Math.round(this.pingDellayTime)} ${translate('ms')}`);
       }else{
         $(`.row-${this.id} .row-ping-dellay`).html(`-`);
       }
     }
-    if(needToUpdate('pingUpdateTime') && $(`.row-${this.id} .row-ping-updatetime input:focus`).length == 0){
+    if(needToUpdate('pingUpdateTime')){
       $(`.row-${this.id} .row-ping-updatetime`).html(`${this.pingUpdateTime} ${translate('s')}`);
       $(`.row-${this.id}`).css('--row-time',this.pingUpdateTime+'s')
-
     }
     if(needToUpdate('packetsSent') || needToUpdate('packetsResived') || needToUpdate('packetsLost')){
       let uptime = 0
@@ -205,13 +253,29 @@ class Row {
     //col4
     if(needToUpdate('lastConnectionLost') || needToUpdate('lastConnectionFound') || needToUpdate('lastOutOfConnection')|| needToUpdate('totalOutOfConnection')){
       if(this.lastConnectionLost !=0 ){
-        $(`.row-${this.id} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${this.lastConnectionLost.getMinutes()}:${this.lastConnectionLost.getSeconds()}`);
+        let minsL = this.lastConnectionLost.getMinutes();
+        if(minsL<10){
+          minsL = '0'+minsL;
+        }
+        let secsL = this.lastConnectionLost.getSeconds();
+        if(secsL<10){
+          secsL = '0'+secsL;
+        }
+        $(`.row-${this.id} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${minsL}:${secsL}`);
         $(`.row-${this.id} .row-last-conn-lost`).attr('title',this.lastConnectionLost);
       }else{
         $(`.row-${this.id} .row-last-conn-lost`).html(`-`);
       }
       if(this.lastConnectionFound !=0 ){
-        $(`.row-${this.id} .row-last-conn-found`).html(`${this.lastConnectionFound.getHours()}:${this.lastConnectionFound.getMinutes()}:${this.lastConnectionFound.getSeconds()}`);
+        let  minsF = this.lastConnectionFound.getMinutes();
+        if(minsF<10){
+          minsF = '0'+minsF;
+        }
+        let secsF = this.lastConnectionFound.getSeconds();
+        if(secsF<10){
+          secsF = '0'+secsF;
+        }
+        $(`.row-${this.id} .row-last-conn-found`).html(`${this.lastConnectionFound.getHours()}:${minsF}:${secsF}`);
         $(`.row-${this.id} .row-last-conn-found`).attr('title',this.lastConnectionFound);
       }else{
         $(`.row-${this.id} .row-last-conn-found`).html(`-`);
@@ -256,6 +320,16 @@ class Row {
         $(`.row-${this.id}`).removeClass('checking')
       }
     }
+    //muting
+    if(needToUpdate('isMuted')){
+      if(this.isMuted){
+        $(`.row-${this.id}`).addClass('muted')
+        $(`.row-${this.id} .tool-mute-row`).attr('title',translate('Unmute row'))
+      }else{
+        $(`.row-${this.id}`).removeClass('muted')
+        $(`.row-${this.id} .tool-mute-row`).attr('title',translate('Mute row'))
+      }
+    }
   }
   remove(){
     $(`.row-${this.id}`).remove();
@@ -275,17 +349,16 @@ class Row {
         $(`.row-${row.id}`).removeClass(`temp-row-${row.id}`)
     })
     checkRowsNumber();//for Eco mode
+    saveToLocalStorage();
   }
   changeProp(prop,value){
     if(this[prop] !== value || /* white list */ ['name','pingUpdateTime','pingIP'].indexOf(prop) !== -1){
       this[prop] = value;
       if(/* black list */[''].indexOf(prop) == -1){
         this.render(prop);
-
       }
-      if(/* black list */[''].indexOf(prop) == -1){
+      if(/* black list */['isChecking','_status','pingDellayTime','packetsSent','packetsResived','packetsLost','lastConnectionLost','lastOutOfConnection'].indexOf(prop) == -1){
         saveToLocalStorage();
-
       }
     }
   }
@@ -308,7 +381,11 @@ class Row {
             _this.changeProp('lastConnectionLost', new Date());
           }
           if(res.status == _this.status){
-            _this.changeProp('lastOutOfConnection', now.getTime() - _this.lastConnectionLost.getTime());
+            let looc = now.getTime() - _this.lastConnectionLost.getTime();
+            if(looc>(config.timeToAlarm*1000) && !_this.isMuted && $('.player')[0].paused){
+              $('.player')[0].play();
+            }
+            _this.changeProp('lastOutOfConnection',looc);
           }
         }
         //on founding connection
@@ -317,6 +394,9 @@ class Row {
           _this.changeProp('lastConnectionFound',new Date());
           if(_this.lastConnectionLost == 0){
             _this.changeProp('lastConnectionLost', new Date());
+          }
+          if(_this.isMuted){
+            _this.changeProp('isMuted',false)
           }
           _this.changeProp('lastOutOfConnection', _this.lastConnectionFound.getTime() - _this.lastConnectionLost.getTime());
           _this.changeProp('totalOutOfConnection', _this.totalOutOfConnection + _this.lastOutOfConnection);
@@ -331,12 +411,17 @@ class Row {
           _this.changeProp('packetsLost',_this.packetsLost+1);
         }
         _this.changeProp('isChecking',false);
-        if(_this.pingTimeStrategy[_this.status] != undefined){
-          _this.changeProp('pingUpdateTime',_this.pingTimeStrategy[_this.status]);
-        }else{
-          _this.changeProp('pingUpdateTime',_this.pingTimeStrategy['default']);
+        //changing time based on ping time strategy
+        if(_this.packetsSent > 0){
+          if(_this.pingTimeStrategy[_this.status] != undefined){
+            if(_this.pingUpdateTime != _this.pingTimeStrategy[_this.status]){
+              _this.changeProp('pingUpdateTime',_this.pingTimeStrategy[_this.status]);
+            }
+          }else if(_this.pingUpdateTime != _this.pingTimeStrategy['default']){
+            _this.changeProp('pingUpdateTime',_this.pingTimeStrategy['default']);
+          }
         }
-        setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000)
+        _this.timeout = setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000);
       })
     }else{
       this.changeProp('isChecking',false);
@@ -350,7 +435,8 @@ class Row {
       pingUpdateTime:this.pingUpdateTime,
       picture:this.picture,
       pingTimeStrategy:this.pingTimeStrategy,
-      isPaused:this.isPaused
+      isPaused:this.isPaused,
+      isMuted:this.isMuted
     }
     return ret;
   }
@@ -361,35 +447,99 @@ function createPage(){
   root.html('');
   let monitorTable = $('<div class="table"></div>')
   root.append(monitorTable);
-  //adding initial rows
-  config.initialRows.forEach((row)=>{
-      data.rows.push(new Row(row.name,row.picture,row.address,row.updatetime,row.isPaused))
-  })
+  if(window.localStorage.getItem('data') !== null){
+    loadFromLocalStorage();
+  }else{
+    //adding initial rows
+    config.initialRows.forEach((row)=>{
+        data.rows.push(new Row(row.name,row.picture,row.address,row.updatetime,row.isPaused))
+    })
+  }
 
   data.rows.forEach(
     (row) => {
       row.create($(monitorTable))
       row.createRowEventListeners()
   })
-  newRowBtn = $('<div class="new-row-btn" title="'+translate("Add new row")+'">+</div>');
-  root.append(newRowBtn)
-  $('.new-row-btn').on('click',function () {
+  newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]">+ <span>Додати строку</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [F]" onclick="toggleFullScreen()">'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Space]" onclick="togglePause()">'+translate("Pause all rows")+'  </div></div>');
+  root.append(newRowBtns)
+  addRow = ()=>{
     let lastRow = data.rows[data.rows.length-1];
       newRowData = config.defaultNewRow;
-    let newData = new Row(newRowData.name,newRowData.picture,newRowData.pingIP,newRowData.pingUpdateTime)
+    let newData = new Row(newRowData.name,newRowData.picture,newRowData.pingIP,newRowData.pingUpdateTime,newRowData.isPaused)
     if(lastRow != undefined){
-      newData = new Row(lastRow.name,lastRow.picture,lastRow.pingIP,lastRow.pingUpdateTime);
+      newData = new Row(lastRow.name,lastRow.picture,lastRow.pingIP,lastRow.pingUpdateTime,lastRow.isPaused);
     }
     data.rows.push( newData );
     data.rows[data.rows.length-1].create($(monitorTable))
+    data.rows[data.rows.length-1].render();
     data.rows[data.rows.length-1].createRowEventListeners()
+    saveToLocalStorage();
+  }
+  //adding new roww
+  $('.new-row-btn').on('click',function () {
+
+    addRow();
   })
 }
+
 $(document).ready(function(){
-  $('.root').html('<div style="background-image: url(assets/icons/PM.png);width: 300px;height: 100vh;background-size: 294px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%;  ">Reading files...<h1>');
-   readDir(function(ret){
+  $('.root').html('<div style="background-image: url(assets/icons/PM_nofill.ico);width: 300px;height: 100vh;background-size: 294px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%; ">Ping Monitor</h1><p style=" display: flex; justify-content: center; align-items: center; height: 110vh; position: fixed; width: 100%; opacity: 0.7; ">Reading files...</p>');
+  readDir(function(ret){
     data.pics = ret.pics;
     createPage();
+  })
+  pausedRows = [];
+  $(this).on('keypress',(e)=>{
+    // "F"
+    if(e.which == 102){
+      toggleFullScreen()
+
+    }
+    //N
+    if(e.ctrlKey && (e.which == 110 || e.which == 14)){
+      console.log(e);
+      console.log('adding row');
+      addRow();
+    }
+    //"S"
+    if(e.ctrlKey && e.which == 19){
+      saveAs();
+    }
+    // "O"
+    if(e.ctrlKey && e.which == 15){
+      openConfig();
+    }
+    //pause
+    togglePause = ()=>{
+      unpausedNum = 0;
+      Object.keys(data.rows).forEach((row)=>{
+        if(!data.rows[row].isPaused){
+          unpausedNum++;
+        }
+      });
+      Object.keys(data.rows).forEach((row)=>{
+        //unpausing
+        if(unpausedNum>0){
+            //pausing all
+            if(!data.rows[row].isPaused){
+              data.rows[row].changeProp('isPaused',true);
+              pausedRows.push(row);
+            }
+        }else{
+          if(pausedRows.indexOf(row) != -1){
+            data.rows[row].changeProp('isPaused',false);
+          }
+        }
+      })
+      if(unpausedNum==0){
+        pausedRows = [];
+      }
+      console.log(pausedRows);
+    }
+    if(e.which == 32){
+      togglePause();
+    }
   })
 });
 
@@ -412,37 +562,49 @@ function saveToLocalStorage(){
   });
   // console.log(data.rows);
   dataToSave = {
-    langCode:config.lang,
+    langCode:config.langCode,
     colorMode:config.colorMode,
-    rows:rowsToSave
-
+    rows:rowsToSave,
+    progName:'PingMonitor'
   }
   window.localStorage.setItem('data',JSON.stringify(dataToSave));
+  return JSON.stringify(dataToSave,undefined, 4);
 }
 
 function loadFromLocalStorage(){
-  let data = window.localStorage.getItem('data');
-  data.forEach((el)=>{
-    console.log(el);
-    //sets[] = el
+  let dataLocal = JSON.parse(window.localStorage.getItem('data'));
+  Object.keys(dataLocal).forEach((g)=>{
+    if(['langCode','colorMode'].indexOf(g) !=-1){
+      data[g] = dataLocal[g];
+    }else if(g == 'rows'){
+      Object.keys(dataLocal[g]).forEach((o)=>{
+        if(data.rows[o] !== undefined){
+          Object.keys(dataLocal[g][o]).forEach((d)=>{
+            data.rows[o][d] = dataLocal[g][o][d];
+          });
+        }else{
+          let monitorTable = $('<div class="table"></div>');
+          let newData = dataLocal[g][o];
+          let newRow = new Row(newData.name,newData.picture,newData.pingIP,newData.pingUpdateTime,newData.isPaused);
+          newRow.pingTimeStrategy = newData.pingTimeStrategy;
+          data.rows.push( newRow );
+          data.rows[data.rows.length-1].create($(monitorTable))
+          data.rows[data.rows.length-1].createRowEventListeners()
+        }
+      });
+    }
   })
-  return data;
 }
 
 async function ping(ip,rowId,callback) {
   var result = await ipcRenderer.invoke('ping', ip, rowId);
   result = JSON.parse(result);
   if(debug){
-    console.debug(new Date(),'Row-'+result.rowId,data.rows[result.rowId].name,data.rows[result.rowId].pingIP,result);
+    console.debug(new Date(),'Row-'+result.rowId,data.rows[result.rowId].name,data. rows[result.rowId].pingIP,result);
   }
   callback(result)
 }
 
-async function checkNetwork(callback) {
-  var result = await ipcRenderer.invoke('checkNetwork');
-  //result = JSON.parse(result);
-  callback(result)
-}
 
 function checkRowsNumber(){
   if(data.rows.length > 5){
@@ -494,8 +656,36 @@ function readDir(callback){
   ret.pics = [];
   fs.readdir(picsDir,  (err, dir) => {
     for(let filePath of dir){
-        ret.pics.push(picsDirLocal+'/'+filePath);
+        if(filePath.indexOf('.png') != -1){
+          ret.pics.push(picsDirLocal+'/'+filePath);
+        }
       }
       return callback(ret);
     });
 }
+
+async function saveAs(){
+  let time = new Date();
+  let name = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
+  let text = saveToLocalStorage();
+  await ipcRenderer.invoke('saveFile',name, text,translate('Save config'));
+}
+
+async function openConfig(){
+  let ret = await ipcRenderer.invoke('openFile',translate('Open config'));
+  if(ret != 'canceled'){
+    console.debug(ret);
+  }
+}
+
+var toggleFullScreen = function() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }
+}
+var addRow = function (){}//initaiting for later
+var togglePause = function (){}//initaiting for later

@@ -2,18 +2,30 @@ Design
 [+] show more intuitevely when it pings 210921
 [+] better fluidity
 [+] play\pause icon
-[] 2 cols in small screen
-[] other icons
-[] super ECO without icons with R.l>10 and status=online
-  [] tools alignment
-  [] rows width alignment
-  [] hide label text| change to icons?
+[+] 2 cols in small screen
+[+] pause all btn
+[+] fullscreen btn
+[+] add "0"`s in time stats
+
+[] add pics
+? [] other icons
+? [] super ECO without icons with R.l>10 and status=online
+    [] tools alignment
+    [] rows width alignment
+    [] hide label text| change to icons?
 UX
-! [] Save all data in localStorage
-! [] Save all setting as and load from file (reactive replacing)
-! [] Save to initial rows
-  [] save to stats only 4 or more lost packets
-  []
+[+] Save all data in localStorage 210925 1531
+[+] Save all setting as and load from file (reactive replacing) 210925 1728
+[+] alarm for 10+ losed packets (config variable and dismissable in tools(turnin on when back online)) 210925 1845
+[+] hot keys 210925 2131
+  [+] enter finish editing
+  [+] f for full screen
+  [+] ctrl+n new row
+  [+] ctrl+space (pauses all, unpauses last paused(not all))
+  [+] ctrl+s ctrl+o save open settings
+[] build app as finished product
+
+
 [] Dellay stats (min,max,avg,now) graph
 [] Add settings
   [] initial rows
@@ -27,6 +39,10 @@ Network
 [] show network settings
 [] change network settings
 [] add autoChange for 2 or more networks
+
+Clear
+[] remove row-time...
+
 
 Bugs
 [+] Dont show ping dellay in russian win?

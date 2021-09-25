@@ -15,6 +15,12 @@
   "Change address":"Змінити адресу",
   "Change name":"Змінити назву",
   "Change update time":"Змінити час оновлення",
+  "Mute row":"Вимкнути звук",
+  "Unmute row":"Увімкнути звук",
+  "Save config":"Зберегти файл налаштувань",
+  "Open config":"Відкрити файл налаштувань",
+  "Toggle full screen":"Повноектаний режим",
+  "Pause all rows":"Призупинити всі",
 
   "ms":"мс",
   "s":"c",
