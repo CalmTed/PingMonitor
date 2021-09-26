@@ -30,6 +30,7 @@ body::-webkit-scrollbar-thumb {
 .bottom-tools{
   display: flex;
   justify-content: center;
+  min-width:641px;
 }
 .new-row-btn,.full-screen-btn,.pause-all-btn{
   width: 20%;
@@ -43,6 +44,7 @@ body::-webkit-scrollbar-thumb {
   font-size: 200%;
   justify-content: center;
   align-items: center;
+  min-width: 180px;
 }
 .new-row-btn span{
   font-size: 12pt;
@@ -220,7 +222,7 @@ body::-webkit-scrollbar-thumb {
   margin: 7% 0;
 }
 .row-ping{
-  max-width: 160px;
+  max-width: 161px;
 }
 .row-status,.row-ping,.row-connection{
   display: flex;

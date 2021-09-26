@@ -6,8 +6,9 @@ data.lang = [];
 var config = [];
 
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-// var build = false;
-var build = true;
+// var target = 'build';
+// var target = 'pack';
+var target = 'dev';
 var debug = true;
 /*===============================================================*/
 
@@ -43,7 +44,8 @@ class Row {
     this.pingTimeStrategy = config.defaultPingTimeStrategy;
     this.rowDom = ''
   }
-  create(parent){
+  create(){
+    parent = $('.table');
     this.rowDom = $(`<div class="row row-${this.id}" rowId="${this.id}" status="${this.status}"></div>`);//${data.pics[row.picture]}
     this.rowDom.append($(`<div class="row-column"><div class="row-picture" title="${translate('Change picture')}" style="background-image:url('${data.pics[this.picture]}')"></div><div class="row-name" title="2x ${translate('Change name')}">${this.name}</div><div class="row-address" title="2x ${translate('Change address')}">${this.pingIP}</div></div>`));
     //this.rowDom.append($(`<div class="row-column"></div>`));
@@ -54,7 +56,7 @@ class Row {
                             <div class="row-tool tool-mute-row" title="${translate('Mute row')}"></div>\
                             <div class="row-tool tool-remove-row" title="2x ${translate('Remove row')}"></div>\
                           </div></div>`));
-    this.rowDom.append($(`<div class="player-block"><audio class="player" preload loop src="assets/alarm.wav" type="audio/wav"></audio></div>`));
+    this.rowDom.append($('<div class="player-block"><audio class="player" preload loop src="'+soundFile+'" type="audio/wav"></audio></div>'));
     parent.append(this.rowDom);
     if(this.isPaused){
       this.render()
@@ -458,29 +460,12 @@ function createPage(){
 
   data.rows.forEach(
     (row) => {
-      row.create($(monitorTable))
+      row.create()
       row.createRowEventListeners()
   })
-  newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]">+ <span>Додати строку</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [F]" onclick="toggleFullScreen()">'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Space]" onclick="togglePause()">'+translate("Pause all rows")+'  </div></div>');
+  newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]" onclick="addRow()">+ <span>'+translate("Add new row")+'</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [Ctrl+F]" onclick="toggleFullScreen()">'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Ctrl+Space]" onclick="togglePause()">'+translate("Pause all rows")+'  </div></div>');
   root.append(newRowBtns)
-  addRow = ()=>{
-    let lastRow = data.rows[data.rows.length-1];
-      newRowData = config.defaultNewRow;
-    let newData = new Row(newRowData.name,newRowData.picture,newRowData.pingIP,newRowData.pingUpdateTime,newRowData.isPaused)
-    if(lastRow != undefined){
-      newData = new Row(lastRow.name,lastRow.picture,lastRow.pingIP,lastRow.pingUpdateTime,lastRow.isPaused);
-    }
-    data.rows.push( newData );
-    data.rows[data.rows.length-1].create($(monitorTable))
-    data.rows[data.rows.length-1].render();
-    data.rows[data.rows.length-1].createRowEventListeners()
-    saveToLocalStorage();
-  }
-  //adding new roww
-  $('.new-row-btn').on('click',function () {
 
-    addRow();
-  })
 }
 
 $(document).ready(function(){
@@ -491,25 +476,24 @@ $(document).ready(function(){
   })
   pausedRows = [];
   $(this).on('keypress',(e)=>{
+    // console.log(e,e.which);
     // "F"
-    if(e.which == 102){
+    if(e.ctrlKey && e.which == 6){
       toggleFullScreen()
-
     }
     //N
     if(e.ctrlKey && (e.which == 110 || e.which == 14)){
-      console.log(e);
-      console.log('adding row');
       addRow();
     }
+    //DOING IT IN THE MENU
     //"S"
-    if(e.ctrlKey && e.which == 19){
-      saveAs();
-    }
-    // "O"
-    if(e.ctrlKey && e.which == 15){
-      openConfig();
-    }
+    // if(e.ctrlKey && e.which == 19){
+    //   saveAs();
+    // }
+    // // "O"
+    // if(e.ctrlKey && e.which == 15){
+    //   openConfig();
+    // }
     //pause
     togglePause = ()=>{
       unpausedNum = 0;
@@ -535,9 +519,9 @@ $(document).ready(function(){
       if(unpausedNum==0){
         pausedRows = [];
       }
-      console.log(pausedRows);
     }
-    if(e.which == 32){
+    if(e.ctrlKey && e.which == 0){
+      e.preventDefault();
       togglePause();
     }
   })
@@ -583,12 +567,11 @@ function loadFromLocalStorage(){
             data.rows[o][d] = dataLocal[g][o][d];
           });
         }else{
-          let monitorTable = $('<div class="table"></div>');
           let newData = dataLocal[g][o];
           let newRow = new Row(newData.name,newData.picture,newData.pingIP,newData.pingUpdateTime,newData.isPaused);
           newRow.pingTimeStrategy = newData.pingTimeStrategy;
           data.rows.push( newRow );
-          data.rows[data.rows.length-1].create($(monitorTable))
+          //data.rows[data.rows.length-1].create()
           data.rows[data.rows.length-1].createRowEventListeners()
         }
       });
@@ -605,7 +588,6 @@ async function ping(ip,rowId,callback) {
   callback(result)
 }
 
-
 function checkRowsNumber(){
   if(data.rows.length > 5){
     $('.table').addClass('eco');
@@ -614,18 +596,27 @@ function checkRowsNumber(){
   }
 }
 
+var picsDirLocal;
 function readDir(callback){
-
-  if(build){
+  if(target == 'build'){
+    picsDir = 'assets/icons';
+    picsDirLocal = '../../assets/icons';
+    langDataFile = 'assets/config/langData.json'
+    configFile = 'assets/config/config.json'
+    soundFile = '../../assets/alarm.wav'
+  }
+  else if(target == 'pack'){
     picsDir = 'resources/app/assets/icons';
     picsDirLocal = 'assets/icons';
     langDataFile = 'resources/app/assets/config/langData.json'
     configFile = 'resources/app/assets/config/config.json'
+    soundFile = 'resources/app/assets/alarm.wav'
   }else{
     picsDir = 'assets/icons';
     picsDirLocal = picsDir;
     langDataFile = 'assets/config/langData.json'
     configFile = 'assets/config/config.json'
+    soundFile = 'assets/alarm.wav'
   }
   ret = {};
   //config
@@ -671,11 +662,29 @@ async function saveAs(){
   await ipcRenderer.invoke('saveFile',name, text,translate('Save config'));
 }
 
+ipcRenderer.on('asynchronous-message', function (evt, message) {
+  if(message.call == 'saveAs'){
+    saveAs();
+  }
+  if(message.call == 'openConfig'){
+    openConfig();
+  }
+});
+
 async function openConfig(){
   let ret = await ipcRenderer.invoke('openFile',translate('Open config'));
+  console.debug(ret);
   if(ret != 'canceled'){
-    console.debug(ret);
+    data.rows.forEach(
+      (row) => {
+        row.remove()
+    })
+    confToOpen = JSON.parse(ret.text);
+    window.localStorage.setItem('data',JSON.stringify(confToOpen));
+    loadFromLocalStorage();
+    createPage();
   }
+
 }
 
 var toggleFullScreen = function() {
@@ -687,5 +696,43 @@ var toggleFullScreen = function() {
     }
   }
 }
-var addRow = function (){}//initaiting for later
-var togglePause = function (){}//initaiting for later
+
+var addRow = ()=>{
+  let lastRow = data.rows[data.rows.length-1];
+    newRowData = config.defaultNewRow;
+  let newData = new Row(newRowData.name,newRowData.picture,newRowData.pingIP,newRowData.pingUpdateTime,newRowData.isPaused)
+  if(lastRow != undefined){
+    newData = new Row(lastRow.name,lastRow.picture,lastRow.pingIP,lastRow.pingUpdateTime,lastRow.isPaused);
+  }
+  data.rows.push( newData );
+  data.rows[data.rows.length-1].create()
+  data.rows[data.rows.length-1].render();
+  data.rows[data.rows.length-1].createRowEventListeners()
+  saveToLocalStorage();
+}
+
+var togglePause = ()=>{
+  unpausedNum = 0;
+  Object.keys(data.rows).forEach((row)=>{
+    if(!data.rows[row].isPaused){
+      unpausedNum++;
+    }
+  });
+  Object.keys(data.rows).forEach((row)=>{
+    //unpausing
+    if(unpausedNum>0){
+        //pausing all
+        if(!data.rows[row].isPaused){
+          data.rows[row].changeProp('isPaused',true);
+          pausedRows.push(row);
+        }
+    }else{
+      if(pausedRows.indexOf(row) != -1){
+        data.rows[row].changeProp('isPaused',false);
+      }
+    }
+  })
+  if(unpausedNum==0){
+    pausedRows = [];
+  }
+}

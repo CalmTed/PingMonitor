@@ -1,20 +1,64 @@
-const { app, BrowserWindow,ipcMain,dialog,Notification } = require('electron')
-
+const { app, BrowserWindow,ipcMain,dialog,Notification,Menu } = require('electron')
 var ping = require('ping');
 const fs = require("fs");
-
-
 var os = require("os");
 var networkInterfaces = os.networkInterfaces();
+async function saveAs(){}
+async function openConfig(){}
+const template = [
+    {
+    label: "Edit",
+    submenu: [
+      {
+        label: 'Save Config',
+        click: async () => {
+          win.webContents.send('asynchronous-message', {'call': 'saveAs'});
+        },
+        accelerator:'Ctrl+S'
+      },
+      {
+        label: 'Open Config',
+        click: async () => {
+          win.webContents.send('asynchronous-message', {'call': 'openConfig'});
+        },
+        accelerator:'Ctrl+O'
+      },
+      { type: 'separator' },
+      {
+        label: 'About',
+        click: async () => {
+          const { shell } = require('electron')
+          await shell.openExternal('https://electronjs.org')
+        },
+        accelerator:'Ctrl+O'
+      },
+      { role: 'quit' }
+    ]
+  },{
+    label: "View",
+    submenu: [
+      { role: 'reload' },
+      { type: 'separator' },
+      { role: 'toggleDevTools' }
+      { type: 'separator' },
+      { role: 'resetZoom' },
+      { role: 'zoomIn' },
+      { role: 'zoomOut' }
+    ]
+  }
+  ]
+
+const menu = Menu.buildFromTemplate(template)
+Menu.setApplicationMenu(menu)
 
 try {
    var myIp = networkInterfaces['Wi-Fi'][1].address
 } catch(e){
   console.log('Network error no wifi connections');
 }
-
+var win
 function createWindow () {
-  const win = new BrowserWindow({
+   win = new BrowserWindow({
     width: 1200,
     height: 1000,
     icon: __dirname + '/assets/PM.ico',
@@ -25,14 +69,13 @@ function createWindow () {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
-    }
+    },
     // fullscreen:true,
     // skipTaskbar:true,
-    // devTools:true,
+    devTools:false,
   })
 //  win.webContents.openDevTools()
   win.loadFile('index.html');
-  //win.webContents.on('did-navigate',(e)=>{console.log(e._getURL );});
 }
 
 app.whenReady().then(() => {
@@ -155,12 +198,19 @@ ipcMain.handle('openFile', async (e,winName) => {
         if(JSON.parse(data.text).hash != cyrb53(JSON.stringify(JSON.parse(data.text).rows))){
           let n = new Notification({
             title:'Зверни увагу',
-            body:'Конфіг був змінений вручну'
+            subtitle:'Attention',
+            body:'Конфіг був змінений вручну\n (Attention: config has beed edited manualy)'
           })
           n.show();
         }
         return data;
       }else{
+        let n = new Notification({
+          title:'Помилка відкриття',
+          subtitle:'Opening error',
+          body:'Цей файл не підходить для конфігурації PingMonitor (Opening error: file isn`t PM Config )'
+        })
+        n.show();
         return 'canceled';
       }
     }else{
