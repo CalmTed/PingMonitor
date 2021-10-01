@@ -6,6 +6,8 @@ html{
   --status-pink:#a828b7;
   --status-white:#888;
   user-select: none;
+  margin-right: 1px;
+  height: 99.3vh;
 }
 body{
   margin: 0;
@@ -13,6 +15,8 @@ body{
   font-family: sans-serif;
   color: #eee;
   overflow: auto;
+  height: 100%;
+  display: block;
 }
 body::-webkit-scrollbar-track {
   background-color: transparent;
@@ -31,6 +35,13 @@ body::-webkit-scrollbar-thumb {
   display: flex;
   justify-content: center;
   min-width:641px;
+  transition: all .08s ease;
+  opacity: 0;
+  transform: scale(0.99);
+}
+body:hover .bottom-tools{
+  opacity: 1;
+  transform: scale(1);
 }
 .new-row-btn,.full-screen-btn,.pause-all-btn{
   width: 20%;

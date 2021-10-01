@@ -6,9 +6,9 @@ data.lang = [];
 var config = [];
 
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-// var target = 'build';
+var target = 'build';
 // var target = 'pack';
-var target = 'dev';
+// var target = 'dev';
 var debug = true;
 /*===============================================================*/
 
@@ -29,6 +29,8 @@ class Row {
     this.pingIP = pingIP;
     this.pingDellayTime = 0;
     this.pingUpdateTime = pingUpdateTime;
+    this.pingTTL = -1;
+    this.pingHist = [];
 
     this.packetsSent = 0;
     this.packetsResived = 0;
@@ -46,9 +48,8 @@ class Row {
   }
   create(){
     parent = $('.table');
-    this.rowDom = $(`<div class="row row-${this.id}" rowId="${this.id}" status="${this.status}"></div>`);//${data.pics[row.picture]}
+    this.rowDom = $(`<div class="row row-${this.id}" rowId="${this.id}" status="${this.status}"></div>`);
     this.rowDom.append($(`<div class="row-column"><div class="row-picture" title="${translate('Change picture')}" style="background-image:url('${data.pics[this.picture]}')"></div><div class="row-name" title="2x ${translate('Change name')}">${this.name}</div><div class="row-address" title="2x ${translate('Change address')}">${this.pingIP}</div></div>`));
-    //this.rowDom.append($(`<div class="row-column"></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-status-span">${translate(this.status)}</span></div> <div class="row-ping"><label>${translate('Dellay')}: <span class="row-ping-dellay"></span></label><label>${translate('Update time')}: <span class="row-ping-updatetime" title="2x ${translate('Change update time')}">${this.pingUpdateTime} ${translate('s')}</span></label><label>${translate('Uptime')}: <span class="row-uptime"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column tools"><div class="row-tools">\
@@ -184,6 +185,7 @@ class Row {
         rowOBJ.pinging();//restart pinging
       }
     });
+    //muteRow
     $(`.row-${this.id} .tool-mute-row`).on('click',function(){
       let toolsDOM = $(this).parent()[0]
       let colDOM = $(toolsDOM).parent()[0]
@@ -195,11 +197,10 @@ class Row {
         $('.player')[0].pause();
       }else{
         rowOBJ.changeProp('isMuted',false);
-
       }
     });
   }
-  render(list = ['picture','name','pingIP','status','pingDellayTime','pingUpdateTime','packetsSent','packetsResived','packetsLost','lastConnectionLost','lastConnectionFound','lastOutOfConnection','totalOutOfConnection','isChecking']){
+  render(list = ['picture','name','pingIP','status','pingDellayTime','pingUpdateTime','pingTTL','packetsSent','packetsResived','packetsLost','lastConnectionLost','lastConnectionFound','lastOutOfConnection','totalOutOfConnection','isChecking']){
     /*                                                               */
     /*    CAN'T CHANGE HTML OF OBJECT OUTSIDE OF THIS METHOD         */
     /*                                                               */
@@ -210,14 +211,6 @@ class Row {
         return false;
       }
     }
-    /*
-    for future
-    if(data.rows.length>10 && this.status == 'online'){
-      $(`.row-${this.id}`).addClass('superEco');
-    }else{
-      $(`.row-${this.id}`).removeClass('superEco');
-    }
-  */
     //col1
     if(needToUpdate('picture') && $(`.row-${this.id} .row-picture`).css("background-image") != `url('${data.pics[this.picture]}')`){
       $(`.row-${this.id} .row-picture`).css("background-image",`url('${data.pics[this.picture]}')`);
@@ -235,10 +228,31 @@ class Row {
     }
     //col3
     if(needToUpdate('pingDellayTime')){
+      let ttlList = [];
+      let stats = {};
+      this.pingHist.forEach(e=>{
+        if(ttlList.indexOf(e.pingTTL) == -1 && e.pingTTL != -1){
+          //add cluster
+          ttlList.push(e.ttl);
+          stats[this.pingTTL] = []
+        }
+        //add to stats
+        if(typeof stats[this.pingTTL] != 'undefined'){
+          stats[this.pingTTL].push(e.pingDellay)
+        }
+      })
+
       if(['unknown','NaN',-1].indexOf(this.pingDellayTime) == -1){
-        $(`.row-${this.id} .row-ping-dellay`).html(`${Math.round(this.pingDellayTime)} ${translate('ms')}`);
+        $(`.row-${this.id} .row-ping-dellay`).html(`${this.pingDellayTime} ${translate('ms')}`);
       }else{
         $(`.row-${this.id} .row-ping-dellay`).html(`-`);
+      }
+    }
+    if(needToUpdate('pingTTL')){
+      if(['unknown','NaN',-1].indexOf(this.pingTTL) == -1){
+        $(`.row-${this.id} .row-ping-dellay`).attr('title',`TTL:${this.pingTTL}`);
+      }else{
+        $(`.row-${this.id} .row-ping-dellay`).attr('title',`TTL:-`);
       }
     }
     if(needToUpdate('pingUpdateTime')){
@@ -334,9 +348,12 @@ class Row {
     }
   }
   remove(){
+    //remove from DOM
     $(`.row-${this.id}`).remove();
+    //remove from array
     data.rows.splice(this.id,1);
     let i = 0;
+    //sort list of remaining
     data.rows.forEach(
       (row) => {
         $(`.row-${row.id}`).addClass(`temp-row-${i}`)
@@ -354,9 +371,9 @@ class Row {
     saveToLocalStorage();
   }
   changeProp(prop,value){
-    if(this[prop] !== value || /* white list */ ['name','pingUpdateTime','pingIP'].indexOf(prop) !== -1){
+    if(this[prop] != value || /* white list */ ['name','pingUpdateTime','pingIP','pingDellayTime'].indexOf(prop) !== -1){
       this[prop] = value;
-      if(/* black list */[''].indexOf(prop) == -1){
+      if(/* black list */[].indexOf(prop) == -1){
         this.render(prop);
       }
       if(/* black list */['isChecking','_status','pingDellayTime','packetsSent','packetsResived','packetsLost','lastConnectionLost','lastOutOfConnection'].indexOf(prop) == -1){
@@ -371,7 +388,12 @@ class Row {
         let status = res.status;
         let rowId = res.rowId;
         let _this = data.rows[rowId];
-
+        //ttl
+        if( ['undefined','null'].indexOf( typeof res.ttl) == -1){
+          _this.changeProp('pingTTL', res.ttl);
+        }else{
+          _this.changeProp('pingTTL', -1);
+        }
         //on conn lost
         if(['online'].indexOf(_this.status) > -1 /*if was online*/ &&  /* but now is offline */['offline','error','timeout'].indexOf(res.status) > -1 ){
           _this.changeProp('lastConnectionLost', new Date());
@@ -394,10 +416,8 @@ class Row {
         if(['offline','error','timeout'].indexOf(_this.status) > -1 /* if was offline */ && /* but now online*/ ['online'].indexOf(res.status) > -1 ){
 
           _this.changeProp('lastConnectionFound',new Date());
-          if(_this.lastConnectionLost == 0){
-            _this.changeProp('lastConnectionLost', new Date());
-          }
-          if(_this.isMuted){
+          //removing mute on reconection
+          if(_this.isMuted && config.unmuteOnGettingOnline){
             _this.changeProp('isMuted',false)
           }
           _this.changeProp('lastOutOfConnection', _this.lastConnectionFound.getTime() - _this.lastConnectionLost.getTime());
@@ -405,16 +425,16 @@ class Row {
         }
 
         _this.changeProp('_status',status);
-        _this.changeProp('pingDellayTime',res.pingDelay);
+        _this.changeProp('pingDellayTime',res.pingDellay);
         _this.changeProp('packetsSent',_this.packetsSent+1);
-        if(res.packetLoss != 100){
+        if(res.packetLoss != 100 && res.status == 'online'){
           _this.changeProp('packetsResived',_this.packetsResived+1);
         }else{
           _this.changeProp('packetsLost',_this.packetsLost+1);
         }
         _this.changeProp('isChecking',false);
         //changing time based on ping time strategy
-        if(_this.packetsSent > 0){
+        if(_this.packetsSent > 0){//to not to change onstartup
           if(_this.pingTimeStrategy[_this.status] != undefined){
             if(_this.pingUpdateTime != _this.pingTimeStrategy[_this.status]){
               _this.changeProp('pingUpdateTime',_this.pingTimeStrategy[_this.status]);
@@ -423,6 +443,23 @@ class Row {
             _this.changeProp('pingUpdateTime',_this.pingTimeStrategy['default']);
           }
         }
+        //hist
+        let timenow = new Date().getTime()
+        let timeToDelete = 1000*60*60; //six hours
+        _this.pingHist.push({
+          'time':timenow,
+          'timestamp':new Date(),
+          'status':_this.status,
+          'pingDellay':_this.pingDellayTime,
+          'pingTTL':_this.pingTTL
+        })
+        _this.pingHist.map(h=>{
+          if(timenow - h.time < timeToDelete){
+            return h;
+          }else{
+            return false;
+          }
+        });
         _this.timeout = setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000);
       })
     }else{
@@ -447,7 +484,7 @@ class Row {
 function createPage(){
   var root = $('.root')
   root.html('');
-  let monitorTable = $('<div class="table"></div>')
+  let monitorTable = $('<div class="table"></div>');
   root.append(monitorTable);
   if(window.localStorage.getItem('data') !== null){
     loadFromLocalStorage();
@@ -457,15 +494,13 @@ function createPage(){
         data.rows.push(new Row(row.name,row.picture,row.address,row.updatetime,row.isPaused))
     })
   }
-
   data.rows.forEach(
     (row) => {
       row.create()
       row.createRowEventListeners()
-  })
+    })
   newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]" onclick="addRow()">+ <span>'+translate("Add new row")+'</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [Ctrl+F]" onclick="toggleFullScreen()">'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Ctrl+Space]" onclick="togglePause()">'+translate("Pause all rows")+'  </div></div>');
   root.append(newRowBtns)
-
 }
 
 $(document).ready(function(){
@@ -476,7 +511,6 @@ $(document).ready(function(){
   })
   pausedRows = [];
   $(this).on('keypress',(e)=>{
-    // console.log(e,e.which);
     // "F"
     if(e.ctrlKey && e.which == 6){
       toggleFullScreen()
@@ -495,44 +529,22 @@ $(document).ready(function(){
     //   openConfig();
     // }
     //pause
-    togglePause = ()=>{
-      unpausedNum = 0;
-      Object.keys(data.rows).forEach((row)=>{
-        if(!data.rows[row].isPaused){
-          unpausedNum++;
-        }
-      });
-      Object.keys(data.rows).forEach((row)=>{
-        //unpausing
-        if(unpausedNum>0){
-            //pausing all
-            if(!data.rows[row].isPaused){
-              data.rows[row].changeProp('isPaused',true);
-              pausedRows.push(row);
-            }
-        }else{
-          if(pausedRows.indexOf(row) != -1){
-            data.rows[row].changeProp('isPaused',false);
-          }
-        }
-      })
-      if(unpausedNum==0){
-        pausedRows = [];
-      }
-    }
     if(e.ctrlKey && e.which == 0){
-      e.preventDefault();
+      e.preventDefault();//stoping scroll
       togglePause();
     }
   })
 });
 
-translate = function(a){
+function translate(a){
   let trans = a;
-  if( typeof data.lang[a] == 'undefined'){
-    console.warn('No translation for word: "'+a+'"');
-  }else{
-    trans = data.lang[a];
+
+  if(config.langCode == 'ua'){
+    if( typeof data.lang[a] == 'undefined' ){
+      console.warn('No translation for word: "'+a+'"');
+    }else{
+      trans = data.lang[a];
+    }
   }
   return trans;
 }
@@ -540,11 +552,9 @@ translate = function(a){
 function saveToLocalStorage(){
   rowsToSave = [];
   data.rows.forEach((row,i)=>{
-    // console.log(row.getSetts());
-    // console.log(row);
+
     rowsToSave[i] = row.getSetts();
-  });
-  // console.log(data.rows);
+  }); 
   dataToSave = {
     langCode:config.langCode,
     colorMode:config.colorMode,
@@ -571,7 +581,7 @@ function loadFromLocalStorage(){
           let newRow = new Row(newData.name,newData.picture,newData.pingIP,newData.pingUpdateTime,newData.isPaused);
           newRow.pingTimeStrategy = newData.pingTimeStrategy;
           data.rows.push( newRow );
-          //data.rows[data.rows.length-1].create()
+          data.rows[data.rows.length-1].render()
           data.rows[data.rows.length-1].createRowEventListeners()
         }
       });

@@ -6,13 +6,10 @@ Design
 [+] pause all btn
 [+] fullscreen btn
 [+] add "0"`s in time stats
-
+[] do not round time offline
 [] add pics
-? [] other icons
-? [] super ECO without icons with R.l>10 and status=online
-    [] tools alignment
-    [] rows width alignment
-    [] hide label text| change to icons?
+[] other icons
+
 UX
 [+] Save all data in localStorage 210925 1531
 [+] Save all setting as and load from file (reactive replacing) 210925 1728
@@ -23,9 +20,9 @@ UX
   [+] ctrl+n new row
   [+] ctrl+space (pauses all, unpauses last paused(not all))
   [+] ctrl+s ctrl+o save open settings
-[] build app as finished product
-
-
+[+] build app as finished product
+[+] save TTL
+[+] try[] ewerything
 [] Dellay stats (min,max,avg,now) graph
 [] Add settings
   [] initial rows
@@ -34,16 +31,9 @@ UX
   [] color and size
   [] subnets
 [] sorting rows
-[] ip search
 Network
 [] show network settings
 [] change network settings
 [] add autoChange for 2 or more networks
 
-Clear
-[] remove row-time...
-
-
 Bugs
-[+] Dont show ping dellay in russian win?
-[] Cant change updateTime in 2s Row

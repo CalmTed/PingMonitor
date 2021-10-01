@@ -1,6 +1,6 @@
 {
   "name": "pingmonitor",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "ping monitoring",
   "main": "index.js",
   "icon": "assets/icons/PM_nofill.ico",
@@ -12,7 +12,7 @@
   "build": {
     "appId": "ping.monitor",
     "productName":"Ping Monitor",
-    "buildVersion": "1.3",
+    "buildVersion": "1.3.1",
     "target": "portable",
     "icon": "assets/icons/PM.ico",
     "compression":"maximum",
@@ -24,8 +24,7 @@
       "assets/icons/*"
     ],
     "win":{
-
-      "legalTrademarks":"© Made bt Ted Frost for UMF in 2021. For no commercial use only."
+      "legalTrademarks":"© Made by Ted Frost for UMF in 2021. For no commercial use only."
     }
 
   },

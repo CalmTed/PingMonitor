@@ -2,7 +2,8 @@
   "langCode":"ua",
   "colorMode":"dark",
   "scale":"100",
-  "timeToAlarm":"60",
+  "timeToAlarm":"1",
+  "unmuteOnGettingOnline":false,
   "initialPause":true,
   "pingTimeStrategyType":"auto",
   "defaultPingTimeStrategy":{
