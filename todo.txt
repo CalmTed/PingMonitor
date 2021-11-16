@@ -37,3 +37,43 @@ Network
 [] add autoChange for 2 or more networks
 
 Bugs
+
+
+
+Plan for MultyWindow:
+
+Main
++1.get data from storage if exists (if not ignore sending data to windows -> send useLocal)
+2.open n windows from data.length
+3.send data to open for each window
+4.:onNewWindow
+   if storage have info for this win : sendDataToWin else 'useLocal'
+5.:onWindowClosing
+   resort and rename all windows
+6.:onOpenFile
+  if data is old(for one window)
+    create only one new window
+  else recreate all windows and send data to them
+7.:onSaveFile getInfoFromAllWindows and save to one file once
+  when resived from last window - save file
+
+Interfaces:
+Main=>Win  +sendRowsToWin:rowData:winData
+           +              rowData:'useLocal'
+            sendIdTOWin:  winId:id
+           +requestInfoFromWin:'rowData' || 'winId'
+
+Win=>Main  +sendDataToMain:'file',rowData
+           sendDataToMain:'storage',rowData
+
+Window
+1.:onCreation
++  if resived "useLocal" try to open from localStorage
++     if not exists, open from config
+  if resived dataToOpen
+     check validity
+     openDataRows
++2.:onSaving
++  sendDataToMain:rowData
+3.:onChanging
+  sendDataToMainStorage:rowData

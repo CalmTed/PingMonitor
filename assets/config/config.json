@@ -25,7 +25,7 @@
       {
         "type":"server",
         "name":"Self",
-        "picture":"1",
+        "picture":"8",
         "address":"localhost",
         "updatetime":"10",
         "isPaused":false
@@ -33,7 +33,7 @@
       {
         "type":"server",
         "name":"error",
-        "picture":"1",
+        "picture":"0",
         "address":"192.169.0.1",
         "updatetime":"10"
       },

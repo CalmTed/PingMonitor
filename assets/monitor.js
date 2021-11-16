@@ -6,11 +6,11 @@ data.lang = [];
 var config = [];
 
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-var target = 'build';
+// var target = 'build';
 // var target = 'pack';
-// var target = 'dev';
-var debug = true;
+var target = 'dev';
 /*===============================================================*/
+var debug = true;
 
 class Row {
   _status = 'unchecked';
@@ -554,7 +554,7 @@ function saveToLocalStorage(){
   data.rows.forEach((row,i)=>{
 
     rowsToSave[i] = row.getSetts();
-  }); 
+  });
   dataToSave = {
     langCode:config.langCode,
     colorMode:config.colorMode,
@@ -665,19 +665,50 @@ function readDir(callback){
     });
 }
 
-async function saveAs(){
-  let time = new Date();
-  let name = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
-  let text = saveToLocalStorage();
-  await ipcRenderer.invoke('saveFile',name, text,translate('Save config'));
-}
+// async function saveAs(){
+//   let time = new Date();
+//   let name = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
+//   let text = saveToLocalStorage();
+//   await ipcRenderer.invoke('saveFile',name, text,translate('Save config'));
+// }
 
 ipcRenderer.on('asynchronous-message', function (evt, message) {
-  if(message.call == 'saveAs'){
-    saveAs();
-  }
-  if(message.call == 'openConfig'){
-    openConfig();
+  // if(message.call == 'saveAs'){
+  //   saveAs();
+  // }
+  // if(message.call == 'openConfig'){
+  //   openConfig();
+  // }
+  if(message.call == 'sendDataToWin'){
+    if(message.rowsData){
+      let newRowsData = message.rowsData;
+      if(newRowsData == 'useLocal'){
+        console.log('Using localStorage save');
+      }else{
+        console.log('rowData: ',newRowData);
+      }
+      //check for validity
+      //create rows...
+
+    }else if(message.id){
+      // id should be titleId-1
+      localStorage.setItem('winId',message.id)
+    }else{
+      console.error('setRowData call must specify rowsData or id message: ',message);
+    }
+  }else if(message.call == 'requestInfo'){
+    if(message.info){
+      if(message.info == 'rowsData'){
+        console.log('reguest info');
+        let text = saveToLocalStorage({saveToStorage:false});
+        let id = localStorage.getItem('winId');
+        ipcRenderer.invoke('sendDataToMain',{call:'saveRowsToFile',rowsData:text,winId:id});
+      }
+    }else{
+      console.error('requestInfo call must specify info parameter');
+    }
+  }else{
+    console.error('Unknown message call: ',message.call);
   }
 });
 
