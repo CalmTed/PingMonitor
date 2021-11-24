@@ -44,23 +44,25 @@ Plan for MultyWindow:
 
 Main
 +1.get data from storage if exists (if not ignore sending data to windows -> send useLocal)
-2.open n windows from data.length
-3.send data to open for each window
-4.:onNewWindow
-   if storage have info for this win : sendDataToWin else 'useLocal'
++2.open n windows from data.length
++3.send data to open for each window
+-4.:onNewWindow    <=every win have data for each other win
+-   if storage have info for this win : sendDataToWin else 'useLocal'
 5.:onWindowClosing
    resort and rename all windows
-6.:onOpenFile
-  if data is old(for one window)
-    create only one new window
-  else recreate all windows and send data to them
-7.:onSaveFile getInfoFromAllWindows and save to one file once
-  when resived from last window - save file
++6.:onOpenFile
++  if data is old(for one window)
++    create only one new window
++  else recreate all windows and send data to them
++7.:onSaveFile getInfoFromAllWindows and save to one file once
++  when resived from last window - save file
+-if localStorage have "data-[id+1]"   <= its better to be centralized
+   call to open one more window
 
 Interfaces:
 Main=>Win  +sendRowsToWin:rowData:winData
            +              rowData:'useLocal'
-            sendIdTOWin:  winId:id
+           +sendIdTOWin:  winId:id
            +requestInfoFromWin:'rowData' || 'winId'
 
 Win=>Main  +sendDataToMain:'file',rowData

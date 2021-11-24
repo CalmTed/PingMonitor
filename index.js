@@ -1,10 +1,9 @@
-const version = '1.3.1';
+const version = '1.3.3';
 //============
 //  DEFINING
 //============
 const { app, BrowserWindow,ipcMain,dialog,Notification,Menu } = require('electron')
-const Storage = require('storage')
-const storage = new Storage();
+const storage = require('local-storage');
 const fs = require("fs");
 const ping = require('ping');
 async function saveAs(){}
@@ -16,17 +15,23 @@ const menuTemplate = [
       {
         label: 'Save Config',
         click: () => {
-          saveDataFromAllWindows()
-          //win.webContents.send('asynchronous-message', {'call': 'saveAs'});
+          saveDataFromAllWindows();
         },
         accelerator:'Ctrl+S'
       },
       {
         label: 'Open Config',
         click: async () => {
-          //win.webContents.send('asynchronous-message', {'call': 'openConfig'});
+          openConfig()
         },
         accelerator:'Ctrl+O'
+      },
+      {
+        label: 'New window',
+        click: async () => {
+          createWindow()
+        },
+        accelerator:'Ctrl+Shift+N'
       },
       { type: 'separator' },
     {
@@ -48,10 +53,7 @@ const menuTemplate = [
   },{
     label: "View",
     submenu: [
-      { role: 'reload' },
-      { type: 'separator' },
       { role: 'toggleDevTools' },
-      { type: 'separator' },
       { role: 'resetZoom' },
       { role: 'zoomIn' },
       { role: 'zoomOut' }
@@ -59,7 +61,8 @@ const menuTemplate = [
   }
   ]
 var wins = [];
-
+var resivedWinData;
+var dontQuitApp = false;
 //=============
 //  APP:EVENTS
 //=============
@@ -77,8 +80,13 @@ app.whenReady().then( async function(){
     });
   }
 })
+app.on('second-instance', (event, commandLine, workingDirectory) => {
+  createWindow();
+})
 app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit()
+  if(!dontQuitApp){
+    if (process.platform !== 'darwin') app.quit()
+  }
 })
 
 //===========
@@ -201,30 +209,30 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
     const res = await pinging(ip,rowId);
     var status = 'error';
     let pingDellay = 0;
-    if(res.avg == 'undefined' || res.avg == 'unknown' ){
+    if(res.avg == 'undefined' || res.avg == 'unknown' ||2==2){
       //get index of 'ms'
       let endOfDellayWord = -1;
       let lineO = res.output;
-      if(lineO.indexOf('ms') > -1){
-        endOfDellayWord = lineO.indexOf('ms');
-      }
-      if(lineO.indexOf('мс') > -1){
-        endOfDellayWord = lineO.indexOf('мс');
-      }
-      if(endOfDellayWord == -1){
-        pingDellay = -1;
-      }else{
-        //if multiple we ignore it (we need firder one or any one t all)
-        //get all numbers before it (loop going backwards)
-        let startI = lineO.length - endOfDellayWord
-        pingDellayArray = [];
-        lineO.split('').reverse().forEach((l,i)=>{
-          if(i >= startI && i < startI+5 && ['0','1','2','3','4','5','6','7','8','9'].indexOf(l) != -1){
-            pingDellayArray.push(l);
-          }
+      // if(lineO.indexOf('ms') > -1){
+      //   endOfDellayWord = lineO.indexOf('ms');
+      // }
+      // if(lineO.indexOf('мс') > -1){
+      //   endOfDellayWord = lineO.indexOf('мс');
+      // }
+      let aline = lineO.split('TTL=')[0].split('=32')[1];
+      if(aline){
+        pingDellayArray = aline.split('').filter((l)=>{
+          if(['0','1','2','3','4','5','6','7','8','9'].indexOf(l) != -1){return true}
         })
         pingDellay = Number(pingDellayArray.reverse().join(''));
+      }else{
+        pingDellay = -1;
       }
+        // lineO.split('').reverse().forEach((l,i)=>{
+        //   if(i >= startI && i < startI+5 && ['0','1','2','3','4','5','6','7','8','9'].indexOf(l) != -1){
+        //     pingDellayArray.push(l);
+        //   }
+        // })
     }else{
       pingDellay = res.avg;
     }
@@ -267,7 +275,9 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
     });
   }
 })
+
 ipcMain.handle('sendDataToMain', async(e,data)=>{
+  console.log('main recived data:',data);
   if(data.call == 'saveRowsToFile'){
     if(data.rowsData&&data.winId){
       //if valid rows(kind of)
@@ -276,17 +286,17 @@ ipcMain.handle('sendDataToMain', async(e,data)=>{
       if(rowsDataObj.rows){
         //save to storage by id
         let storageObj;
-        if(storage.get('PMData')){
-          storageObj = JSON.parse(storage.get('PMData'))
+        if(storage.get('PMDataStr')){
+          storageObj = JSON.parse(storage.get('PMDataStr'))
         }else{
           storageObj = {};
         }
-        storageObj[data.winId] = {}
-        storageObj[data.winId] = rowsDataText;
-        storage.set(JSON.stringify(storageObj))
+        storageObj[data.winId] = {...rowsDataObj};
+        storage.set('PMDataStr',JSON.stringify(storageObj))
         //if last window
-        console.log(((data.winId*1)+1)+'/'+wins.length);
-        if(((data.winId*1)+1) == wins.length){
+        resivedWinData ++;
+        if(resivedWinData == wins.length){
+          resivedWinData = 0;
           //write to file
           let time = new Date();
           let fileName = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
@@ -303,9 +313,26 @@ ipcMain.handle('sendDataToMain', async(e,data)=>{
     }else{
       console.log("Expect to resive 'rowsData' and 'winId' parameters");
     }
-  }else if(data.call == 'saveRowsToStorage'){
-    console.log('TO DO');
-  }else{
+  }
+  //else if(data.call == 'saveRowsToStorage'){
+    // if(data.rowsData&&data.winId){
+    //   rowsDataText = data.rowsData;
+    //   rowsDataObj = JSON.parse(rowsDataText);
+    //   console.log(storage.get('PMDataStr'));
+    //   if(storage.get('PMDataStr')){
+    //     storageObj = JSON.parse(storage.get('PMDataStr'))
+    //   }else{
+    //     storageObj = {};
+    //   }
+    //   storageObj[data.winId] = {...rowsDataObj};
+    //   console.log(storageObj);
+    //
+    //   storage.set('PMDataStr',JSON.stringify(storageObj))
+    // }
+    //storage.set('PMDataStr',)
+  //  console.log('TO DO');
+  //}
+  else{
       console.log("Expect to resive 'saveRowsToStorage' or 'saveRowsToFile' call parameters");
   }
 })
@@ -315,17 +342,80 @@ ipcMain.handle('sendDataToMain', async(e,data)=>{
 const start = ()=>{
   //set menu
   const menu = Menu.buildFromTemplate(menuTemplate)
-  Menu.setApplicationMenu(menu)
-  //what if there are some stored info
-  storedInfoString = storage.get('PMData')
+  Menu.setApplicationMenu(menu);
+  createWindows()
+}
+function createWindows(dataObj){
+  try{
+    if(dataObj){
+      if(dataObj.progName){//if its an old json save
+        //we dont need to remove old ones
+        if(storage.get('PMDataStr')){
+          storedInfoObj = JSON.parse(storage.get('PMDataStr'));
+        }else{
+          storedInfoObj = {}
+        }
+        storedInfoObj[Object.keys(storedInfoObj).length] = dataObj;
+        storage.set('PMDataStr',JSON.stringify(storedInfoObj));
+        createWindow();
+      }else{
+        //remove old windows
+        dontQuitApp = true;
+        wins.forEach(w=>{
+          w.destroy();
+        })
+        wins = [];
+        dontQuitApp = false;
+        storedInfoStr = storage.get('PMDataStr');
+        if(storedInfoStr == null){
+          storedInfoObj = {}
+        }else{
+          storedInfoObj = JSON.parse(storedInfoStr);
+        }
+        Object.entries(dataObj).forEach(winDataObj=>{
+          // console.log(winDataObj);
+          storedInfoObj[Object.keys(wins).length] = winDataObj[1];
+          storage.set('PMDataStr',JSON.stringify(storedInfoObj));
+          createWindow()
+        })
+      }
+    }else{
+      createWindow();
+    }
+  }catch(e){
+    dialog.showMessageBox({
+      title:'Error',
+      message:'Program error',
+      detail:'Can`t handle createWindows function\n'+e,
+      type:'error'
+    }).catch(err => {
+      console.log(err)
+    });
+  }
+}
+function createWindow(){
+  storedInfoString = storage.get('PMDataStr');
   let newWin;
-  newWin = createWindow()
+  newWin = newWindow()
   newWin.loadFile('index.html')
   newWin.setTitle('#'+wins.length)
   wins.push(newWin)
+  // newWin.onbeforeunload=(e)=>{
+  //   //return false;
+  //   console.log('closing');
+  //   e.returnValue = false
+  //   // if(dialog.showMessageBoxSync({
+  //   //   message:'Закрити вікно?',
+  //   //   type:'question',
+  //   //   // buttons:['Закрити','Залишити'],
+  //   //   cancelId:0,
+  //   //   noLink:true
+  //   // }) != ''){
+  //   // }
+  // }
   newWin.on('ready-to-show',()=>{
     wins.forEach(nw=>{
-      let title = nw.getTitle();
+      let title = nw.getTitle()
       if(title.indexOf('#') >-1){
         let id = title.replace('#','')
         let win = wins[id]
@@ -345,15 +435,26 @@ const start = ()=>{
       }
     })
   })
-  newWin.on('closed',()=>{
-    console.log("TO DO");
+  newWin.on('closed',(e)=>{
+    wins.forEach((win,i)=>{
+      if (win == e.sender){
+        wins.splice(i,1);
+      }
+    })
     //sort all windows id's
+    newId = 1;
+    wins.forEach(win=>{
+      win.setTitle('PingMonitor '+newId);
+      win.webContents.send('asynchronous-message', {call:'sendDataToWin',id:(newId-1)})
+      win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData: 'relocateRows'})
+      newId++;
+    })
   })
 }
-function createWindow () {
+function newWindow () {
    return new BrowserWindow({
     width: 1280,
-    height: 750,
+    height: 700,
     icon: __dirname + '/assets/PM.ico',
     // title:'PingMonitor',
     autoHideMenuBar:true,
@@ -363,14 +464,62 @@ function createWindow () {
       nodeIntegration: true,
       contextIsolation: false
     },
-    devTools:false,
+    devTools:true,
     show:false,
   })
   //win.loadFile('index.html');
 }
 function saveDataFromAllWindows (){
+  resivedWinData = 0;
   wins.forEach(win=>{
     win.webContents.send('asynchronous-message', {call: 'requestInfo',info:'rowsData'});
+  })
+}
+function openConfig(){
+  openFile({
+    filters:[
+      {
+        name: 'PM file',
+        extensions: ['pm']
+      },
+      {
+        name: 'JSON file',
+        extensions: ['json']
+      }
+    ]
+  },function(dataStr){
+    if(dataStr){
+      //let storData = JSON.parse(storage.get('PMDataStr'));
+      // if(storData == null){
+      //   storData  = {};
+      // }
+      let dataObj = JSON.parse(dataStr);
+      if(dataObj.progName){//if old .json one
+        createWindows(dataObj);
+      }else if(dataObj[0].progName){
+        createWindows(dataObj);
+        //change ids of newWinData
+        //console.log(dataObj);
+        // Object.keys(dataObj).forEach((obj)=>{
+        //   console.log(storData)
+        //   console.log(Object.keys(dataObj).length)
+        //   storData[Object.keys(dataObj).length] = {};
+        //   storData[Object.keys(dataObj).length] = dataObj[obj];
+        // });
+        //console.log(dataObj);
+        //storage.set('PMDataStr',JSON.stringify(storData))
+      }else{
+        dialog.showMessageBox({
+          title:'Error',
+          message:'Program error',
+          detail:'Can`t handle openConfig function\n Not a PingMonitor config file',
+          type:'error'
+        }).catch(err => {
+          console.log(err)
+        });
+      }
+      //console.log('file opened. Data:',data)
+    }
   })
 }
 async function pinging(ip,rowId){
@@ -424,6 +573,47 @@ function writeFile (data){
     }
   }else{
     console.log("Expect to resive 'name','text' and 'extention' parameters");
+  }
+}
+function openFile(data,callback){
+  try{
+    if(!data.filters){
+      data.filters = [{
+        name: 'JSON file',
+        extensions: ['json']
+      }]
+    }
+    let filepath = dialog.showOpenDialogSync({
+      filters: [...data.filters],
+      title: 'Open config...',
+      properties: ['openFile']
+    })
+    if(filepath){
+      filepath = filepath[0];
+      let text = fs.readFileSync(filepath, 'utf-8', (err, d) => {
+        if(!err){
+          return d;
+        }else{
+          return false;
+        }
+      });
+      if(text){
+        callback(text);
+      }else{
+        callback(false);
+      }
+    }else{
+      callback(false);
+    }
+  }catch(e){
+    dialog.showMessageBox({
+      title:'Error',
+      message:'Program error',
+      detail:'Can`t handle openFile function\n'+e,
+      type:'error'
+    }).catch(err => {
+      console.log(err)
+    });
   }
 }
 const cyrb53 = function(str, seed = 0) {

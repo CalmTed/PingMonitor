@@ -15,35 +15,14 @@
     },
   "defaultNewRow":"custom",
   "defaultNewRow":{
-      "name":"Row",
-      "picture":"0",
+      "name":"Server",
+      "picture":"1",
       "pingIP":"192.168.0.1",
       "pingUpdateTime":"10",
       "isPaused":false
     },
     "initialRows": [
-      {
-        "type":"server",
-        "name":"Self",
-        "picture":"8",
-        "address":"localhost",
-        "updatetime":"10",
-        "isPaused":false
-      },
-      {
-        "type":"server",
-        "name":"error",
-        "picture":"0",
-        "address":"192.169.0.1",
-        "updatetime":"10"
-      },
-      {
-        "type":"server",
-        "name":"self",
-        "picture":"1",
-        "address":"192.186.130.2",
-        "updatetime":"10"
-      }
+      
     ],
     "subnets":[
 

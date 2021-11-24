@@ -4,11 +4,11 @@ data.rows = [];
 data.pics =[];
 data.lang = [];
 var config = [];
-
+var winId,prevWinId;
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-// var target = 'build';
+var target = 'build';
 // var target = 'pack';
-var target = 'dev';
+// var target = 'dev';
 /*===============================================================*/
 var debug = true;
 
@@ -361,7 +361,6 @@ class Row {
         row.changeProp('id',i);
         i++;
     })
-    let prevId;
     data.rows.forEach(
       (row) => {
         $(`.temp-row-${row.id}`).addClass(`row-${row.id}`)
@@ -486,7 +485,9 @@ function createPage(){
   root.html('');
   let monitorTable = $('<div class="table"></div>');
   root.append(monitorTable);
-  if(window.localStorage.getItem('data') !== null){
+  let id = winId;
+  if(window.localStorage.getItem('data-'+id) !== null || window.localStorage.getItem('data') !== null){
+    console.debug('Opening local for id:',id);
     loadFromLocalStorage();
   }else{
     //adding initial rows
@@ -516,7 +517,7 @@ $(document).ready(function(){
       toggleFullScreen()
     }
     //N
-    if(e.ctrlKey && (e.which == 110 || e.which == 14)){
+    if(e.ctrlKey && (e.which == 110 || e.which == 14) && !e.shiftKey){
       addRow();
     }
     //DOING IT IN THE MENU
@@ -561,12 +562,19 @@ function saveToLocalStorage(){
     rows:rowsToSave,
     progName:'PingMonitor'
   }
-  window.localStorage.setItem('data',JSON.stringify(dataToSave));
+  let id = winId;
+  window.localStorage.setItem('data-'+id,JSON.stringify(dataToSave));
   return JSON.stringify(dataToSave,undefined, 4);
 }
 
 function loadFromLocalStorage(){
-  let dataLocal = JSON.parse(window.localStorage.getItem('data'));
+  let id = winId;
+  let dataLocal;
+  if(window.localStorage.getItem('data-'+id) == null){
+    dataLocal = JSON.parse(window.localStorage.getItem('data'));
+  }else{
+    dataLocal = JSON.parse(window.localStorage.getItem('data-'+id));
+  }
   Object.keys(dataLocal).forEach((g)=>{
     if(['langCode','colorMode'].indexOf(g) !=-1){
       data[g] = dataLocal[g];
@@ -595,7 +603,7 @@ async function ping(ip,rowId,callback) {
   if(debug){
     console.debug(new Date(),'Row-'+result.rowId,data.rows[result.rowId].name,data. rows[result.rowId].pingIP,result);
   }
-  callback(result)
+  callback(result);
 }
 
 function checkRowsNumber(){
@@ -683,25 +691,46 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
     if(message.rowsData){
       let newRowsData = message.rowsData;
       if(newRowsData == 'useLocal'){
-        console.log('Using localStorage save');
+        console.debug('Using localStorage save');
+      }else if(newRowsData == 'relocateRows'){
+        rowsToSave = [];
+        data.rows.forEach((row,i)=>{
+          rowsToSave[i] = row.getSetts();
+        });
+        dataToSave = {
+          langCode:config.langCode,
+          colorMode:config.colorMode,
+          rows:rowsToSave,
+          progName:'PingMonitor'
+        }
+        //console.log('relocating to id:',winId,' from:',prevWinId);
+        // console.log('add data-'+winId);
+        // console.log('removes data-'+prevWinId);
+        window.localStorage.setItem('data-'+winId,JSON.stringify(dataToSave));
+        //window.localStorage.removeItem('data-'+prevWinId);
       }else{
-        console.log('rowData: ',newRowData);
+        console.debug('new rowData: ',newRowsData);
+        //validate
+        if(newRowsData.progName){
+          if(newRowsData.progName == 'PingMonitor'){
+            window.localStorage.setItem('data-'+winId,JSON.stringify(newRowsData))
+          }
+        }
       }
-      //check for validity
-      //create rows...
-
-    }else if(message.id){
+      //create rows
+      createPage()
+    }else if(typeof message.id !=0){
       // id should be titleId-1
-      localStorage.setItem('winId',message.id)
+      prevWinId = winId;
+      winId = message.id;
     }else{
-      console.error('setRowData call must specify rowsData or id message: ',message);
+      console.error('sendDataToWin call must specify rowsData or id. Message: ',message);
     }
   }else if(message.call == 'requestInfo'){
     if(message.info){
       if(message.info == 'rowsData'){
-        console.log('reguest info');
         let text = saveToLocalStorage({saveToStorage:false});
-        let id = localStorage.getItem('winId');
+        let id = winId;
         ipcRenderer.invoke('sendDataToMain',{call:'saveRowsToFile',rowsData:text,winId:id});
       }
     }else{
@@ -712,21 +741,22 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
   }
 });
 
-async function openConfig(){
-  let ret = await ipcRenderer.invoke('openFile',translate('Open config'));
-  console.debug(ret);
-  if(ret != 'canceled'){
-    data.rows.forEach(
-      (row) => {
-        row.remove()
-    })
-    confToOpen = JSON.parse(ret.text);
-    window.localStorage.setItem('data',JSON.stringify(confToOpen));
-    loadFromLocalStorage();
-    createPage();
-  }
-
-}
+// async function openConfig(){
+//   let ret = await ipcRenderer.invoke('openFile',translate('Open config'));
+//   console.debug(ret);
+//   if(ret != 'canceled'){
+//     data.rows.forEach(
+//       (row) => {
+//         row.remove()
+//     })
+//     confToOpen = JSON.parse(ret.text);
+//     console.error('!!!');
+//     window.localStorage.setItem('data',JSON.stringify(confToOpen));
+//     loadFromLocalStorage();
+//     createPage();
+//   }
+//
+// }
 
 var toggleFullScreen = function() {
   if (!document.fullscreenElement) {
