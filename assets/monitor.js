@@ -1,20 +1,21 @@
+const Sortable = require("sortablejs");
 const fs = require("fs");
 var data = {}
 data.rows = [];
 data.pics =[];
 data.lang = [];
 var config = [];
+var configSet = ()=>{};
 var winId,prevWinId;
+var sortable;
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
 var target = 'build';
 // var target = 'pack';
 // var target = 'dev';
 /*===============================================================*/
 var debug = true;
-
 class Row {
   _status = 'unchecked';
-
   set status(value){
     this.changeProp('_status',value);
   }
@@ -45,6 +46,7 @@ class Row {
     this.isMuted = false;
     this.pingTimeStrategy = config.defaultPingTimeStrategy;
     this.rowDom = ''
+    this.ttls = {}
   }
   create(){
     parent = $('.table');
@@ -53,9 +55,9 @@ class Row {
     this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-status-span">${translate(this.status)}</span></div> <div class="row-ping"><label>${translate('Dellay')}: <span class="row-ping-dellay"></span></label><label>${translate('Update time')}: <span class="row-ping-updatetime" title="2x ${translate('Change update time')}">${this.pingUpdateTime} ${translate('s')}</span></label><label>${translate('Uptime')}: <span class="row-uptime"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column tools"><div class="row-tools">\
-                            <div class="row-tool tool-pause-row" title="${translate('Pause pinging')}"></div>\
-                            <div class="row-tool tool-mute-row" title="${translate('Mute row')}"></div>\
-                            <div class="row-tool tool-remove-row" title="2x ${translate('Remove row')}"></div>\
+                            <div class="row-tool material-icons tool-pause-row" title="${translate('Pause pinging')}">play_arrow</div>\
+                            <div class="row-tool material-icons tool-mute-row" title="${translate('Mute row')}">volume_up</div>\
+                            <div class="row-tool material-icons tool-remove-row" title="2x ${translate('Remove row')}">remove_circle_outline</div>\
                           </div></div>`));
     this.rowDom.append($('<div class="player-block"><audio class="player" preload loop src="'+soundFile+'" type="audio/wav"></audio></div>'));
     parent.append(this.rowDom);
@@ -64,6 +66,18 @@ class Row {
     };//for initial pausing
     this.pinging();
     checkRowsNumber();//for Eco mode
+    //srtting drag and drop
+    sortable = new Sortable($('.table')[0], {
+      // handle:'.abc'
+      //sorting rows after list update
+      onUpdate:function(evt){
+        let tempRow = data.rows[evt.newIndex];
+        data.rows[evt.newIndex] = data.rows[evt.oldIndex]
+        data.rows[evt.oldIndex] = tempRow;
+        data.rows[evt.newIndex].id = evt.newIndex;
+        data.rows[evt.oldIndex].id = evt.oldIndex;
+      }
+    });
   }
   createRowEventListeners(){
     //adding eventlisteners for editing fields
@@ -89,7 +103,7 @@ class Row {
       $(this).html(`<input rowId="${rowOBJ.id}"  value="${rowOBJ.name}"> `)
       $('.row-name input').focus();
       let finEdit = (_this)=>{
-        if($(_this).val().length>1 && $(_this).val().length<20){
+        if($(_this).val().length>1 && $(_this).val().length<14){
           data.rows[$(_this).attr('rowId')].changeProp('name',$(_this).val());
         }else{
           data.rows[$(_this).attr('rowId')].changeProp('name',data.rows[$(_this).attr('rowId')].name);
@@ -194,7 +208,7 @@ class Row {
       let rowOBJ = data.rows[rowId];
       if(!rowOBJ.isMuted){
         rowOBJ.changeProp('isMuted',true);
-        $('.player')[0].pause();
+        $('.row-'+rowOBJ.id+' .player')[0].pause();
       }else{
         rowOBJ.changeProp('isMuted',false);
       }
@@ -209,6 +223,17 @@ class Row {
         return true;
       }else{
         return false;
+      }
+    }
+    let toFormat = function(t){
+      if(t<1000){
+        return t+' '+translate('ms');
+      }else if(t<60000){
+        return Math.floor(t/1000)+' '+translate('s');
+      }else if(t<3600000){
+        return Math.floor(t/60000)+' '+translate('m');
+      }else{
+        return Math.floor(t/3600000)+' '+translate('h');
       }
     }
     //col1
@@ -248,12 +273,45 @@ class Row {
         $(`.row-${this.id} .row-ping-dellay`).html(`-`);
       }
     }
-    if(needToUpdate('pingTTL')){
+    if(needToUpdate('pingTTL') || needToUpdate('packetsResived')){
       if(['unknown','NaN',-1].indexOf(this.pingTTL) == -1){
-        $(`.row-${this.id} .row-ping-dellay`).attr('title',`TTL:${this.pingTTL}`);
+        //calculating ttl stats list
+        if(this.pingHist.length >0){
+          this.pingHist.forEach((i)=>{
+            if(!this.ttls[i.pingTTL] && i.pingTTL != -1){
+              console.log('creating new ttl');
+              this.ttls[i.pingTTL] = {};
+              this.ttls[i.pingTTL].min = Infinity
+              this.ttls[i.pingTTL].avgSum = 0
+              this.ttls[i.pingTTL].avgNum = 0
+              this.ttls[i.pingTTL].max = -Infinity;
+            }else if(this.ttls[i.pingTTL]){
+              if(i.pingDellay<this.ttls[i.pingTTL].min){
+                this.ttls[i.pingTTL].min = i.pingDellay
+              }
+              if(i.pingDellay>this.ttls[i.pingTTL].max){
+                this.ttls[i.pingTTL].max = i.pingDellay
+              }
+              this.ttls[i.pingTTL].avgSum+=i.pingDellay;
+              this.ttls[i.pingTTL].avgNum++;
+            }
+          })
+          let ttlText = '';
+          Object.entries(this.ttls).forEach((t)=>{
+            let value = t[1];
+            value.avgSum = Math.round(value.avgSum/value.avgNum);
+            ttlText +=`TTL: ${t[0]} min:${value.min} avg:${value.avgSum} max:${value.max} \n`
+            value.avgSum = 0;
+            value.avgNum = 0;
+          })
+          $(`.row-${this.id} .row-ping-dellay`).attr('title',ttlText);
+        }else{
+          $(`.row-${this.id} .row-ping-dellay`).attr('title',`TTL:${this.pingTTL}`);
+        }
       }else{
         $(`.row-${this.id} .row-ping-dellay`).attr('title',`TTL:-`);
       }
+
     }
     if(needToUpdate('pingUpdateTime')){
       $(`.row-${this.id} .row-ping-updatetime`).html(`${this.pingUpdateTime} ${translate('s')}`);
@@ -268,6 +326,7 @@ class Row {
     }
     //col4
     if(needToUpdate('lastConnectionLost') || needToUpdate('lastConnectionFound') || needToUpdate('lastOutOfConnection')|| needToUpdate('totalOutOfConnection')){
+      //LAST LOST
       if(this.lastConnectionLost !=0 ){
         let minsL = this.lastConnectionLost.getMinutes();
         if(minsL<10){
@@ -280,8 +339,9 @@ class Row {
         $(`.row-${this.id} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${minsL}:${secsL}`);
         $(`.row-${this.id} .row-last-conn-lost`).attr('title',this.lastConnectionLost);
       }else{
-        $(`.row-${this.id} .row-last-conn-lost`).html(`-`);
+        $(`.row-${this.id} .row-last-conn-lost`).html("-");
       }
+      //LAST FOUND
       if(this.lastConnectionFound !=0 ){
         let  minsF = this.lastConnectionFound.getMinutes();
         if(minsF<10){
@@ -296,33 +356,45 @@ class Row {
       }else{
         $(`.row-${this.id} .row-last-conn-found`).html(`-`);
       }
-      let toFormat = function(t){
-        if(t<1000){
-          return t+' '+translate('ms');
-        }else if(t<60000){
-          return Math.floor(t/1000)+' '+translate('s');
-        }else if(t<3600000){
-          return Math.floor(t/60000)+' '+translate('m');
-        }else{
-          return Math.floor(t/3600000)+' '+translate('h');
-        }
-      }
+      //LAST
       $(`.row-${this.id} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
       if(this.lastConnectionFound < this.lastConnectionLost){
         //when out of connection
         $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection + this.lastOutOfConnection));
       }else{
+        //when connected
+
         $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
       }
+
+    }else{
+      if(this.lastConnectionLost == 0){
+        $(`.row-${this.id} .row-last-conn-lost`).html('-');
+      }
+      if(this.lastConnectionFound == 0){
+        $(`.row-${this.id} .row-last-conn-found`).html('-');
+      }
+      if(this.lastOutOfConnection == 0){
+        $(`.row-${this.id} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
+      }
+      if(this.totalOutOfConnection == 0){
+        $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
+      }
+
     }
     //pausing
     if(this.isPaused){
       if($(`.row-${this.id}.paused`).length == 0){
         $(`.row-${this.id}`).addClass('paused')
+        //play_arrow
+        //pause
         $(`.row-${this.id} .tool-pause-row`).attr('title',translate('Restart pinging'))
+        $(`.row-${this.id} .tool-pause-row`).html('play_arrow')
+      }else{
       }
       $(`.row-${this.id} .row-status-span`).html(translate('paused'))
     }else{
+      $(`.row-${this.id} .tool-pause-row`).html('pause');
       $(`.row-${this.id}`).removeClass('paused')
       $(`.row-${this.id} .tool-pause-row`).attr('title',translate('Pause pinging'))
       $(`.row-${this.id}`).attr('status',this.status);
@@ -339,10 +411,10 @@ class Row {
     //muting
     if(needToUpdate('isMuted')){
       if(this.isMuted){
-        $(`.row-${this.id}`).addClass('muted')
+        $(`.row-${this.id} .tool-mute-row`).html('volume_off')
         $(`.row-${this.id} .tool-mute-row`).attr('title',translate('Unmute row'))
       }else{
-        $(`.row-${this.id}`).removeClass('muted')
+        $(`.row-${this.id} .tool-mute-row`).html('volume_up')
         $(`.row-${this.id} .tool-mute-row`).attr('title',translate('Mute row'))
       }
     }
@@ -405,8 +477,8 @@ class Row {
           }
           if(res.status == _this.status){
             let looc = now.getTime() - _this.lastConnectionLost.getTime();
-            if(looc>(config.timeToAlarm*1000) && !_this.isMuted && $('.player')[0].paused){
-              $('.player')[0].play();
+            if(looc>(config.timeToAlarm*1000) && !_this.isMuted && $('.row-'+_this.id+' .player')[0].paused){
+              $('.row-'+_this.id+' .player')[0].play();
             }
             _this.changeProp('lastOutOfConnection',looc);
           }
@@ -424,6 +496,12 @@ class Row {
         }
 
         _this.changeProp('_status',status);
+        if(res.pingDellay == -1){
+          let bpd = backupPingDelayFunc(res)
+          if(bpd !=-1){
+            res.pingDellay = bpd;
+          }
+        }
         _this.changeProp('pingDellayTime',res.pingDellay);
         _this.changeProp('packetsSent',_this.packetsSent+1);
         if(res.packetLoss != 100 && res.status == 'online'){
@@ -479,13 +557,22 @@ class Row {
     return ret;
   }
 }
-
 function createPage(){
   var root = $('.root')
   root.html('');
   let monitorTable = $('<div class="table"></div>');
   root.append(monitorTable);
-  let id = winId;
+  let id;
+  if( winId){
+    id = winId
+  }else if(window.location.hash.replace('#','')){
+    winId = window.location.hash.replace('#','')
+    id = winId
+  }else{
+    window.location.hash = 0;
+    winId = 0;
+    id = winId;
+  }
   if(window.localStorage.getItem('data-'+id) !== null || window.localStorage.getItem('data') !== null){
     console.debug('Opening local for id:',id);
     loadFromLocalStorage();
@@ -500,12 +587,11 @@ function createPage(){
       row.create()
       row.createRowEventListeners()
     })
-  newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]" onclick="addRow()">+ <span>'+translate("Add new row")+'</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [Ctrl+F]" onclick="toggleFullScreen()">'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Ctrl+Space]" onclick="togglePause()">'+translate("Pause all rows")+'  </div></div>');
-  root.append(newRowBtns)
+  newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]" onclick="addRow()">+ <span>'+translate("Add new row")+'</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [Ctrl+F]" onclick="toggleFullScreen()"><span class="material-icons">fullscreen</span>'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Ctrl+Space]" onclick="togglePause()"><span class="material-icons">pause</span>'+translate("Pause all rows")+'</div></div>');
+  root.append(newRowBtns);
 }
-
 $(document).ready(function(){
-  $('.root').html('<div style="background-image: url(assets/icons/PM_nofill.ico);width: 300px;height: 100vh;background-size: 294px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%; ">Ping Monitor</h1><p style=" display: flex; justify-content: center; align-items: center; height: 110vh; position: fixed; width: 100%; opacity: 0.7; ">Reading files...</p>');
+  $('.root').html('<div style="background-image: url(assets/icons/PM_nofill.ico);width: 300px;height: 100vh;background-size: 270px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%; ">Ping Monitor</h1><p style=" display: flex; justify-content: center; align-items: center; height: 110vh; position: fixed; width: 100%; opacity: 0.7; ">Reading files...</p>');
   readDir(function(ret){
     data.pics = ret.pics;
     createPage();
@@ -520,23 +606,16 @@ $(document).ready(function(){
     if(e.ctrlKey && (e.which == 110 || e.which == 14) && !e.shiftKey){
       addRow();
     }
-    //DOING IT IN THE MENU
-    //"S"
-    // if(e.ctrlKey && e.which == 19){
-    //   saveAs();
-    // }
-    // // "O"
-    // if(e.ctrlKey && e.which == 15){
-    //   openConfig();
-    // }
-    //pause
+    //DOING SAVE & OPEN IN THE MENU
     if(e.ctrlKey && e.which == 0){
       e.preventDefault();//stoping scroll
       togglePause();
     }
   })
-});
-
+  $('body ')[0].onresize = (e)=>{
+    checkRowsNumber();
+  }
+})
 function translate(a){
   let trans = a;
 
@@ -549,7 +628,6 @@ function translate(a){
   }
   return trans;
 }
-
 function saveToLocalStorage(){
   rowsToSave = [];
   data.rows.forEach((row,i)=>{
@@ -566,7 +644,6 @@ function saveToLocalStorage(){
   window.localStorage.setItem('data-'+id,JSON.stringify(dataToSave));
   return JSON.stringify(dataToSave,undefined, 4);
 }
-
 function loadFromLocalStorage(){
   let id = winId;
   let dataLocal;
@@ -596,7 +673,6 @@ function loadFromLocalStorage(){
     }
   })
 }
-
 async function ping(ip,rowId,callback) {
   var result = await ipcRenderer.invoke('ping', ip, rowId);
   result = JSON.parse(result);
@@ -605,34 +681,69 @@ async function ping(ip,rowId,callback) {
   }
   callback(result);
 }
-
 function checkRowsNumber(){
-  if(data.rows.length > 5){
+
+  if(window.innerWidth > 2100){
     $('.table').addClass('eco');
+    let rowsOfRows = Math.ceil(data.rows.length / 3);
+    for(i=4;i<10;i++){
+      if(rowsOfRows == i){
+        $('.table').addClass('h'+i);
+      }else{
+        $('.table').removeClass('h'+i);
+      }
+    }
   }else{
-    $('.table').removeClass('eco');
+    if(data.rows.length == 3){
+      $('.table').addClass('h3');
+    }else{
+      $('.table').removeClass('h3');
+    }
+    if(data.rows.length == 4){
+      $('.table').addClass('h4');
+    }else{
+      $('.table').removeClass('h4');
+    }
+    if(data.rows.length > 5){
+      $('.table').addClass('eco');
+      if(data.rows.length == 6){
+        $('.table').addClass('h3');
+      }else{
+        $('.table').removeClass('h3');
+      }
+      if(data.rows.length > 6 && data.rows.length < 9){
+        $('.table').addClass('h4');
+      }else{
+        $('.table').removeClass('h4');
+      }
+    }else{
+      $('.table').removeClass('eco');
+    }
+    //FOR 4K
+    if(data.rows.length<6){
+      $('.table').removeClass('eco');
+    }
   }
 }
-
 var picsDirLocal;
 function readDir(callback){
   if(target == 'build'){
     picsDir = 'assets/icons';
     picsDirLocal = '../../assets/icons';
-    langDataFile = 'assets/config/langData.json'
+    langDataFile = 'assets/config/ua.lang'
     configFile = 'assets/config/config.json'
     soundFile = '../../assets/alarm.wav'
   }
   else if(target == 'pack'){
     picsDir = 'resources/app/assets/icons';
     picsDirLocal = 'assets/icons';
-    langDataFile = 'resources/app/assets/config/langData.json'
+    langDataFile = 'resources/app/assets/config/ua.lang'
     configFile = 'resources/app/assets/config/config.json'
     soundFile = 'resources/app/assets/alarm.wav'
   }else{
     picsDir = 'assets/icons';
     picsDirLocal = picsDir;
-    langDataFile = 'assets/config/langData.json'
+    langDataFile = 'assets/config/ua.lang'
     configFile = 'assets/config/config.json'
     soundFile = 'assets/alarm.wav'
   }
@@ -672,21 +783,8 @@ function readDir(callback){
       return callback(ret);
     });
 }
-
-// async function saveAs(){
-//   let time = new Date();
-//   let name = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
-//   let text = saveToLocalStorage();
-//   await ipcRenderer.invoke('saveFile',name, text,translate('Save config'));
-// }
-
 ipcRenderer.on('asynchronous-message', function (evt, message) {
-  // if(message.call == 'saveAs'){
-  //   saveAs();
-  // }
-  // if(message.call == 'openConfig'){
-  //   openConfig();
-  // }
+
   if(message.call == 'sendDataToWin'){
     if(message.rowsData){
       let newRowsData = message.rowsData;
@@ -703,11 +801,7 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
           rows:rowsToSave,
           progName:'PingMonitor'
         }
-        //console.log('relocating to id:',winId,' from:',prevWinId);
-        // console.log('add data-'+winId);
-        // console.log('removes data-'+prevWinId);
         window.localStorage.setItem('data-'+winId,JSON.stringify(dataToSave));
-        //window.localStorage.removeItem('data-'+prevWinId);
       }else{
         console.debug('new rowData: ',newRowsData);
         //validate
@@ -719,10 +813,17 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
       }
       //create rows
       createPage()
-    }else if(typeof message.id !=0){
-      // id should be titleId-1
+    }else if(typeof message.id != 'undefined'){
+      // id = title_id - 1
       prevWinId = winId;
       winId = message.id;
+      window.location.hash = winId;
+      if(typeof message.langCode != 'undefined'){
+        if(message.langCode != config.langCode){
+          configSet('langCode',message.langCode);
+        }
+        window.location.hash = winId;
+      }
     }else{
       console.error('sendDataToWin call must specify rowsData or id. Message: ',message);
     }
@@ -736,28 +837,16 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
     }else{
       console.error('requestInfo call must specify info parameter');
     }
+  }else if(message.call == 'toggleDarkMode'){
+    if(config.colorMode == 'dark'){
+      configSet('colorMode','light');
+    }else{
+      configSet('colorMode','dark');
+    }
   }else{
     console.error('Unknown message call: ',message.call);
   }
-});
-
-// async function openConfig(){
-//   let ret = await ipcRenderer.invoke('openFile',translate('Open config'));
-//   console.debug(ret);
-//   if(ret != 'canceled'){
-//     data.rows.forEach(
-//       (row) => {
-//         row.remove()
-//     })
-//     confToOpen = JSON.parse(ret.text);
-//     console.error('!!!');
-//     window.localStorage.setItem('data',JSON.stringify(confToOpen));
-//     loadFromLocalStorage();
-//     createPage();
-//   }
-//
-// }
-
+})
 var toggleFullScreen = function() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen();
@@ -767,7 +856,6 @@ var toggleFullScreen = function() {
     }
   }
 }
-
 var addRow = ()=>{
   let lastRow = data.rows[data.rows.length-1];
     newRowData = config.defaultNewRow;
@@ -781,7 +869,6 @@ var addRow = ()=>{
   data.rows[data.rows.length-1].createRowEventListeners()
   saveToLocalStorage();
 }
-
 var togglePause = ()=>{
   unpausedNum = 0;
   Object.keys(data.rows).forEach((row)=>{
@@ -805,5 +892,29 @@ var togglePause = ()=>{
   })
   if(unpausedNum==0){
     pausedRows = [];
+  }
+}
+var backupPingDelayFunc = (res) => {
+  if(res.pingDellay){
+    return res.pingDellay;
+  }else{
+    return -1;
+  }
+}
+var configSet = (key,value)=>{
+  if(config[key]){
+    config[key] = value;
+  }
+  if(key == 'colorMode'){
+    if(value == 'light'){
+      $('html').addClass('light')
+    }else{
+      $('html').removeClass('light')
+    }
+  }
+  if(key == 'langCode'){
+    data.rows.forEach(r=>{
+      r.render()
+    })
   }
 }

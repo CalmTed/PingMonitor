@@ -1,4 +1,5 @@
 {
+  "langCode":"ua",
   "Dellay":"Затримка",
   "Update time":"Оновлення",
   "Uptime":"Якість",
@@ -34,5 +35,17 @@
   "error":"error",
   "paused":"Призупинено",
 
-  "":""
+  "":"",
+
+  "Edit":"Редагування",
+  "Save Config":"Зберігти файл конфігурації",
+  "Open Config":"Відкрити файл конфігурації",
+  "New window":"Нове вікно",
+  "About":"Про програму",
+  "View":"Вид",
+  "Toggle Dark Mode":"Змінити тему",
+  "PingMonitor is a free app to automatically ping and show status of network devices.":"PingMonitor це безкоштовна программа для автоматичного пінгування статусу мережевих пристроїв",
+  "Version":"Версія",
+  "©Made by Fedir Moroz for Ukrainian Military Forces in Sep 2021 for no commercial use only.":"Зроблено Морозом Федором для ЗСУ у 2021 році НЕ ДЛЯ ПРОДАЖУ",
+  "For more info contact him at github.com/calmted":"Для більш докладної інформації звертайтесь на github.com/calmted"
 }

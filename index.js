@@ -1,4 +1,4 @@
-const version = '1.3.3';
+const version = '1.3.4';
 //============
 //  DEFINING
 //============
@@ -8,26 +8,28 @@ const fs = require("fs");
 const ping = require('ping');
 async function saveAs(){}
 async function openConfig(){}
+var langCode = 'ua';
+var lang = {};
 const menuTemplate = [
     {
-    label: "Edit",
+    label: tr('Edit'),
     submenu: [
       {
-        label: 'Save Config',
+        label: tr('Save Config'),
         click: () => {
           saveDataFromAllWindows();
         },
         accelerator:'Ctrl+S'
       },
       {
-        label: 'Open Config',
+        label: tr('Open Config'),
         click: async () => {
           openConfig()
         },
         accelerator:'Ctrl+O'
       },
       {
-        label: 'New window',
+        label: tr('New window'),
         click: async () => {
           createWindow()
         },
@@ -35,24 +37,32 @@ const menuTemplate = [
       },
       { type: 'separator' },
     {
-      label: 'About',
+      label: tr('About'),
       click: async () => {
         dialog.showMessageBox({
-          title:'About',
-          message:'About PingMonitor',
-          detail:'PingMonitor is a free app to automatically ping and show status of network devices.\nVersion: '+version+'\n©Made by Fedir Moroz for Ukrainian Military Forces in Sep 2021 for no commercial use only.\nFor more info contact him at github.com/calmted',
+          title:tr('About'),
+          message:tr('About PingMonitor'),
+          detail:tr('PingMonitor is a free app to automatically ping and show status of network devices.')+'\n'+tr('Version')+': '+version+'\n'+tr('©Made by Fedir Moroz for Ukrainian Military Forces in Sep 2021 for no commercial use only.')+'\n'+tr('For more info contact him at github.com/calmted'),
           type:'none',
           icon:'assets/icons/PM_nofill.ico'
         }).catch(err => {
-          console.log(err)
+          console.error(err)
         });
       }
     },
       { role: 'quit' }
     ]
   },{
-    label: "View",
+    label: tr("View"),
     submenu: [
+      {
+        label: tr('Toggle Dark Mode'),
+        click: async () => {
+          // toggleDarkMode()
+        },
+        enabled:false,
+        accelerator:'Ctrl+Shift+D'
+      },
       { role: 'toggleDevTools' },
       { role: 'resetZoom' },
       { role: 'zoomIn' },
@@ -76,7 +86,7 @@ app.whenReady().then( async function(){
       detail:'Can`t start program\n'+e,
       type:'error'
     }).catch(err => {
-      console.log(err)
+      console.error(err)
     });
   }
 })
@@ -88,122 +98,9 @@ app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit()
   }
 })
-
 //===========
 //  TALKING
 //===========
-/*
-ipcMain.handle('saveFile', async (e,name,text,winName) => {
-  try{
-    text = JSON.parse(text);
-    let rowsToSave = JSON.stringify(text.rows);
-    text.hash = cyrb53(rowsToSave)
-    text = JSON.stringify(text,undefined,4);
-    dialog.showSaveDialog({
-      filters: [{
-        name: 'JSON file',
-        extensions: ['json']
-      }],
-      title: winName,
-      defaultPath: name
-    }).then(fileName => {
-      fs.writeFile(fileName.filePath, text, function(err) {
-          if (err) return console.log(err);
-      });
-    }).catch(err => {
-      console.log(err)
-    });
-  } catch(e){
-    dialog.showMessageBox({
-      title:'Error',
-      message:'Program error',
-      detail:'Can`t handle saveFile ipcMain process\n'+e,
-      type:'error'
-    }).catch(err => {
-      console.log(err)
-    });
-  }
-})
-ipcMain.handle('openFile', async (e,winName) => {
-  try{
-    ret = await dialog.showOpenDialog({
-      filters: [{
-        name: 'JSON file',
-        extensions: ['json']
-      }],
-      title: winName,
-      properties: ['openFile']
-    }).then((result) => {
-      if(!result.canceled){
-        let filepath = result.filePaths[0];
-        let data = {};
-        try{
-          data.text = fs.readFileSync(filepath, 'utf-8', (err, d) => {
-            return d;
-          });
-        } catch(e){
-          dialog.showMessageBox({
-            title:'Error',
-            message:'Program error',
-            detail:'Can`t open file inside openFIle handle\n'+e,
-            type:'error'
-          }).catch(err => {
-            console.log(err)
-          });
-        }
-        if(JSON.parse(data.text).progName == 'PingMonitor'){
-          if(JSON.parse(data.text).hash != cyrb53(JSON.stringify(JSON.parse(data.text).rows))){
-            let n = new Notification({
-              title:'Зверни увагу',
-              subtitle:'Attention',
-              body:'Конфіг був змінений вручну\n (Attention: config has beed edited manualy)'
-            })
-            n.show();
-          }
-          return data;
-        }else{
-          let n = new Notification({
-            title:'Помилка відкриття',
-            subtitle:'Opening error',
-            body:'Цей файл не підходить для конфігурації PingMonitor (Opening error: file isn`t PM Config)'
-          })
-          n.show();
-          return 'canceled';
-        }
-      }else{
-        return 'canceled'
-      }
-    }).catch(err => {
-      console.log(err)
-    });
-
-    return ret;
-  } catch(e){
-    dialog.showMessageBox({
-      title:'Error',
-      message:'Program error',
-      detail:'Can`t handle openFile ipcMain process\n'+e,
-      type:'error'
-    }).catch(err => {
-      console.log(err)
-    });
-  }
-})
-ipcMain.handle('showStats', async (e,winName) => {
-  try{
-
-  } catch(e){
-    dialog.showMessageBox({
-      title:'Error',
-      message:'Program error',
-      detail:'Can`t handle openFile ipcMain process\n'+e,
-      type:'error'
-    }).catch(err => {
-      console.log(err)
-    });
-  }
-})
-*/
 ipcMain.handle('ping', async (event, ip, rowId) => {
   try {
     const res = await pinging(ip,rowId);
@@ -213,12 +110,6 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
       //get index of 'ms'
       let endOfDellayWord = -1;
       let lineO = res.output;
-      // if(lineO.indexOf('ms') > -1){
-      //   endOfDellayWord = lineO.indexOf('ms');
-      // }
-      // if(lineO.indexOf('мс') > -1){
-      //   endOfDellayWord = lineO.indexOf('мс');
-      // }
       let aline = lineO.split('TTL=')[0].split('=32')[1];
       if(aline){
         pingDellayArray = aline.split('').filter((l)=>{
@@ -228,11 +119,6 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
       }else{
         pingDellay = -1;
       }
-        // lineO.split('').reverse().forEach((l,i)=>{
-        //   if(i >= startI && i < startI+5 && ['0','1','2','3','4','5','6','7','8','9'].indexOf(l) != -1){
-        //     pingDellayArray.push(l);
-        //   }
-        // })
     }else{
       pingDellay = res.avg;
     }
@@ -271,70 +157,61 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
       detail:'Can`t handle ping ipcMain process\n'+e,
       type:'error'
     }).catch(err => {
-      console.log(err)
+      console.error(err)
     });
   }
 })
-
 ipcMain.handle('sendDataToMain', async(e,data)=>{
-  console.log('main recived data:',data);
-  if(data.call == 'saveRowsToFile'){
-    if(data.rowsData&&data.winId){
-      //if valid rows(kind of)
-      rowsDataText = data.rowsData;
-      rowsDataObj = JSON.parse(rowsDataText);
-      if(rowsDataObj.rows){
-        //save to storage by id
-        let storageObj;
-        if(storage.get('PMDataStr')){
-          storageObj = JSON.parse(storage.get('PMDataStr'))
-        }else{
-          storageObj = {};
-        }
-        storageObj[data.winId] = {...rowsDataObj};
-        storage.set('PMDataStr',JSON.stringify(storageObj))
-        //if last window
-        resivedWinData ++;
-        if(resivedWinData == wins.length){
-          resivedWinData = 0;
-          //write to file
-          let time = new Date();
-          let fileName = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
-          writeFile({
-            name:fileName,
-            text:JSON.stringify(storageObj),
-            extention:'pm'
-          })
-        }
+  try{
+    if(data.call == 'saveRowsToFile'){
+      if(data.rowsData&&data.winId){
+        //if valid rows(kind of)
+        rowsDataText = data.rowsData;
+        rowsDataObj = JSON.parse(rowsDataText);
+        if(rowsDataObj.rows){
+          //save to storage by id
+          let storageObj;
+          if(storage.get('PMDataStr')){
+            storageObj = JSON.parse(storage.get('PMDataStr'))
+          }else{
+            storageObj = {};
+          }
+          storageObj[data.winId] = {...rowsDataObj};
+          storage.set('PMDataStr',JSON.stringify(storageObj))
+          //if last window
+          resivedWinData ++;
+          if(resivedWinData == wins.length){
+            resivedWinData = 0;
+            //write to file
+            let time = new Date();
+            let fileName = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
+            writeFile({
+              name:fileName,
+              text:JSON.stringify(storageObj),
+              extention:'pm'
+            })
+          }
 
+        }else{
+          console.error('There are no rows in rowsData-_-');
+        }
       }else{
-        console.log('There are no rows in rowsData-_-');
+        console.error("Expect to resive 'rowsData' and 'winId' parameters");
       }
-    }else{
-      console.log("Expect to resive 'rowsData' and 'winId' parameters");
     }
-  }
-  //else if(data.call == 'saveRowsToStorage'){
-    // if(data.rowsData&&data.winId){
-    //   rowsDataText = data.rowsData;
-    //   rowsDataObj = JSON.parse(rowsDataText);
-    //   console.log(storage.get('PMDataStr'));
-    //   if(storage.get('PMDataStr')){
-    //     storageObj = JSON.parse(storage.get('PMDataStr'))
-    //   }else{
-    //     storageObj = {};
-    //   }
-    //   storageObj[data.winId] = {...rowsDataObj};
-    //   console.log(storageObj);
-    //
-    //   storage.set('PMDataStr',JSON.stringify(storageObj))
-    // }
-    //storage.set('PMDataStr',)
-  //  console.log('TO DO');
-  //}
-  else{
-      console.log("Expect to resive 'saveRowsToStorage' or 'saveRowsToFile' call parameters");
-  }
+    else{
+        console.error("Expect to resive 'saveRowsToStorage' or 'saveRowsToFile' call parameters");
+    }
+  }catch(e){
+      dialog.showMessageBox({
+        title:'Error',
+        message:'Program error',
+        detail:'Can`t handle sendDataToMain ipcMain process\n'+e,
+        type:'error'
+      }).catch(err => {
+        console.error(err)
+      });
+    }
 })
 //===========
 //  MUTATING
@@ -373,7 +250,6 @@ function createWindows(dataObj){
           storedInfoObj = JSON.parse(storedInfoStr);
         }
         Object.entries(dataObj).forEach(winDataObj=>{
-          // console.log(winDataObj);
           storedInfoObj[Object.keys(wins).length] = winDataObj[1];
           storage.set('PMDataStr',JSON.stringify(storedInfoObj));
           createWindow()
@@ -389,67 +265,75 @@ function createWindows(dataObj){
       detail:'Can`t handle createWindows function\n'+e,
       type:'error'
     }).catch(err => {
-      console.log(err)
+      console.error(err)
     });
   }
 }
 function createWindow(){
-  storedInfoString = storage.get('PMDataStr');
-  let newWin;
-  newWin = newWindow()
-  newWin.loadFile('index.html')
-  newWin.setTitle('#'+wins.length)
-  wins.push(newWin)
-  // newWin.onbeforeunload=(e)=>{
-  //   //return false;
-  //   console.log('closing');
-  //   e.returnValue = false
-  //   // if(dialog.showMessageBoxSync({
-  //   //   message:'Закрити вікно?',
-  //   //   type:'question',
-  //   //   // buttons:['Закрити','Залишити'],
-  //   //   cancelId:0,
-  //   //   noLink:true
-  //   // }) != ''){
-  //   // }
-  // }
-  newWin.on('ready-to-show',()=>{
-    wins.forEach(nw=>{
-      let title = nw.getTitle()
-      if(title.indexOf('#') >-1){
-        let id = title.replace('#','')
-        let win = wins[id]
-        win.setTitle('PingMonitor '+((id*1)+1))
-        win.webContents.send('asynchronous-message', {call:'sendDataToWin',id:id})
-        if(storedInfoString){
-          storedInfoObj = JSON.parse(storedInfoString)
-          if(storedInfoObj[id]){
-            win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData: storedInfoObj[id]})
-          }else{
-            win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData:'useLocal'})
+  try{
+    if(wins.length < 9){
+      storedInfoString = storage.get('PMDataStr');
+      let newWin;
+      newWin = newWindow()
+      newWin.loadFile('index.html')
+      newWin.setTitle('#'+wins.length)
+      wins.push(newWin)
+      newWin.on('ready-to-show',()=>{
+        wins.forEach(nw=>{
+          let title = nw.getTitle()
+          if(title.indexOf('#') >-1){
+            let id = title.replace('#','')
+            let win = wins[id]
+            win.setTitle('PingMonitor '+((id*1)+1))
+            win.webContents.send('asynchronous-message', {call:'sendDataToWin',id:id,langCode:langCode})
+            if(storedInfoString){
+              storedInfoObj = JSON.parse(storedInfoString)
+              if(storedInfoObj[id]){
+                win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData: storedInfoObj[id]})
+              }else{
+                win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData:'useLocal'})
+              }
+            }else{
+              win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData:'useLocal'})
+            }
+            nw.show()
           }
-        }else{
-          win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData:'useLocal'})
-        }
-        nw.show()
-      }
-    })
-  })
-  newWin.on('closed',(e)=>{
-    wins.forEach((win,i)=>{
-      if (win == e.sender){
-        wins.splice(i,1);
-      }
-    })
-    //sort all windows id's
-    newId = 1;
-    wins.forEach(win=>{
-      win.setTitle('PingMonitor '+newId);
-      win.webContents.send('asynchronous-message', {call:'sendDataToWin',id:(newId-1)})
-      win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData: 'relocateRows'})
-      newId++;
-    })
-  })
+        })
+      })
+      newWin.on('closed',(e)=>{
+        wins.forEach((win,i)=>{
+          if (win == e.sender){
+            wins.splice(i,1);
+          }
+        })
+        //sort all windows id's
+        newId = 1;
+        wins.forEach(win=>{
+          win.setTitle('PingMonitor '+newId);
+          win.webContents.send('asynchronous-message', {call:'sendDataToWin',id:(newId-1)})
+          win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData: 'relocateRows'})
+          newId++;
+        })
+      })
+    }else{
+      dialog.showMessageBox({
+        title:'Info',
+        message:'Maximum amount of windows',
+        type:'info'
+      }).catch(err => {
+        console.error(err)
+      });
+    }
+  }catch(e){
+    dialog.showMessageBox({
+      title:'Error',
+      message:'Program error',
+      detail:'Can`t handle createWindow function\n'+e,
+      type:'error'
+    }).catch(err => {
+      console.error(err)
+    });
+  }
 }
 function newWindow () {
    return new BrowserWindow({
@@ -464,67 +348,76 @@ function newWindow () {
       nodeIntegration: true,
       contextIsolation: false
     },
-    devTools:true,
+    // devTools:true,
     show:false,
   })
-  //win.loadFile('index.html');
 }
 function saveDataFromAllWindows (){
-  resivedWinData = 0;
-  wins.forEach(win=>{
-    win.webContents.send('asynchronous-message', {call: 'requestInfo',info:'rowsData'});
-  })
+  try{
+    resivedWinData = 0;
+    wins.forEach(win=>{
+      win.webContents.send('asynchronous-message', {call: 'requestInfo',info:'rowsData'});
+    })
+  }catch(e){
+      dialog.showMessageBox({
+        title:'Error',
+        message:'Program error',
+        detail:'Can`t handle saveDataFromAllWindows function\n'+e,
+        type:'error'
+      }).catch(err => {
+        console.error(err)
+      });
+    }
 }
 function openConfig(){
-  openFile({
-    filters:[
-      {
-        name: 'PM file',
-        extensions: ['pm']
-      },
-      {
-        name: 'JSON file',
-        extensions: ['json']
+  try{
+    openFile({
+      filters:[
+        {
+          name: 'PM file',
+          extensions: ['pm']
+        },
+        {
+          name: 'JSON file',
+          extensions: ['json']
+        }
+      ]
+    },function(dataStr){
+      if(dataStr){
+        let dataObj = JSON.parse(dataStr);
+        try{
+          if(typeof dataObj.progName != 'undefined'){//if old .json one
+            createWindows(dataObj);
+          }else if(dataObj[0].progName){
+            createWindows(dataObj);
+          }
+        }catch(e){
+          dialog.showMessageBox({
+            title:'Error',
+            message:'Program error',
+            detail:'Not PingMonitor config file',
+            type:'error'
+          }).catch(err => {
+            console.error(err)
+          });
+        }
       }
-    ]
-  },function(dataStr){
-    if(dataStr){
-      //let storData = JSON.parse(storage.get('PMDataStr'));
-      // if(storData == null){
-      //   storData  = {};
-      // }
-      let dataObj = JSON.parse(dataStr);
-      if(dataObj.progName){//if old .json one
-        createWindows(dataObj);
-      }else if(dataObj[0].progName){
-        createWindows(dataObj);
-        //change ids of newWinData
-        //console.log(dataObj);
-        // Object.keys(dataObj).forEach((obj)=>{
-        //   console.log(storData)
-        //   console.log(Object.keys(dataObj).length)
-        //   storData[Object.keys(dataObj).length] = {};
-        //   storData[Object.keys(dataObj).length] = dataObj[obj];
-        // });
-        //console.log(dataObj);
-        //storage.set('PMDataStr',JSON.stringify(storData))
-      }else{
-        dialog.showMessageBox({
-          title:'Error',
-          message:'Program error',
-          detail:'Can`t handle openConfig function\n Not a PingMonitor config file',
-          type:'error'
-        }).catch(err => {
-          console.log(err)
-        });
-      }
-      //console.log('file opened. Data:',data)
-    }
-  })
+    })
+  }catch(e){
+    dialog.showMessageBox({
+      title:'Error',
+      message:'Program error',
+      detail:'Can`t handle openConfig function\n'+e,
+      type:'error'
+    }).catch(err => {
+      console.error(err)
+    });
+  }
 }
 async function pinging(ip,rowId){
   try{
     const result = await ping.promise.probe(ip, {timeout: 10})
+
     return result;
   } catch(e){
     dialog.showMessageBox({
@@ -533,7 +426,7 @@ async function pinging(ip,rowId){
       detail:'Can`t handle ping function\n'+e,
       type:'error'
     }).catch(err => {
-      console.log(err)
+      console.error(err)
     });
   }
 }
@@ -555,11 +448,13 @@ function writeFile (data){
         title: 'Saving config',
         defaultPath: data.name
       }).then(fileName => {
-        fs.writeFile(fileName.filePath, text, function(err) {
-            if (err) return console.log(err);
-        });
+        if(fileName.filePath){
+          fs.writeFile(fileName.filePath, text, function(err) {
+            if (err) return console.error(err);
+          });
+        }
       }).catch(err => {
-        console.log(err)
+        console.error(err)
       });
     } catch(e){
       dialog.showMessageBox({
@@ -568,11 +463,11 @@ function writeFile (data){
         detail:'Can`t handle writeFile\n'+e,
         type:'error'
       }).catch(err => {
-        console.log(err)
+        console.error(err)
       });
     }
   }else{
-    console.log("Expect to resive 'name','text' and 'extention' parameters");
+    console.error("Expect to resive 'name','text' and 'extention' parameters");
   }
 }
 function openFile(data,callback){
@@ -589,14 +484,29 @@ function openFile(data,callback){
       properties: ['openFile']
     })
     if(filepath){
-      filepath = filepath[0];
-      let text = fs.readFileSync(filepath, 'utf-8', (err, d) => {
-        if(!err){
-          return d;
-        }else{
-          return false;
-        }
-      });
+      if(typeof filepath == 'object'){
+        filepath = filepath[0];
+      }
+      let text = false;
+      if(filepath.substr(-3,4) == '.pm' || filepath.substr(-5,5) == '.json'){
+        text = fs.readFileSync(filepath, 'utf-8', (err, d) => {
+          if(!err){
+            return d;
+          }else{
+            return false;
+          }
+        });
+      }else{
+        dialog.showMessageBox({
+          title:'Error',
+          message:'Program error',
+          detail:'Wrong file type...',
+          type:'error'
+        }).catch(err => {
+          console.error(err)
+        });
+        return false;
+      }
       if(text){
         callback(text);
       }else{
@@ -612,9 +522,14 @@ function openFile(data,callback){
       detail:'Can`t handle openFile function\n'+e,
       type:'error'
     }).catch(err => {
-      console.log(err)
+      console.error(err)
     });
   }
+}
+function toggleDarkMode(){
+  wins.forEach(nw=>{
+    nw.webContents.send('asynchronous-message', {call:'toggleDarkMode'})
+  })
 }
 const cyrb53 = function(str, seed = 0) {
   try{
@@ -634,7 +549,44 @@ const cyrb53 = function(str, seed = 0) {
       detail:'Can`t handle cyrb53 method\n'+e,
       type:'error'
     }).catch(err => {
-      console.log(err)
+      console.error(err)
     });
   }
 };
+function tr(w){
+  let ret = false;
+  if(langCode == lang.langCode){
+    if(lang[w]){
+      ret = lang[w];
+    }else{
+      console.log('there is not word for "'+w+'"');
+    }
+  }else{
+    //load new lang file
+    let filepath = 'assets/config/'+langCode+'.lang';
+    let text = fs.readFileSync(filepath, 'utf-8', (err, d) => {if(!err){return d;}else{return false;}});
+    if(!text){
+      langCode = 'en'
+      filepath = 'assets/config/'+langCode+'.lang';
+      text = fs.readFileSync(filepath, 'utf-8', (err, d) => {if(!err){return d;}else{return false;}})
+    }
+    if(JSON.parse(text)){
+      if(JSON.parse(text).langCode){
+        lang = JSON.parse(text)
+        if(lang[w]){
+          ret = lang[w];
+        }else{
+          console.log('getting from backup langCode but still not word for '+w);
+        }
+      }
+    }else{
+      //show exeption
+      console.log('tr() exeption');
+    }
+  }
+  if(!ret){
+    return w;
+  }else{
+    return ret;
+  }
+}

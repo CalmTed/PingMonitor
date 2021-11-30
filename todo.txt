@@ -6,9 +6,9 @@ Design
 [+] pause all btn
 [+] fullscreen btn
 [+] add "0"`s in time stats
-[] do not round time offline
-[] add pics
-[] other icons
+[+] do not round time offline
+[+] add pics
+[+] other icons
 
 UX
 [+] Save all data in localStorage 210925 1531
@@ -23,20 +23,61 @@ UX
 [+] build app as finished product
 [+] save TTL
 [+] try[] ewerything
-[] Dellay stats (min,max,avg,now) graph
+[+] Dellay stats (min,max,avg,now) graph
 [] Add settings
   [] initial rows
   [] PTS (basedOnType,auto,fullCustom)
   [] new row (custom,last)
   [] color and size
   [] subnets
-[] sorting rows
+[+] sorting rows 211127 1600
 Network
 [] show network settings
 [] change network settings
 [] add autoChange for 2 or more networks
 
 Bugs
++dont open from the same data localstorage
++dont open from .json file
+?-dont show ping time stats only ttl:59
+
+
+TODO
++clear old comments
++remove console.log
++add trys
++ttls
++light mode + dynamic styling
++sorting
++icons for home and for buttons
++flex for 5 rows, 4?
++dynamic localization from the main process
++mute for each row
++if ttl=-1 ??
++sort data.rows after drag and drop event
+
+TESTS
+pinging
++  strange renaming
++  strange adresses
++  strange times
+opening
++  strange file types
++  strange configs
++  max amount of windows
++  strange pics
++  aborting
+saving
++  max amount of wins
++  aborting
++config tweak
+
+RELEASE
++disable theme switcher or create timer
++update version
++update links switcher
++build app
+
 
 
 
@@ -46,17 +87,17 @@ Main
 +1.get data from storage if exists (if not ignore sending data to windows -> send useLocal)
 +2.open n windows from data.length
 +3.send data to open for each window
--4.:onNewWindow    <=every win have data for each other win
--   if storage have info for this win : sendDataToWin else 'useLocal'
-5.:onWindowClosing
-   resort and rename all windows
++4.:onNewWindow    <=every win have data for each other win
++   if storage have info for this win : sendDataToWin else 'useLocal'
++5.:onWindowClosing
++   resort and rename all windows
 +6.:onOpenFile
 +  if data is old(for one window)
 +    create only one new window
 +  else recreate all windows and send data to them
 +7.:onSaveFile getInfoFromAllWindows and save to one file once
 +  when resived from last window - save file
--if localStorage have "data-[id+1]"   <= its better to be centralized
+!if localStorage have "data-[id+1]"   <= its better to be centralized
    call to open one more window
 
 Interfaces:
@@ -69,13 +110,13 @@ Win=>Main  +sendDataToMain:'file',rowData
            sendDataToMain:'storage',rowData
 
 Window
-1.:onCreation
++1.:onCreation
 +  if resived "useLocal" try to open from localStorage
 +     if not exists, open from config
-  if resived dataToOpen
-     check validity
-     openDataRows
++  if resived dataToOpen
++     check validity
++     openDataRows
 +2.:onSaving
 +  sendDataToMain:rowData
-3.:onChanging
+!3.:onChanging
   sendDataToMainStorage:rowData

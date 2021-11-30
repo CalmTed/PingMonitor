@@ -1,6 +1,6 @@
 {
   "name": "pingmonitor",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "ping monitoring",
   "main": "index.js",
   "icon": "assets/icons/PM_nofill.ico",
@@ -12,14 +12,14 @@
   "build": {
     "appId": "ping.monitor",
     "productName": "Ping Monitor",
-    "buildVersion": "1.3.3",
+    "buildVersion": "1.3.4",
     "target": "portable",
     "icon": "assets/icons/PM.ico",
     "compression": "maximum",
     "asar": true,
     "extraFiles": [
       "assets/config/config.json",
-      "assets/config/langData.json",
+      "assets/config/ua.lang",
       "assets/alarm.wav",
       "assets/icons/*"
     ],
@@ -27,13 +27,15 @@
       "legalTrademarks": "© Made by Ted Frost for UMF in 2021. For no commercial use only."
     }
   },
-  "author": "",
+  "author": "calmted",
   "license": "ISC",
   "dependencies": {
     "electron-packager": "^15.2.0",
     "jquery": "^3.6.0",
     "local-storage": "^2.0.0",
-    "ping": "^0.4.1"
+    "material-icons": "^1.10.3",
+    "ping": "^0.4.1",
+    "sortablejs": "^1.14.0"
   },
   "devDependencies": {
     "electron": "^13.1.2"
