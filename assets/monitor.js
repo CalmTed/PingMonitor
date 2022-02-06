@@ -9,9 +9,9 @@ var configSet = ()=>{};
 var winId,prevWinId;
 var sortable;
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-var target = 'build';
+// var target = 'build';
 // var target = 'pack';
-// var target = 'dev';
+var target = 'dev';
 /*===============================================================*/
 var debug = true;
 class Row {
@@ -23,6 +23,9 @@ class Row {
     return this._status;
   }
   constructor(name,picture,pingIP,pingUpdateTime,isPaused = config.initialPause){
+    this.uid = Math.round(
+                Math.random()*100000
+              )+'';
     this.id = data.rows.length;
     this.name = name;
     this.picture = Number(picture);
@@ -47,12 +50,14 @@ class Row {
     this.pingTimeStrategy = config.defaultPingTimeStrategy;
     this.rowDom = ''
     this.ttls = {}
+    this.isSubscribed = false;//subscription to graph
   }
   create(){
     parent = $('.table');
     this.rowDom = $(`<div class="row row-${this.id}" rowId="${this.id}" status="${this.status}"></div>`);
     this.rowDom.append($(`<div class="row-column"><div class="row-picture" title="${translate('Change picture')}" style="background-image:url('${data.pics[this.picture]}')"></div><div class="row-name" title="2x ${translate('Change name')}">${this.name}</div><div class="row-address" title="2x ${translate('Change address')}">${this.pingIP}</div></div>`));
-    this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-status-span">${translate(this.status)}</span></div> <div class="row-ping"><label>${translate('Dellay')}: <span class="row-ping-dellay"></span></label><label>${translate('Update time')}: <span class="row-ping-updatetime" title="2x ${translate('Change update time')}">${this.pingUpdateTime} ${translate('s')}</span></label><label>${translate('Uptime')}: <span class="row-uptime"></span></label></div></div>`));
+
+    this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-graph"><svg width="100" height="40" viewBox="0 0 100 40"><path d=""></path></svg></span><span class="row-status-span">${translate(this.status)}</span></div> <div class="row-ping"><label>${translate('Dellay')}: <span class="row-ping-dellay"></span></label><label>${translate('Update time')}: <span class="row-ping-updatetime" title="2x ${translate('Change update time')}">${this.pingUpdateTime} ${translate('s')}</span></label><label>${translate('Uptime')}: <span class="row-uptime"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column tools"><div class="row-tools">\
                             <div class="row-tool material-icons tool-pause-row" title="${translate('Pause pinging')}">play_arrow</div>\
@@ -95,7 +100,7 @@ class Row {
       data.rows[rowOBJ.id].changeProp('picture',nextPic);
     });
     //name
-    $(`.row-${this.id} .row-name`).on('dblclick',function(){
+    $(`.row-${this.id} .row-name`).on('click',function(){
       let colDOM = $(this).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
       let rowId = rowDOM.attr('rowId');
@@ -119,7 +124,7 @@ class Row {
       })
     });
     //Ping IP
-    $(`.row-${this.id} .row-address`).on('dblclick',function(){
+    $(`.row-${this.id} .row-address`).on('click',function(){
       let colDOM = $(this).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
       let rowId = rowDOM.attr('rowId');
@@ -142,8 +147,21 @@ class Row {
         }
       })
     });
+
+    $(`.row-${this.id} .row-graph`).on('click',function(){
+      let statusDOM = $(this).parent()[0]
+      let colDOM = $($(statusDOM).parent()[0])
+      let rowDOM = $($(colDOM).parent()[0])
+      let rowId = rowDOM.attr('rowId')
+      let rowOBJ = data.rows[rowId]
+      let hist = rowOBJ.pingHist
+      let rowUid = rowOBJ.uid;
+      rowOBJ.changeProp('isSubscribed',true)
+      ipcRenderer.invoke('sendDataToMain',{call:'openGraphWin',pingHist:hist,winId:winId,rowUid:rowUid});
+
+    })
     //UpdateTime
-    $(`.row-${this.id} .row-ping-updatetime`).on('dblclick',function(){
+    $(`.row-${this.id} .row-ping-updatetime`).on('click',function(){
       let label = $(this).parent()[0]
       let subColDOM = $(label).parent()[0]
       let colDOM = $(subColDOM).parent()[0]
@@ -247,6 +265,9 @@ class Row {
       $(`.row-${this.id} .row-address`).html(this.pingIP);
     }
     //col2-3
+    if(needToUpdate('pingHist')){
+      $(`.row-${this.id} .row-graph path`).attr('d',getPath({dataArray:this.pingHist}));
+    }
     if(needToUpdate('status')){
       $(`.row-${this.id}`).attr('status',this.status);
       $(`.row-${this.id} .row-status-span`).html(translate(this.status));
@@ -278,13 +299,15 @@ class Row {
         //calculating ttl stats list
         if(this.pingHist.length >0){
           this.pingHist.forEach((i)=>{
+            //creating new ttl
             if(!this.ttls[i.pingTTL] && i.pingTTL != -1){
-              console.log('creating new ttl');
+              console.debug('creating new ttl: ',i.pingTTL);
               this.ttls[i.pingTTL] = {};
               this.ttls[i.pingTTL].min = Infinity
               this.ttls[i.pingTTL].avgSum = 0
               this.ttls[i.pingTTL].avgNum = 0
               this.ttls[i.pingTTL].max = -Infinity;
+            //updating existing
             }else if(this.ttls[i.pingTTL]){
               if(i.pingDellay<this.ttls[i.pingTTL].min){
                 this.ttls[i.pingTTL].min = i.pingDellay
@@ -302,7 +325,7 @@ class Row {
             value.avgSum = Math.round(value.avgSum/value.avgNum);
             ttlText +=`TTL: ${t[0]} min:${value.min} avg:${value.avgSum} max:${value.max} \n`
             value.avgSum = 0;
-            value.avgNum = 0;
+            value.avgNum = 0;//?
           })
           $(`.row-${this.id} .row-ping-dellay`).attr('title',ttlText);
         }else{
@@ -521,11 +544,11 @@ class Row {
           }
         }
         //hist
-        let timenow = new Date().getTime()
+        let timenow = new Date().getTime();
         let timeToDelete = 1000*60*60; //six hours
         _this.pingHist.push({
           'time':timenow,
-          'timestamp':new Date(),
+          'timestamp':new Date(timenow),
           'status':_this.status,
           'pingDellay':_this.pingDellayTime,
           'pingTTL':_this.pingTTL
@@ -537,6 +560,14 @@ class Row {
             return false;
           }
         });
+        _this.render('pingHist');
+
+        if(_this.isSubscribed){
+          let __hist = _this.pingHist
+          //winId is a global variable
+          let __rowUid = _this.uid;
+          ipcRenderer.invoke('sendDataToMain',{call:'subscription_deliver',pingHist:__hist,winId:winId,rowUid:__rowUid});
+        }
         _this.timeout = setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000);
       })
     }else{
@@ -843,6 +874,22 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
     }else{
       configSet('colorMode','dark');
     }
+  }else if(message.call == 'subsciption_remove'){
+    console.log(`Removing subscription in the row${message.rowUid}`,message);
+    if(typeof message.rowUid != 'undefined'){
+      if(data.rows.filter(r=>r.uid == message.rowUid).length >0){
+        data.rows.filter(r=>r.uid == message.rowUid)[0].changeProp('isSubscribed',false)
+      }
+    }else{
+      cosole.error('Can`t unsubscibe, rowUid was not provided')
+    }
+  }else if(message.call == 'data_graph_request'){
+    if(typeof message.rowUid != 'undefined'){
+        let __hist = data.rows.filter(r=>r.uid == message.rowUid)[0].pingHist;
+        ipcRenderer.invoke('sendDataToMain',{call:'subscription_deliver',pingHist:__hist,winId:winId,rowUid:message.rowUid});
+    }else{
+      cosole.error('Cant unsubscibe, rowUid was not provided')
+    }
   }else{
     console.error('Unknown message call: ',message.call);
   }
@@ -917,4 +964,54 @@ var configSet = (key,value)=>{
       r.render()
     })
   }
+}
+const getPath = ({dataArray})=>{
+  let _ret = '';
+  let _canvasWidth = 100;
+  let _canvasHeight = 40;
+  let _heightMargin = 5;
+  let _widthMargin = _heightMargin;
+  let timeOfBegining = new Date().getTime() - 1000*60*30;//half an hour
+  let dataTrimmed = dataArray.filter(dot=>{return dot.time >= timeOfBegining})
+  //koof
+  // if l=0|l=1 koof = 100
+  // if l>1 find time diff > devide width by one milisecond
+  let widthKoof = (100-(_widthMargin*2));
+  if(dataTrimmed.length>1){
+    //if there is more then two minutes of histiry show like there is two minutes
+    if(dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].time > 1000*60*2){
+       widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].time)
+    }else{
+      widthKoof = (_canvasWidth -(_widthMargin*2)) / (1000*60*2)
+    }
+  }
+  let maxDellay = Math.max(...dataTrimmed.map(dot=>{return dot.pingDellay}));
+  let _map = (val,start1,stop1,start2,stop2)=>{
+    let __a = (val-start1)/(stop1-start1)*(stop2-start2)+start2;
+    return start2 < stop2 ? Math.round(Math.max(Math.min(__a, stop2), start2)*10)/10 : Math.round(Math.max(Math.min(__a, start2), stop2)*10)/10;
+  }
+  //generate string
+  //M - move
+  //L - line to the point
+  //C - curve
+  //H - horizontal
+  //Example: M0 20.5H6.67544C6.89041 20.5 7.10397 20.4653 7.3079 20.3974L15.6026 17.6325C16.6505 17.2832 17.7832 17.8495 18.1325 18.8974L18.4379 19.8138C18.7585 20.7755 19.7478 21.3453 20.7405 21.1399L33.5 18.5
+  if(dataTrimmed.length>0){
+    _ret += `M${_widthMargin} ${_map(dataTrimmed[0].pingDellay,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin)}`
+    let _firstTime = dataTrimmed[0].time;
+    let _isDrawing = true;
+    dataTrimmed.forEach((dot,i)=>{
+      if(i>0){
+        let _x = Math.round((_widthMargin+(dot.time - _firstTime)*widthKoof)*100)/100;
+        let _y = _map(dot.pingDellay,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin);
+        if(dot.status == 'offline' ||dot.status == 'timeout'||dot.status == 'error'){
+          _ret += `M${_x} ${_y}`;
+        }else{
+          _ret += `L${_x} ${_y}`;
+        }
+      }
+    })
+  }
+  // console.log(_ret);
+  return _ret;
 }

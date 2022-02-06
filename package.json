@@ -1,6 +1,6 @@
 {
   "name": "pingmonitor",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "ping monitoring",
   "main": "index.js",
   "icon": "assets/icons/PM_nofill.ico",
@@ -12,7 +12,7 @@
   "build": {
     "appId": "ping.monitor",
     "productName": "Ping Monitor",
-    "buildVersion": "1.3.4",
+    "buildVersion": "1.3.5",
     "target": "portable",
     "icon": "assets/icons/PM.ico",
     "compression": "maximum",
@@ -20,6 +20,7 @@
     "extraFiles": [
       "assets/config/config.json",
       "assets/config/ua.lang",
+      "assets/config/en.lang",
       "assets/alarm.wav",
       "assets/icons/*"
     ],

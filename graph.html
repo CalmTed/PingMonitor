@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Graph</title>
+    <link href="./node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    <link rel="stylesheet"  href="assets/style.css"/>
+    <style media="screen">
+      body{
+        overflow: hidden;
+      }
+      .graph-canvas{
+        --graph-color:var(--status-blue);
+        width:100%;
+        height:100%;
+      }
+      .graph-canvas path{
+        stroke-width: .3px;
+        stroke: var(--graph-color);
+        fill:none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        /* transition: all .1s ease-in; */
+      }
+      .graph-canvas .text{
+        font: italic 2px sans-serif;
+        fill: #fff;
+      }
+      .graph-g-legends text{
+        font: italic 1px sans-serif;
+        fill:var(--scroll-tumb);
+      }
+      .graph-g-grid path{
+        /* transition: all .1s ease-in; */
+        stroke-width: .05px;
+        stroke: var(--scroll-tumb);
+      }
+      .graph-g-paths path[status=online]{
+        stroke:var(--status-green)
+      }
+      .graph-g-paths path[status=error],.graph-g-paths path[status=timeout]{
+        stroke:var(--status-red)
+      }
+      .graph-g-paths{
+        r:0.5;
+        fill:var(--status-green)
+      }
+      .graph-g-paths:hover{
+        r:1;
+      }
+    </style>
+  </head>
+  <body>
+    <svg class="graph-canvas" viewBox="0 0 100 50">
+      <g class="graph-g-grid">
+        <path></path>
+      </g>
+      <text x="2" y="2" class="text"></text>
+      <g class="graph-g-legends">
+      </g>
+      <g class="graph-g-paths">
+        <path></path>
+      </g>
+    </svg>
+  </body>
+  <script type="text/javascript">
+    const { ipcRenderer } = require('electron')
+    global.jQuery = require('jquery');
+    global.$ = jQuery.noConflict();
+    $('.graph-win-selector').hide();
+  </script>
+  <script type="text/javascript" src="assets/graph.js"></script>
+</html>

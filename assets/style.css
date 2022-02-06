@@ -178,6 +178,9 @@ body:hover .bottom-tools{
   .row{
     min-width: 641px;
   }
+  .row-graph svg{
+    display: none;
+  }
 }
 .table.eco .row{
   min-width: 578px;
@@ -251,6 +254,31 @@ body:hover .bottom-tools{
   font-size: 90%;
   opacity: 0.6;
   cursor: text;
+}
+.row-graph{
+  flex-basis: 100%;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  margin-top: -30px;
+}
+.row-graph svg{
+  transition: 0.2s;
+}
+.row-graph svg path{
+  stroke:var(--row-color);
+  stroke-width: 2px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: 0.2s;
+}
+.row-graph:hover svg{
+  /* width:200px; */
+  /* height: 80px; */
+}
+.row-graph:hover svg path{
+  /* stroke-width:1px; */
 }
 .row-status{
   margin: 5% 7%;
@@ -399,4 +427,5 @@ html.light .row-status-span{
   .row label span{
     font-size: 140%;
   }
+
 }

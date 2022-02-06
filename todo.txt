@@ -41,46 +41,6 @@ Bugs
 +dont open from .json file
 ?-dont show ping time stats only ttl:59
 
-
-TODO
-+clear old comments
-+remove console.log
-+add trys
-+ttls
-+light mode + dynamic styling
-+sorting
-+icons for home and for buttons
-+flex for 5 rows, 4?
-+dynamic localization from the main process
-+mute for each row
-+if ttl=-1 ??
-+sort data.rows after drag and drop event
-
-TESTS
-pinging
-+  strange renaming
-+  strange adresses
-+  strange times
-opening
-+  strange file types
-+  strange configs
-+  max amount of windows
-+  strange pics
-+  aborting
-saving
-+  max amount of wins
-+  aborting
-+config tweak
-
-RELEASE
-+disable theme switcher or create timer
-+update version
-+update links switcher
-+build app
-
-
-
-
 Plan for MultyWindow:
 
 Main
@@ -120,3 +80,55 @@ Window
 +  sendDataToMain:rowData
 !3.:onChanging
   sendDataToMainStorage:rowData
+
+  TO DO
+  +clear old comments
+  +remove console.log
+  +add trys
+  +ttls
+  +light mode + dynamic styling
+  +sorting
+  +icons for home and for buttons
+  +flex for 5 rows, 4?
+  +dynamic localization from the main process
+  +mute for each row
+  +if ttl=-1 ??
+  +sort data.rows after drag and drop event
+
+  TESTS
+  pinging
+  +  strange renaming
+  +  strange adresses
+  +  strange times
+  opening
+  +  strange file types
+  +  strange configs
+  +  max amount of windows
+  +  strange pics
+  +  aborting
+  saving
+  +  max amount of wins
+  +  aborting
+  +config tweak
+
+  RELEASE
+  +disable theme switcher or create timer
+  +update version
+  +update links switcher
+  +build app
+
+TODO
++ show stats graph
++ one click to change name,address and update
+- disable "pause all" when nothing to pause
+- always show bottom tools when there are no rows
+- save statistics to csv
+- BUG sorting dont work properly for ping resiving
+- BUG still dont open old json saves
+- dont show when dont see one of two ways
+- BUG dont update "all time offline" when being offline
+- upload custom image to list
+- select rows to delete together
+- group rows
+- ultra eco pic,name,addr,status,dellay,update without titles
+- save\open buttons in the interface

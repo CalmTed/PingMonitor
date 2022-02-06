@@ -1,13 +1,13 @@
-const version = '1.3.4';
+const version = '1.3.5';
 //============
 //  DEFINING
 //============
-const { app, BrowserWindow,ipcMain,dialog,Notification,Menu } = require('electron')
+const { app, BrowserWindow,ipcMain,dialog,Notification,Menu } = require('electron');
 const storage = require('local-storage');
 const fs = require("fs");
 const ping = require('ping');
-async function saveAs(){}
-async function openConfig(){}
+async function saveAs(){};
+async function openConfig(){};
 var langCode = 'ua';
 var lang = {};
 const menuTemplate = [
@@ -71,8 +71,9 @@ const menuTemplate = [
   }
   ]
 var wins = [];
+var graphWin;
 var resivedWinData;
-var dontQuitApp = false;
+var dontQuitApp = false;//for reopening app with new data
 //=============
 //  APP:EVENTS
 //=============
@@ -144,9 +145,6 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
     if(!res.alive && res.packetLoss == '0.000'){
       status = 'offline';
     }
-    if(res.pingIP == '10.0.0.0'){
-      status = 'online';
-    }
     var result = JSON.stringify({'status':status,'rowId':rowId,'pingDellay':pingDellay*1,'packetLoss':res.packetLoss,'output':res.output,'ttl':res.ttl,'numericHost':res.numericHost,'full':JSON.stringify(res)})
     return result;
 
@@ -158,10 +156,11 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
       type:'error'
     }).catch(err => {
       console.error(err)
-    });
+    })
   }
 })
-ipcMain.handle('sendDataToMain', async(e,data)=>{
+
+ipcMain.handle('sendDataToMain', async (e,data)=>{
   try{
     if(data.call == 'saveRowsToFile'){
       if(data.rowsData&&data.winId){
@@ -198,15 +197,91 @@ ipcMain.handle('sendDataToMain', async(e,data)=>{
       }else{
         console.error("Expect to resive 'rowsData' and 'winId' parameters");
       }
-    }
-    else{
-        console.error("Expect to resive 'saveRowsToStorage' or 'saveRowsToFile' call parameters");
+    }else if(data.call == 'openGraphWin' || data.call == 'subscription_deliver'){
+      // console.log(data)
+      if(data.pingHist&&data.winId&&data.rowUid){
+        if(typeof graphWin == 'undefined'){
+            graphWin = getWindow({w:700,h:400,show:false});
+            graphWin.loadFile('graph.html');
+            graphWin.setTitle('Graph');
+            graphWin.on('ready-to-show',()=>{
+              graphWin.webContents.send('graphChannel', {
+                call: 'deliver_data',
+                data:{
+                  pingHist:data.pingHist,
+                  winId:data.winId
+                },
+              });
+              graphWin.show();
+            })
+            graphWin.on('close',(event)=>{
+              event.preventDefault();
+              graphWin.hide();
+              //TODO unsubscibe
+            })
+        }else{
+          if(data.call == 'openGraphWin'){
+            //subscribing for this address
+            graphWin.webContents.send('graphChannel', {
+              call: 'subsciption_set',
+              data:{
+                address:{w:data.winId,r:data.rowUid}
+              },
+            });
+            if(!graphWin.isVisible()){
+              graphWin.show()
+            }else{
+              graphWin.focus()
+            }
+          }else{
+            //sening data
+            graphWin.webContents.send('graphChannel', {
+            call: 'deliver_data',
+            data:{
+              pingHist:data.pingHist,
+              //for validating
+              winId:data.winId,
+              rowUid:data.rowUid,
+            },
+          });
+          }
+        }
+        //change targeted row if needed
+      }else{
+        console.error("Expect to resive 'pingHist' and 'winId' and 'rowUid' parameters\nResived:\n",data);
+      }
+    }else{
+        console.error("Expect to resive call parameter");
     }
   }catch(e){
       dialog.showMessageBox({
         title:'Error',
         message:'Program error',
         detail:'Can`t handle sendDataToMain ipcMain process\n'+e,
+        type:'error'
+      }).catch(err => {
+        console.error(err)
+      });
+    }
+})
+
+ipcMain.handle('graphChannel', async (e,data)=>{
+  try{
+    if(data.call == 'data_request'){
+      wins[data.winId].webContents.send('asynchronous-message', {call:'data_graph_request',rowUid:data.rowUid})
+    }else if (data.call == 'subsciption_remove'){
+      if(typeof data.winId != 'undefined' && typeof data.rowUid != 'undefined'){
+        wins[data.winId].webContents.send('asynchronous-message', {call:'subsciption_remove',rowUid:data.rowUid})
+      }else{
+        console.warn('subsciption_remove require data to have winId and rowUid')
+        console.warn('data:',data);
+      }
+    }
+  }catch(e){
+      dialog.showMessageBox({
+        title:'Error',
+        message:'Program error',
+        detail:'Can`t handle graphChannel ipcMain process\n'+e,
         type:'error'
       }).catch(err => {
         console.error(err)
@@ -589,4 +664,21 @@ function tr(w){
   }else{
     return ret;
   }
+}
+const getWindow = ({w,h,show})=>{
+  return new BrowserWindow({
+   width: w,
+   height: h,
+   icon: __dirname + '/assets/PM.ico',
+   // title:'PingMonitor',
+   autoHideMenuBar:true,
+   scrollBounce:true,
+   offscreen:false,
+   webPreferences: {
+     nodeIntegration: true,
+     contextIsolation: false
+   },
+   // devTools:true,
+   show:show,
+ })
 }
