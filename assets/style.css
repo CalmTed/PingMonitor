@@ -61,7 +61,7 @@ body::-webkit-scrollbar-thumb {
   opacity: 0;
   transform: scale(0.99);
 }
-body:hover .bottom-tools{
+body:hover .bottom-tools,.bottom-tools.force-show{
   opacity: 1;
   transform: scale(1);
 }
@@ -91,7 +91,10 @@ body:hover .bottom-tools{
   box-shadow: 0px 5px 20px var(--shadow-color);
   transform: translate(0px,-1px);
 }
-
+.pause-all-btn[disabled],.pause-all-btn[disabled]:hover{
+  display: none;
+  opacity: 0;
+}
 .table{
   width: 100%;
 }
@@ -137,13 +140,18 @@ body:hover .bottom-tools{
   background-size: 80px;
 }
 .table.eco .row label{
-  font-size: 80%;
+  font-size: 120%;
 }
 .table.eco .row label span{
-  font-size: 140%;
+  font-size: 104%;
+}
+.table.eco .row-ping label{
+  width: auto;
+}
+.table.eco .row-ping-title{
+  display: none;
 }
 .row{
-  --row-time:10s;
   --row-color:var(--status-white);
   min-height: 150px;
   /* min-width: 890px; */
@@ -154,11 +162,10 @@ body:hover .bottom-tools{
   display: flex;
   transition: all 0.1s ease;
   border: 2px solid var(--row-color);
-  /* animation: blinking-border var(--row-time) ease infinite; */
+
 }
 .row[status='unchecked']{
   --row-color:var(--status-white);
-  /* animation-play-state: paused; */
 }
 .row[status='checking']{
   --row-color:var(--status-yellow);
@@ -172,7 +179,6 @@ body:hover .bottom-tools{
 .row.paused{
   filter: grayscale(0.8);
   opacity: 0.8;
-  /* animation-play-state: paused; */
 }
 @media (max-width:600px) {
   .row{
@@ -273,18 +279,11 @@ body:hover .bottom-tools{
   stroke-linejoin: round;
   transition: 0.2s;
 }
-.row-graph:hover svg{
-  /* width:200px; */
-  /* height: 80px; */
-}
-.row-graph:hover svg path{
-  /* stroke-width:1px; */
-}
 .row-status{
   margin: 5% 7%;
 }
 .table.eco .row-status{
-  margin: 7% 0;
+  margin: 6% 0 0 0;
 }
 .h3 .row{
   height: calc(33vh - 8px);
@@ -313,15 +312,17 @@ body:hover .bottom-tools{
 .h9 .row{
   height: calc(11.1vh - 14px);
 }
-.row-ping{
-  max-width: 161px;
-}
+
 .row-status,.row-ping,.row-connection{
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
   align-content: center;
+}
+.row-ping{
+  max-width: 161px;
+  justify-content: space-between;
 }
 .row-status-span{
   background-color: var(--row-color);
@@ -330,29 +331,35 @@ body:hover .bottom-tools{
   border-radius: 4px;
   font-variant-caps: all-small-caps;
   box-shadow: 0 0 18px 0px var(--shadow-color);
-  /* animation: blinking-bg var(--row-time) ease infinite; */
 }
 html.light .row-status-span{
   box-shadow: 0 0 18px 0px  var(--row-color);
 }
-.row.paused .row-status-span,.row[status='unchecked'] .row-status-span{
-  /* animation-play-state: paused; */
-}
 .row-ping label,.row-connection label{
   line-height: 150%;
   width: 100%;
-  color: var(--text-second);
   font-size: 100%;
+}
+.row-ping .row-ping-title,.row-connection .row-title{
+  color: var(--text-second);
   font-variant-caps: all-small-caps;
+  font-stretch: semi-condensed;
+}
+.row-ping label{
+  line-height: 130%;
 }
 .row-ping label span,.row-connection label span{
   color: var(--text-main);
   font-size: 125%;
   margin-left: 4pt;
   word-spacing: -1px;
+  font-stretch: normal;
 }
 .row-ping-updatetime{
   cursor: text;
+}
+.eco .row-address{
+font-size: 110%;
 }
 .row-name input,.row-address input,.row-ping-updatetime input{
   background-color: transparent;

@@ -3,12 +3,14 @@ var Graph = function(){
   this.marginBottom = this.marginTop;
   this.marginRight = this.marginTop;
   this.marginLeft = this.marginTop;
+
   this.isAltPressed = false;
+  this.mouseX = 0;
+  this.mouseY = 0;
 
   this.showStart = 0;//end = start+range
   this.showRange = 1000*60*30;//instead of Zoom
   this.dataRange = 0;
-  // this.ctrlPressed = false;//for zoom
 
   this.dataArray = [];
   this.subscribedTo = {w:'none',r:'none'};
@@ -17,42 +19,39 @@ var Graph = function(){
     this.target = document.querySelector(selector);
     this.canvasW = w;
     this.canvasH = h;
-
   }
   this.create = ()=>{
-    // requestData({
-    //   win:-1,
-    //   row:-1,
-    //   callback:(dataFromMain)=>{
-    //     console.log(dataFromMain)
-    //   }
-    // })
+
     this.addEventListeners();
   }
   this.render = (list)=>{
     if(typeof list == 'undefined'){
       list = ['dataArray','showStart','showRange'];
     }
-    // this.koofW;
-    // this.koofH;
     if(list.indexOf('subscribedTo') >-1){
       $('title').text(`Graph w${this.subscribedTo.w} r${this.subscribedTo.r}`)
     }
-    if(list.indexOf('showStart') >-1 || list.indexOf('showRange') >-1){
-      let _text = `Scroll: ${this.showStart}, Zoom: ${this.showRange}`;
-      if(this.isAltPressed){
-        $('.graph-canvas .text').text(_text)
-      }else{
-        $('.graph-canvas .text').text('')
-      }
-    }
-    if(list.indexOf('dataArray') >-1 || list.indexOf('showStart') >-1|| list.indexOf('showRange') >-1){
-      // console.log(this.showStart);
+
+    if(list.indexOf('dataArray') >-1 || list.indexOf('showStart') >-1|| list.indexOf('showRange') >-1 || list.indexOf('mouseX') >-1|| list.indexOf('mouseY') >-1){
       let imageObj = getImage({
+        width:this.canvasW,
+        height:this.canvasH,
         dataArray:this.dataArray,
         start:this.showStart,
-        range:this.showRange
+        range:this.showRange,
+        mousePos:{x:this.mouseX,y:this.mouseY}
       })
+      if(imageObj.meta){
+        imageObj.meta.forEach(m=>{
+          if(m.type == 'mainText'){
+            if(this.isAltPressed){
+              $('.graph-canvas .text').text(m.moreValue)
+            }else{
+              $('.graph-canvas .text').text(m.value)
+            }
+          }
+        })
+      }
       //image grid is a path string
       //image legends array of <text>
       //image paths array [path]
@@ -81,9 +80,11 @@ var Graph = function(){
         let newDott = document.createElementNS(svgNS,"circle");
         newDott.setAttributeNS(null,"cx",dott.x);
         newDott.setAttributeNS(null,"cy",dott.y);
-        newDott.setAttributeNS(null,"r",'0.');
+        newDott.setAttributeNS(null,"fill",`var(--status-${dott.fill}`);
+        newDott.setAttributeNS(null,"r",'0.4');
         document.querySelector(".graph-g-paths").appendChild(newDott);
       })
+
     }
     //TODO "no data to show" label
   }
@@ -133,6 +134,15 @@ var Graph = function(){
         this.render()
       }
     })
+    $('.graph-canvas').on('mousemove',(e)=>{
+      let pageWidth = $('.graph-canvas')[0].clientWidth;
+      let pageHeight = $('.graph-canvas')[0].clientHeight;
+      this.set('mouseX',100/pageWidth*e.clientX)
+      this.set('mouseY',100/pageHeight*e.clientY)
+    })
+    $('.save-csv-btn').on('click',(e)=>{
+      saveToCSV()
+    })
   }
 }
 async function requestData({win,row,callback}){
@@ -169,74 +179,20 @@ ipcRenderer.on('graphChannel', function (evt, message) {
     console.debug('messge.data was not resived');
   }
 })
-const getPath = ({dataArray,start,range})=>{
-  let _ret = '';
-  let _canvasWidth = 100;
-  let _canvasHeight = 50;
-  let _heightMargin = 3;
-  let _widthMargin = _heightMargin;
-  let laterEnd = dataArray[dataArray.length-1].time - start;
-  let earlierEnd = laterEnd - range;
-  // console.log(new Date(earlierEnd),'-',new Date(laterEnd));
-  let dataTrimmed = dataArray.filter(dot=>{
-    return dot.time <= laterEnd && dot.time >= earlierEnd
-  })
-  //koof
-  // if l=0|l=1 koof = 100
-  // if l>1 find time diff > devide width by one milisecond
-  let widthKoof = (100-(_widthMargin*2));
-  if(dataTrimmed.length>1){
-    //if there is more then two minutes of histiry show like there is two minutes
-    if(dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].time > 1000*60*2){
-       widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].time)
-    }else{
-      widthKoof = (_canvasWidth -(_widthMargin*2)) / (1000*60*2)
-    }
-  }
-  let maxDellay = Math.max(...dataTrimmed.map(dot=>{return dot.pingDellay}));
-  let _map = (val,start1,stop1,start2,stop2)=>{
-    let __a = (val-start1)/(stop1-start1)*(stop2-start2)+start2;
-    return start2 < stop2 ? Math.round(Math.max(Math.min(__a, stop2), start2)*10)/10 : Math.round(Math.max(Math.min(__a, start2), stop2)*10)/10;
-  }
-  //generate string
-  //M - move
-  //L - line to the point
-  //C - curve
-  //H - horizontal
-  //Example: M0 20.5H6.67544C6.89041 20.5 7.10397 20.4653 7.3079 20.3974L15.6026 17.6325C16.6505 17.2832 17.7832 17.8495 18.1325 18.8974L18.4379 19.8138C18.7585 20.7755 19.7478 21.3453 20.7405 21.1399L33.5 18.5
-  if(dataTrimmed.length>0){
-    _ret += `M${_widthMargin} ${_map(dataTrimmed[0].pingDellay,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin)}`
-    let _firstTime = dataTrimmed[0].time;
-    let _isDrawing = true;
-    dataTrimmed.forEach((dot,i)=>{
-      if(i>0){
-        let _x = Math.round((_widthMargin+(dot.time - _firstTime)*widthKoof)*100)/100;
-        let _y = _map(dot.pingDellay,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin);
-        if(dot.status == 'offline' ||dot.status == 'timeout'||dot.status == 'error'){
-          _ret += `M${_x} ${_y}`;
-        }else{
-          _ret += `L${_x} ${_y}`;
-        }
-      }
-    })
-  }
-  // console.log(_ret);
-  return _ret;
-}
-
-const getImage = ({dataArray,start,range})=>{
+const getImage = ({width,height,dataArray,start,range,mousePos})=>{
    let _ret = {
      grid:'',
      text:[],
      paths:[],
-     dotts:[]
+     dotts:[],
+     meta:[]
    };
-   let _canvasWidth = 100;
-   let _canvasHeight = 50;
+   let _canvasWidth = width;
+   let _canvasHeight = height;
    let _heightMargin = 3;
    let _widthMargin = _heightMargin;
    if(typeof dataArray[dataArray.length-1] == 'undefined'){
-     console.log(dataArray)
+     return _ret;
    }
    let laterEnd = dataArray[dataArray.length-1].time - start;
    let earlierEnd = laterEnd - range;
@@ -346,8 +302,8 @@ const getImage = ({dataArray,start,range})=>{
      let _dellayMax = Math.max(...dataTrimmed.map(dott=>{return dott.pingDellay}))
      let _showRange = _showMax - _showMin;
      dataTrimmed.forEach(dott=>{
+     //adding new group
       if(_status !== dott.status || _pingTTL !== dott.pingTTL){
-        //adding new group
         _groupIndex++
         _status = dott.status
         _pingTTL = dott.pingTTL
@@ -356,12 +312,13 @@ const getImage = ({dataArray,start,range})=>{
           pingTTL:_pingTTL,
           dotts:[]
         }
-      }else{
       }
       //adding to existing group
       __ret.paths[_groupIndex].dotts.push({
         x:_map(dott.time,_showMax,_showMin,_canvasWidth-_widthMargin,_widthMargin),
-        y:_map(dott.pingDellay,0,_dellayMax,_canvasHeight-_heightMargin,_heightMargin)
+        y:_map(dott.pingDellay,0,_dellayMax,_canvasHeight-_heightMargin,_heightMargin),
+        time:dott.time,
+        pingDellay:dott.pingDellay,
       })
 
 
@@ -378,43 +335,59 @@ const getImage = ({dataArray,start,range})=>{
    let _paths = []
    let _px=-1
    let _py=-1
+   let closestDott = {x:0,y:0}
+   let closestDottDist = Infinity
    _ret.paths = _retGroups.paths.map((group,j)=>{
      let _path = ''
      group.dotts.forEach((d,i)=>{
        if(isNaN(d.x)){
-         console.log(group,d);
+         console.log('NaN dott found: ',group,d);
        }
-       // _path += i==0?j==0?`M${d.x} ${d.y}`:`M${d.x} ${d.y}`:`L${d.x} ${d.y}`;
-       // _path += i==0?`M${d.x} ${d.y}`:`L${d.x} ${d.y}`;
-       if(_px!=-1&&_py!=-1){
+       if(_px!=-1&&_py!=-1){//if no previews dott
          _path += i==0?`M${_px} ${_py}`:`L${d.x} ${d.y}`;
-         _ret.dotts.push({
-           x:d.x,
-           y:d.y
-         })
        }else{
          _path += i==0?`M${d.x} ${d.y}`:`L${d.x} ${d.y}`;
        }
-
-       if(i==group.dotts.length-1){
-         _ret.dotts.push({
-           x:d.x,
-           y:d.y
-         })
-         _px=d.x
-         _py=d.y
+       //searching for the closest dott
+       if(Math.abs(_canvasWidth/100*mousePos.x - d.x) < closestDottDist){
+         closestDottDist = Math.abs(_canvasWidth/100*mousePos.x - d.x);
+         closestDott = {...d,...{
+           status:group.status,
+           pingTTL:group.pingTTL
+         }};
        }
-     });
+     })
      return {path:_path,status:group.status,pingTTL:group.pingTTL}
    })
+  _ret.dotts.push({
+     x:closestDott.x,
+     y:closestDott.y,
+     fill:closestDott.status == 'online'?'green':'red'
+  })
+  //adding hovered dott info
+  _formatedDate = str=>{
+    let __fdDate = new Date(str)
+    let __addZero = num=>{
+      return (num+'').length==1?'0'+num:''+num
+    }
+    return `${__addZero(__fdDate.getHours())}:${__addZero(__fdDate.getMinutes())}:${__addZero(__fdDate.getSeconds())}`
+  }
+  _ret.meta = [..._ret.meta,...[{
+    type:'mainText',
+    value:`${closestDott.pingDellay}ms ${_formatedDate(closestDott.time)}`,
+    moreValue:`[${closestDott.status}] TTL:${closestDott.pingTTL} ${_formatedDate(closestDott.time)} ${closestDott.pingDellay}ms`
+  }]]
 
 
    return _ret;
  }
+const saveToCSV = ()=>{
+  ipcRenderer.invoke('graphChannel',{call:'save_to_csv',dataArray:graph.dataArray})
+}
 var graph = new Graph();
 graph.construct({
- w:100,
- h:50,
- selector:'.graph-canvas'
+  w:100,
+  h:50,
+  selector:'.graph-canvas'
 })
 graph.create();

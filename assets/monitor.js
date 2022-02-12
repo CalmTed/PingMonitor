@@ -54,11 +54,11 @@ class Row {
   }
   create(){
     parent = $('.table');
-    this.rowDom = $(`<div class="row row-${this.id}" rowId="${this.id}" status="${this.status}"></div>`);
+    this.rowDom = $(`<div class="row row-${this.uid}" rowId="${this.id}" status="${this.status}"></div>`);
     this.rowDom.append($(`<div class="row-column"><div class="row-picture" title="${translate('Change picture')}" style="background-image:url('${data.pics[this.picture]}')"></div><div class="row-name" title="2x ${translate('Change name')}">${this.name}</div><div class="row-address" title="2x ${translate('Change address')}">${this.pingIP}</div></div>`));
 
-    this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-graph"><svg width="100" height="40" viewBox="0 0 100 40"><path d=""></path></svg></span><span class="row-status-span">${translate(this.status)}</span></div> <div class="row-ping"><label>${translate('Dellay')}: <span class="row-ping-dellay"></span></label><label>${translate('Update time')}: <span class="row-ping-updatetime" title="2x ${translate('Change update time')}">${this.pingUpdateTime} ${translate('s')}</span></label><label>${translate('Uptime')}: <span class="row-uptime"></span></label></div></div>`));
-    this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label>${translate('Last Connection Lost')}: <span class="row-last-conn-lost"></span></label><label>${translate('Last Connection Found')}: <span class="row-last-conn-found"></span></label><label>${translate('Last Out of Connection')}: <span class="row-last-out-of-conn"></span></label><label>${translate('Total Out of Connection')}: <span class="row-total-out-of-conn"></span></label></div></div>`));
+    this.rowDom.append($(`<div class="row-column"><div class="row-status"><span class="row-graph"><svg width="100" height="40" viewBox="0 0 100 40"><path d=""></path></svg></span><span class="row-status-span">${translate(this.status)}</span></div> <div class="row-ping"><label><span class="row-ping-title">${translate('Dellay')}:</span> <span class="row-ping-dellay"></span></label><label><span class="row-ping-title">${translate('Update time')}:</span> <span class="row-ping-updatetime" title="2x ${translate('Change update time')}">${this.pingUpdateTime} ${translate('s')}</span></label><label><span class="row-ping-title">${translate('Uptime')}:</span> <span class="row-uptime"></span></label></div></div>`));
+    this.rowDom.append($(`<div class="row-column"><div class="row-connection"><label><span class="row-title">${translate('Last Connection Lost')}:</span> <span class="row-last-conn-lost"></span></label><label><span class="row-title">${translate('Last Connection Found')}:</span> <span class="row-last-conn-found"></span></label><label><span class="row-title">${translate('Last Out of Connection')}:</span> <span class="row-last-out-of-conn"></span></label><label><span class="row-title">${translate('Total Out of Connection')}:</span> <span class="row-total-out-of-conn"></span></label></div></div>`));
     this.rowDom.append($(`<div class="row-column tools"><div class="row-tools">\
                             <div class="row-tool material-icons tool-pause-row" title="${translate('Pause pinging')}">play_arrow</div>\
                             <div class="row-tool material-icons tool-mute-row" title="${translate('Mute row')}">volume_up</div>\
@@ -70,7 +70,9 @@ class Row {
       this.render()
     };//for initial pausing
     this.pinging();
-    checkRowsNumber();//for Eco mode
+    setTimeout(()=>{
+      checkRowsNumber();//for Eco mode
+    },300)
     //srtting drag and drop
     sortable = new Sortable($('.table')[0], {
       // handle:'.abc'
@@ -79,15 +81,15 @@ class Row {
         let tempRow = data.rows[evt.newIndex];
         data.rows[evt.newIndex] = data.rows[evt.oldIndex]
         data.rows[evt.oldIndex] = tempRow;
-        data.rows[evt.newIndex].id = evt.newIndex;
-        data.rows[evt.oldIndex].id = evt.oldIndex;
+        data.rows[evt.newIndex].changeProp('id',evt.newIndex);
+        data.rows[evt.oldIndex].changeProp('id',evt.oldIndex);
       }
     });
   }
   createRowEventListeners(){
     //adding eventlisteners for editing fields
     //picture
-    $(`.row-${this.id} .row-picture`).on('click',function(){
+    $(`.row-${this.uid} .row-picture`).on('click',function(){
       let colDOM = $(this).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
       let rowId = rowDOM.attr('rowId');
@@ -100,7 +102,7 @@ class Row {
       data.rows[rowOBJ.id].changeProp('picture',nextPic);
     });
     //name
-    $(`.row-${this.id} .row-name`).on('click',function(){
+    $(`.row-${this.uid} .row-name`).on('click',function(){
       let colDOM = $(this).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
       let rowId = rowDOM.attr('rowId');
@@ -124,7 +126,7 @@ class Row {
       })
     });
     //Ping IP
-    $(`.row-${this.id} .row-address`).on('click',function(){
+    $(`.row-${this.uid} .row-address`).on('click',function(){
       let colDOM = $(this).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
       let rowId = rowDOM.attr('rowId');
@@ -148,7 +150,7 @@ class Row {
       })
     });
 
-    $(`.row-${this.id} .row-graph`).on('click',function(){
+    $(`.row-${this.uid} .row-graph`).on('click',function(){
       let statusDOM = $(this).parent()[0]
       let colDOM = $($(statusDOM).parent()[0])
       let rowDOM = $($(colDOM).parent()[0])
@@ -161,7 +163,7 @@ class Row {
 
     })
     //UpdateTime
-    $(`.row-${this.id} .row-ping-updatetime`).on('click',function(){
+    $(`.row-${this.uid} .row-ping-updatetime`).on('click',function(){
       let label = $(this).parent()[0]
       let subColDOM = $(label).parent()[0]
       let colDOM = $(subColDOM).parent()[0]
@@ -194,7 +196,7 @@ class Row {
       })
     });
     //removeRow
-    $(`.row-${this.id} .tool-remove-row`).on('dblclick',function(){
+    $(`.row-${this.uid} .tool-remove-row`).on('dblclick',function(){
       let toolsDOM = $(this).parent()[0]
       let colDOM = $(toolsDOM).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
@@ -203,7 +205,7 @@ class Row {
       rowOBJ.remove()
     });
     //pauseRow
-    $(`.row-${this.id} .tool-pause-row`).on('click',function(){
+    $(`.row-${this.uid} .tool-pause-row`).on('click',function(){
       let toolsDOM = $(this).parent()[0]
       let colDOM = $(toolsDOM).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
@@ -218,7 +220,7 @@ class Row {
       }
     });
     //muteRow
-    $(`.row-${this.id} .tool-mute-row`).on('click',function(){
+    $(`.row-${this.uid} .tool-mute-row`).on('click',function(){
       let toolsDOM = $(this).parent()[0]
       let colDOM = $(toolsDOM).parent()[0]
       let rowDOM = $($(colDOM).parent()[0])
@@ -226,7 +228,7 @@ class Row {
       let rowOBJ = data.rows[rowId];
       if(!rowOBJ.isMuted){
         rowOBJ.changeProp('isMuted',true);
-        $('.row-'+rowOBJ.id+' .player')[0].pause();
+        $('.row-'+rowOBJ.uid+' .player')[0].pause()
       }else{
         rowOBJ.changeProp('isMuted',false);
       }
@@ -254,25 +256,29 @@ class Row {
         return Math.floor(t/3600000)+' '+translate('h');
       }
     }
+    if(needToUpdate('id')){
+      $(`.row-${this.uid}`).attr('rowid',this.id);
+    }
     //col1
-    if(needToUpdate('picture') && $(`.row-${this.id} .row-picture`).css("background-image") != `url('${data.pics[this.picture]}')`){
-      $(`.row-${this.id} .row-picture`).css("background-image",`url('${data.pics[this.picture]}')`);
+    if(needToUpdate('picture') && $(`.row-${this.uid} .row-picture`).css("background-image") != `url('${data.pics[this.picture]}')`){
+      $(`.row-${this.uid} .row-picture`).css("background-image",`url('${data.pics[this.picture]}')`);
     }
-    if(needToUpdate('name') && $(`.row-${this.id} .row-name`).html() != this.name){
-      $(`.row-${this.id} .row-name`).html(this.name);
+    if(needToUpdate('name') && $(`.row-${this.uid} .row-name`).html() != this.name){
+      $(`.row-${this.uid} .row-name`).html(this.name);
     }
-    if(needToUpdate('pingIP') && $(`.row-${this.id} .row-address`).html() != this.pingIP){
-      $(`.row-${this.id} .row-address`).html(this.pingIP);
+    if(needToUpdate('pingIP') && $(`.row-${this.uid} .row-address`).html() != this.pingIP){
+      $(`.row-${this.uid} .row-address`).html(this.pingIP);
     }
-    //col2-3
+    //col2
     if(needToUpdate('pingHist')){
-      $(`.row-${this.id} .row-graph path`).attr('d',getPath({dataArray:this.pingHist}));
+      $(`.row-${this.uid} .row-graph path`).attr('d',getPath({dataArray:this.pingHist}));
     }
     if(needToUpdate('status')){
-      $(`.row-${this.id}`).attr('status',this.status);
-      $(`.row-${this.id} .row-status-span`).html(translate(this.status));
+      $(`.row-${this.uid}`).attr('status',this.status);
+      $(`.row-${this.uid} .row-status-span`).html(translate(this.status));
+
     }
-    //col3
+    //col2-3
     if(needToUpdate('pingDellayTime')){
       let ttlList = [];
       let stats = {};
@@ -289,9 +295,9 @@ class Row {
       })
 
       if(['unknown','NaN',-1].indexOf(this.pingDellayTime) == -1){
-        $(`.row-${this.id} .row-ping-dellay`).html(`${this.pingDellayTime} ${translate('ms')}`);
+        $(`.row-${this.uid} .row-ping-dellay`).html(`${this.pingDellayTime}${translate('ms')}`);
       }else{
-        $(`.row-${this.id} .row-ping-dellay`).html(`-`);
+        $(`.row-${this.uid} .row-ping-dellay`).html(`-`);
       }
     }
     if(needToUpdate('pingTTL') || needToUpdate('packetsResived')){
@@ -327,26 +333,27 @@ class Row {
             value.avgSum = 0;
             value.avgNum = 0;//?
           })
-          $(`.row-${this.id} .row-ping-dellay`).attr('title',ttlText);
+          $(`.row-${this.uid} .row-ping-dellay`).attr('title',ttlText);
         }else{
-          $(`.row-${this.id} .row-ping-dellay`).attr('title',`TTL:${this.pingTTL}`);
+          $(`.row-${this.uid} .row-ping-dellay`).attr('title',`TTL:${this.pingTTL}`);
         }
       }else{
-        $(`.row-${this.id} .row-ping-dellay`).attr('title',`TTL:-`);
+        $(`.row-${this.uid} .row-ping-dellay`).attr('title',`TTL:-`);
       }
 
     }
     if(needToUpdate('pingUpdateTime')){
-      $(`.row-${this.id} .row-ping-updatetime`).html(`${this.pingUpdateTime} ${translate('s')}`);
-      $(`.row-${this.id}`).css('--row-time',this.pingUpdateTime+'s')
+      $(`.row-${this.uid} .row-ping-updatetime`).html(`${this.pingUpdateTime}${translate('s')}`);
     }
     if(needToUpdate('packetsSent') || needToUpdate('packetsResived') || needToUpdate('packetsLost')){
       let uptime = 0
       if(this.packetsSent*this.packetsResived != 0){
         uptime = Math.round(100/this.packetsSent*this.packetsResived*100)/100;
       }
-      $(`.row-${this.id} .row-uptime`).html(`${uptime} %`).attr('title','S:'+(this.packetsSent)+' R:'+(this.packetsResived)+' L:'+(this.packetsLost));
+      $(`.row-${this.uid} .row-uptime`).html(`${uptime}%`).attr('title','S:'+(this.packetsSent)+' R:'+(this.packetsResived)+' L:'+(this.packetsLost));
     }
+
+
     //col4
     if(needToUpdate('lastConnectionLost') || needToUpdate('lastConnectionFound') || needToUpdate('lastOutOfConnection')|| needToUpdate('totalOutOfConnection')){
       //LAST LOST
@@ -359,10 +366,10 @@ class Row {
         if(secsL<10){
           secsL = '0'+secsL;
         }
-        $(`.row-${this.id} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${minsL}:${secsL}`);
-        $(`.row-${this.id} .row-last-conn-lost`).attr('title',this.lastConnectionLost);
+        $(`.row-${this.uid} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${minsL}:${secsL}`);
+        $(`.row-${this.uid} .row-last-conn-lost`).attr('title',this.lastConnectionLost);
       }else{
-        $(`.row-${this.id} .row-last-conn-lost`).html("-");
+        $(`.row-${this.uid} .row-last-conn-lost`).html("-");
       }
       //LAST FOUND
       if(this.lastConnectionFound !=0 ){
@@ -374,92 +381,83 @@ class Row {
         if(secsF<10){
           secsF = '0'+secsF;
         }
-        $(`.row-${this.id} .row-last-conn-found`).html(`${this.lastConnectionFound.getHours()}:${minsF}:${secsF}`);
-        $(`.row-${this.id} .row-last-conn-found`).attr('title',this.lastConnectionFound);
+        $(`.row-${this.uid} .row-last-conn-found`).html(`${this.lastConnectionFound.getHours()}:${minsF}:${secsF}`);
+        $(`.row-${this.uid} .row-last-conn-found`).attr('title',this.lastConnectionFound);
       }else{
-        $(`.row-${this.id} .row-last-conn-found`).html(`-`);
+        $(`.row-${this.uid} .row-last-conn-found`).html(`-`);
       }
       //LAST
-      $(`.row-${this.id} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
+      $(`.row-${this.uid} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
       if(this.lastConnectionFound < this.lastConnectionLost){
         //when out of connection
-        $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection + this.lastOutOfConnection));
+        $(`.row-${this.uid} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection + this.lastOutOfConnection));
       }else{
         //when connected
-
-        $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
+        $(`.row-${this.uid} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
       }
 
     }else{
       if(this.lastConnectionLost == 0){
-        $(`.row-${this.id} .row-last-conn-lost`).html('-');
+        $(`.row-${this.uid} .row-last-conn-lost`).html('-');
       }
       if(this.lastConnectionFound == 0){
-        $(`.row-${this.id} .row-last-conn-found`).html('-');
+        $(`.row-${this.uid} .row-last-conn-found`).html('-');
       }
       if(this.lastOutOfConnection == 0){
-        $(`.row-${this.id} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
+        $(`.row-${this.uid} .row-last-out-of-conn`).html(toFormat(this.lastOutOfConnection));
       }
-      if(this.totalOutOfConnection == 0){
-        $(`.row-${this.id} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
+      if(this.totalOutOfConnection == 0 && this.lastOutOfConnection == 0){
+        $(`.row-${this.uid} .row-total-out-of-conn`).html(toFormat(this.totalOutOfConnection));
       }
 
     }
     //pausing
     if(this.isPaused){
-      if($(`.row-${this.id}.paused`).length == 0){
-        $(`.row-${this.id}`).addClass('paused')
-        //play_arrow
-        //pause
-        $(`.row-${this.id} .tool-pause-row`).attr('title',translate('Restart pinging'))
-        $(`.row-${this.id} .tool-pause-row`).html('play_arrow')
-      }else{
+      if($(`.row-${this.uid}.paused`).length == 0){
+        $(`.row-${this.uid}`).addClass('paused')
+        $(`.row-${this.uid} .tool-pause-row`).attr('title',translate('Restart pinging'))
+        $(`.row-${this.uid} .tool-pause-row`).html('play_arrow')
       }
-      $(`.row-${this.id} .row-status-span`).html(translate('paused'))
+      $(`.row-${this.uid} .row-status-span`).html(translate('paused'))
     }else{
-      $(`.row-${this.id} .tool-pause-row`).html('pause');
-      $(`.row-${this.id}`).removeClass('paused')
-      $(`.row-${this.id} .tool-pause-row`).attr('title',translate('Pause pinging'))
-      $(`.row-${this.id}`).attr('status',this.status);
-      $(`.row-${this.id} .row-status-span`).html(translate(this.status));
+      $(`.row-${this.uid} .tool-pause-row`).html('pause');
+      $(`.row-${this.uid}`).removeClass('paused')
+      $(`.row-${this.uid} .tool-pause-row`).attr('title',translate('Pause pinging'))
+      $(`.row-${this.uid}`).attr('status',this.status);
+      $(`.row-${this.uid} .row-status-span`).html(translate(this.status));
     }
+    checkUnpausedRows()
 
     if(needToUpdate('isChecking')){
       if(this.isChecking){
-        $(`.row-${this.id}`).addClass('checking')
+        $(`.row-${this.uid}`).addClass('checking')
       }else{
-        $(`.row-${this.id}`).removeClass('checking')
+        $(`.row-${this.uid}`).removeClass('checking')
       }
     }
     //muting
     if(needToUpdate('isMuted')){
       if(this.isMuted){
-        $(`.row-${this.id} .tool-mute-row`).html('volume_off')
-        $(`.row-${this.id} .tool-mute-row`).attr('title',translate('Unmute row'))
+        $(`.row-${this.uid} .tool-mute-row`).html('volume_off')
+        $(`.row-${this.uid} .tool-mute-row`).attr('title',translate('Unmute row'))
       }else{
-        $(`.row-${this.id} .tool-mute-row`).html('volume_up')
-        $(`.row-${this.id} .tool-mute-row`).attr('title',translate('Mute row'))
+        $(`.row-${this.uid} .tool-mute-row`).html('volume_up')
+        $(`.row-${this.uid} .tool-mute-row`).attr('title',translate('Mute row'))
       }
     }
   }
   remove(){
     //remove from DOM
-    $(`.row-${this.id}`).remove();
+    $(`.row-${this.uid}`).remove();
     //remove from array
     data.rows.splice(this.id,1);
     let i = 0;
     //sort list of remaining
     data.rows.forEach(
       (row) => {
-        $(`.row-${row.id}`).addClass(`temp-row-${i}`)
-        $(`.temp-row-${i}`).removeClass(`row-${row.id}`).attr('rowId',i)
+        $(`.row-${row.uid}`).attr('rowId',i)
         row.changeProp('id',i);
         i++;
-    })
-    data.rows.forEach(
-      (row) => {
-        $(`.temp-row-${row.id}`).addClass(`row-${row.id}`)
-        $(`.row-${row.id}`).removeClass(`temp-row-${row.id}`)
     })
     checkRowsNumber();//for Eco mode
     saveToLocalStorage();
@@ -500,8 +498,8 @@ class Row {
           }
           if(res.status == _this.status){
             let looc = now.getTime() - _this.lastConnectionLost.getTime();
-            if(looc>(config.timeToAlarm*1000) && !_this.isMuted && $('.row-'+_this.id+' .player')[0].paused){
-              $('.row-'+_this.id+' .player')[0].play();
+            if(looc>(config.timeToAlarm*1000) && !_this.isMuted && $('.row-'+_this.uid+' .player')[0].paused){
+              $('.row-'+_this.uid+' .player')[0].play()
             }
             _this.changeProp('lastOutOfConnection',looc);
           }
@@ -620,6 +618,7 @@ function createPage(){
     })
   newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]" onclick="addRow()">+ <span>'+translate("Add new row")+'</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [Ctrl+F]" onclick="toggleFullScreen()"><span class="material-icons">fullscreen</span>'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Ctrl+Space]" onclick="togglePause()"><span class="material-icons">pause</span>'+translate("Pause all rows")+'</div></div>');
   root.append(newRowBtns);
+  checkUnpausedRows();
 }
 $(document).ready(function(){
   $('.root').html('<div style="background-image: url(assets/icons/PM_nofill.ico);width: 300px;height: 100vh;background-size: 270px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%; ">Ping Monitor</h1><p style=" display: flex; justify-content: center; align-items: center; height: 110vh; position: fixed; width: 100%; opacity: 0.7; ">Reading files...</p>');
@@ -643,7 +642,7 @@ $(document).ready(function(){
       togglePause();
     }
   })
-  $('body ')[0].onresize = (e)=>{
+  $('body')[0].onresize = (e)=>{
     checkRowsNumber();
   }
 })
@@ -754,6 +753,12 @@ function checkRowsNumber(){
     if(data.rows.length<6){
       $('.table').removeClass('eco');
     }
+  }
+  if(data.rows.length == 0){
+    $('.bottom-tools').addClass('force-show')
+    checkUnpausedRows()
+  }else{
+    $('.bottom-tools').removeClass('force-show')
   }
 }
 var picsDirLocal;
@@ -875,7 +880,7 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
       configSet('colorMode','dark');
     }
   }else if(message.call == 'subsciption_remove'){
-    console.log(`Removing subscription in the row${message.rowUid}`,message);
+    console.debug(`Removing subscription in the row${message.rowUid}`,message);
     if(typeof message.rowUid != 'undefined'){
       if(data.rows.filter(r=>r.uid == message.rowUid).length >0){
         data.rows.filter(r=>r.uid == message.rowUid)[0].changeProp('isSubscribed',false)
@@ -971,7 +976,7 @@ const getPath = ({dataArray})=>{
   let _canvasHeight = 40;
   let _heightMargin = 5;
   let _widthMargin = _heightMargin;
-  let timeOfBegining = new Date().getTime() - 1000*60*30;//half an hour
+  let timeOfBegining = new Date().getTime() - 1000*60*5;//cut to last 5 min
   let dataTrimmed = dataArray.filter(dot=>{return dot.time >= timeOfBegining})
   //koof
   // if l=0|l=1 koof = 100
@@ -1014,4 +1019,14 @@ const getPath = ({dataArray})=>{
   }
   // console.log(_ret);
   return _ret;
+}
+const checkUnpausedRows = ()=>{
+  let unpausedRows = data.rows.filter(r=>{
+    return !r.isPaused
+  })
+  if(unpausedRows.length == 0){
+    $('.pause-all-btn').attr('disabled','')
+  }else{
+    $('.pause-all-btn').removeAttr('disabled')
+  }
 }

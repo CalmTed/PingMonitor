@@ -58,9 +58,9 @@ const menuTemplate = [
       {
         label: tr('Toggle Dark Mode'),
         click: async () => {
-          // toggleDarkMode()
+          new Date().getTime()<1649251404600?toggleDarkMode():0;//works until 6th of april 2022
         },
-        enabled:false,
+        enabled:new Date().getTime()<1649251404600?true:false,//works until 6th of april 2022
         accelerator:'Ctrl+Shift+D'
       },
       { role: 'toggleDevTools' },
@@ -184,10 +184,18 @@ ipcMain.handle('sendDataToMain', async (e,data)=>{
             //write to file
             let time = new Date();
             let fileName = 'PMConfig_'+time.getFullYear()+(time.getMonth()+1)+time.getDate()+time.getHours()+time.getMinutes()+time.getSeconds();
+            let _text = storageObj;
+            if(typeof storageObj.rows == 'string'){
+              storageObj.hash = storageObj.rows
+            }else{
+              storageObj.hash = JSON.stringify(storageObj.rows)
+            }
+            _text = JSON.stringify(storageObj,undefined,4);
             writeFile({
               name:fileName,
-              text:JSON.stringify(storageObj),
-              extention:'pm'
+              text:_text,
+              extention:'pm',
+              title:'Save config'
             })
           }
 
@@ -217,7 +225,9 @@ ipcMain.handle('sendDataToMain', async (e,data)=>{
             graphWin.on('close',(event)=>{
               event.preventDefault();
               graphWin.hide();
-              //TODO unsubscibe
+              if(wins[data.winId]){
+                wins[data.winId].webContents.send('asynchronous-message', {call:'subsciption_remove',rowUid:data.rowUid})
+              }
             })
         }else{
           if(data.call == 'openGraphWin'){
@@ -275,6 +285,39 @@ ipcMain.handle('graphChannel', async (e,data)=>{
       }else{
         console.warn('subsciption_remove require data to have winId and rowUid')
         console.warn('data:',data);
+      }
+    }else if(data.call == 'save_to_csv'){
+      if(typeof data.dataArray != 'undefined'){
+        let _toCSV = (obj)=>{
+          _csvText = '';
+          _csvArray = [];
+          obj.forEach((dott,i)=>{
+            if(i === 0){
+              _csvArray[i] = []
+            }
+            _csvArray[i+1] = [];
+            Object.entries(dott).forEach(e=>{
+              if(i === 0){
+              _csvArray[i].push(e[0])
+              }
+              _csvArray[i+1].push(e[1]+'')
+            })
+            if(i === 0){
+              _csvText += `${_csvArray[i].join(',')}\n`
+            }
+            _csvText += `${_csvArray[i+1].join(',')}\n`
+          })
+          // _csvText = JSON.stringify(data.dataArray,undefined,4);
+          return _csvText;
+        }
+        let _text = _toCSV(data.dataArray)
+        let _name =  `Ping history save at ${new Date().getYear()}-${new Date().getMonth()}-${new Date().getDay()}-${new Date().getHours()}-${new Date().getMinutes()}-${new Date().getSeconds()}`
+        writeFile({
+          name:_name,
+          text:_text,
+          extention:'csv',
+          title:'Save ping history'
+        })
       }
     }
   }catch(e){
@@ -375,7 +418,7 @@ function createWindow(){
           }
         })
       })
-      newWin.on('closed',(e)=>{
+      newWin.on('close',(e)=>{
         wins.forEach((win,i)=>{
           if (win == e.sender){
             wins.splice(i,1);
@@ -389,6 +432,11 @@ function createWindow(){
           win.webContents.send('asynchronous-message', {call:'sendDataToWin',rowsData: 'relocateRows'})
           newId++;
         })
+        if(wins.length == 0){
+          if(graphWin){
+            graphWin.destroy()
+          }
+        }
       })
     }else{
       dialog.showMessageBox({
@@ -396,7 +444,7 @@ function createWindow(){
         message:'Maximum amount of windows',
         type:'info'
       }).catch(err => {
-        console.error(err)
+      console.error(err)
       });
     }
   }catch(e){
@@ -506,25 +554,25 @@ async function pinging(ip,rowId){
   }
 }
 function writeFile (data){
-  if(data.name&&data.text&&data.extention){
+  if(data.name&&data.text&&data.extention&&data.title){
     try{
-      text = JSON.parse(data.text);
-      if(typeof text.rows == 'string'){
-        text.hash = text.rows
-      }else{
-        text.hash = JSON.stringify(text.rows)
-      }
-      text = JSON.stringify(text,undefined,4);
+      // text = JSON.parse(data.text);
+      // if(typeof text.rows == 'string'){
+      //   text.hash = text.rows
+      // }else{
+      //   text.hash = JSON.stringify(text.rows)
+      // }
+      // text = JSON.stringify(text,undefined,4);
       dialog.showSaveDialog({
         filters: [{
           name: (data.extention.toUpperCase())+' file',
           extensions: [data.extention]
         }],
-        title: 'Saving config',
+        title: data.title,//'Saving config',
         defaultPath: data.name
       }).then(fileName => {
         if(fileName.filePath){
-          fs.writeFile(fileName.filePath, text, function(err) {
+          fs.writeFile(fileName.filePath, data.text, function(err) {
             if (err) return console.error(err);
           });
         }
