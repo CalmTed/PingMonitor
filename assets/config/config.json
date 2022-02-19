@@ -4,6 +4,8 @@
   "scale":"100",
   "timeToAlarm":"1",
   "unmuteOnGettingOnline":false,
+  "pingHistoryTimeLimit":3600000,
+  "pingMiniGraphTimeLimit":300000,
   "initialPause":true,
   "pingTimeStrategyType":"auto",
   "defaultPingTimeStrategy":{

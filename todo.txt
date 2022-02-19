@@ -122,12 +122,12 @@ TODO
 + one click to change name,address and update
 + disable "pause all" when nothing to pause
 + always show bottom tools when there are no rows
-- save statistics to csv
++ save statistics to csv
 + BUG sorting dont work properly for ping resiving
-- BUG still dont open old json saves
-- dont show when dont see one of two ways
+? BUG still dont open old json saves
+? dont show when dont see one of two ways
 + BUG dont update "all time offline" when being offline
-- upload custom image to list
+-- upload custom image to list
 - select rows to delete together
 - group rows
 - ultra eco pic,name,addr,status,dellay,update without titles

@@ -1,4 +1,5 @@
 const Sortable = require("sortablejs");
+const {webFrame} = require('electron');
 const fs = require("fs");
 var data = {}
 data.rows = [];
@@ -9,9 +10,9 @@ var configSet = ()=>{};
 var winId,prevWinId;
 var sortable;
 /*=============== CHANGE THIS FLAG BEFORE BUILDING ==============*/
-// var target = 'build';
+var target = 'build';
 // var target = 'pack';
-var target = 'dev';
+// var target = 'dev';
 /*===============================================================*/
 var debug = true;
 class Row {
@@ -48,8 +49,8 @@ class Row {
     this.isChecking = false;
     this.isMuted = false;
     this.pingTimeStrategy = config.defaultPingTimeStrategy;
-    this.rowDom = ''
-    this.ttls = {}
+    this.rowDom = '';
+    this.ttls = {};
     this.isSubscribed = false;//subscription to graph
   }
   create(){
@@ -70,12 +71,8 @@ class Row {
       this.render()
     };//for initial pausing
     this.pinging();
-    setTimeout(()=>{
-      checkRowsNumber();//for Eco mode
-    },300)
-    //srtting drag and drop
+    //sorting drag and drop
     sortable = new Sortable($('.table')[0], {
-      // handle:'.abc'
       //sorting rows after list update
       onUpdate:function(evt){
         let tempRow = data.rows[evt.newIndex];
@@ -87,7 +84,11 @@ class Row {
     });
   }
   createRowEventListeners(){
-    //adding eventlisteners for editing fields
+    /*                                                               */
+    /*                    CAN CALL  changeProp                       */
+    /*                                                               */
+    /*             CAN NOT set HTML or Props manualy                 */
+    /*                                                               */
     //picture
     $(`.row-${this.uid} .row-picture`).on('click',function(){
       let colDOM = $(this).parent()[0]
@@ -190,7 +191,7 @@ class Row {
         finEdit(this)
       })
       $('.row-ping-updatetime input').on('keypress',function(e){
-        if(e.which == 13){
+        if(e.which == 13){//enter
           finEdit(this)
         }
       })
@@ -452,23 +453,21 @@ class Row {
     //remove from array
     data.rows.splice(this.id,1);
     let i = 0;
-    //sort list of remaining
+    //sort remaining rows
     data.rows.forEach(
       (row) => {
         $(`.row-${row.uid}`).attr('rowId',i)
         row.changeProp('id',i);
         i++;
     })
-    checkRowsNumber();//for Eco mode
+    checkRowsNumber();//for rows size check
     saveToLocalStorage();
   }
   changeProp(prop,value){
-    if(this[prop] != value || /* white list */ ['name','pingUpdateTime','pingIP','pingDellayTime'].indexOf(prop) !== -1){
+    if(this[prop] != value || /* sama value bypass list */ ['name','pingUpdateTime','pingIP','pingDellayTime'].indexOf(prop) !== -1){
       this[prop] = value;
-      if(/* black list */[].indexOf(prop) == -1){
-        this.render(prop);
-      }
-      if(/* black list */['isChecking','_status','pingDellayTime','packetsSent','packetsResived','packetsLost','lastConnectionLost','lastOutOfConnection'].indexOf(prop) == -1){
+      this.render(prop);
+      if(/* dont need to save those list */['isChecking','_status','pingDellayTime','packetsSent','packetsResived','packetsLost','lastConnectionLost','lastOutOfConnection'].indexOf(prop) == -1){
         saveToLocalStorage();
       }
     }
@@ -480,7 +479,7 @@ class Row {
         let status = res.status;
         let rowId = res.rowId;
         let _this = data.rows[rowId];
-        //ttl
+        //set ttl
         if( ['undefined','null'].indexOf( typeof res.ttl) == -1){
           _this.changeProp('pingTTL', res.ttl);
         }else{
@@ -504,7 +503,7 @@ class Row {
             _this.changeProp('lastOutOfConnection',looc);
           }
         }
-        //on founding connection
+        //on reconnecting
         if(['offline','error','timeout'].indexOf(_this.status) > -1 /* if was offline */ && /* but now online*/ ['online'].indexOf(res.status) > -1 ){
 
           _this.changeProp('lastConnectionFound',new Date());
@@ -518,7 +517,7 @@ class Row {
 
         _this.changeProp('_status',status);
         if(res.pingDellay == -1){
-          let bpd = backupPingDelayFunc(res)
+          let bpd = res.pingDellay?res.pingDellay:-1;
           if(bpd !=-1){
             res.pingDellay = bpd;
           }
@@ -531,7 +530,7 @@ class Row {
           _this.changeProp('packetsLost',_this.packetsLost+1);
         }
         _this.changeProp('isChecking',false);
-        //changing time based on ping time strategy
+        //changing update time based on ping time strategy
         if(_this.packetsSent > 0){//to not to change onstartup
           if(_this.pingTimeStrategy[_this.status] != undefined){
             if(_this.pingUpdateTime != _this.pingTimeStrategy[_this.status]){
@@ -541,9 +540,9 @@ class Row {
             _this.changeProp('pingUpdateTime',_this.pingTimeStrategy['default']);
           }
         }
-        //hist
+        //saving data to ping history
         let timenow = new Date().getTime();
-        let timeToDelete = 1000*60*60; //six hours
+        let timeToDelete = typeof config.pingHistoryTimeLimit == 'undefined'?1000*60*60:config.pingHistoryTimeLimit;
         _this.pingHist.push({
           'time':timenow,
           'timestamp':new Date(timenow),
@@ -551,19 +550,15 @@ class Row {
           'pingDellay':_this.pingDellayTime,
           'pingTTL':_this.pingTTL
         })
-        _this.pingHist.map(h=>{
-          if(timenow - h.time < timeToDelete){
-            return h;
-          }else{
-            return false;
-          }
-        });
+        _this.pingHist = [..._this.pingHist.filter(h=>{
+          return timenow - h.time < timeToDelete
+        })]
         _this.render('pingHist');
 
         if(_this.isSubscribed){
           let __hist = _this.pingHist
-          //winId is a global variable
           let __rowUid = _this.uid;
+          //winId is a global variable
           ipcRenderer.invoke('sendDataToMain',{call:'subscription_deliver',pingHist:__hist,winId:winId,rowUid:__rowUid});
         }
         _this.timeout = setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000);
@@ -618,7 +613,7 @@ function createPage(){
     })
   newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]" onclick="addRow()">+ <span>'+translate("Add new row")+'</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [Ctrl+F]" onclick="toggleFullScreen()"><span class="material-icons">fullscreen</span>'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Ctrl+Space]" onclick="togglePause()"><span class="material-icons">pause</span>'+translate("Pause all rows")+'</div></div>');
   root.append(newRowBtns);
-  checkUnpausedRows();
+  checkUnpausedRows();//to always show tools if needed
 }
 $(document).ready(function(){
   $('.root').html('<div style="background-image: url(assets/icons/PM_nofill.ico);width: 300px;height: 100vh;background-size: 270px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%; ">Ping Monitor</h1><p style=" display: flex; justify-content: center; align-items: center; height: 110vh; position: fixed; width: 100%; opacity: 0.7; ">Reading files...</p>');
@@ -632,11 +627,11 @@ $(document).ready(function(){
     if(e.ctrlKey && e.which == 6){
       toggleFullScreen()
     }
-    //N
+    // "N"
     if(e.ctrlKey && (e.which == 110 || e.which == 14) && !e.shiftKey){
       addRow();
     }
-    //DOING SAVE & OPEN IN THE MENU
+
     if(e.ctrlKey && e.which == 0){
       e.preventDefault();//stoping scroll
       togglePause();
@@ -645,6 +640,7 @@ $(document).ready(function(){
   $('body')[0].onresize = (e)=>{
     checkRowsNumber();
   }
+  webFrame.setZoomFactor(1);
 })
 function translate(a){
   let trans = a;
@@ -712,7 +708,6 @@ async function ping(ip,rowId,callback) {
   callback(result);
 }
 function checkRowsNumber(){
-
   if(window.innerWidth > 2100){
     $('.table').addClass('eco');
     let rowsOfRows = Math.ceil(data.rows.length / 3);
@@ -896,7 +891,7 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
       cosole.error('Cant unsubscibe, rowUid was not provided')
     }
   }else{
-    console.error('Unknown message call: ',message.call);
+    console.error('Unknown message call: ',message.call,message);
   }
 })
 var toggleFullScreen = function() {
@@ -910,9 +905,9 @@ var toggleFullScreen = function() {
 }
 var addRow = ()=>{
   let lastRow = data.rows[data.rows.length-1];
-    newRowData = config.defaultNewRow;
+  let newRowData = config.defaultNewRow;
   let newData = new Row(newRowData.name,newRowData.picture,newRowData.pingIP,newRowData.pingUpdateTime,newRowData.isPaused)
-  if(lastRow != undefined){
+  if(typeof lastRow != 'undefined'){
     newData = new Row(lastRow.name,lastRow.picture,lastRow.pingIP,lastRow.pingUpdateTime,lastRow.isPaused);
   }
   data.rows.push( newData );
@@ -946,13 +941,7 @@ var togglePause = ()=>{
     pausedRows = [];
   }
 }
-var backupPingDelayFunc = (res) => {
-  if(res.pingDellay){
-    return res.pingDellay;
-  }else{
-    return -1;
-  }
-}
+
 var configSet = (key,value)=>{
   if(config[key]){
     config[key] = value;
@@ -976,18 +965,19 @@ const getPath = ({dataArray})=>{
   let _canvasHeight = 40;
   let _heightMargin = 5;
   let _widthMargin = _heightMargin;
-  let timeOfBegining = new Date().getTime() - 1000*60*5;//cut to last 5 min
+  let dataLenghtLimit = config.pingHistoryTimeLimit<config.pingMiniGraphTimeLimit?config.pingHistoryTimeLimit:config.pingMiniGraphTimeLimit;
+  let timeOfBegining = new Date().getTime() - dataLenghtLimit;//cut to last N min
   let dataTrimmed = dataArray.filter(dot=>{return dot.time >= timeOfBegining})
   //koof
   // if l=0|l=1 koof = 100
   // if l>1 find time diff > devide width by one milisecond
   let widthKoof = (100-(_widthMargin*2));
   if(dataTrimmed.length>1){
-    //if there is more then two minutes of histiry show like there is two minutes
-    if(dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].time > 1000*60*2){
+    //no less then timelimit
+    if(dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].time > dataLenghtLimit){
        widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].time)
     }else{
-      widthKoof = (_canvasWidth -(_widthMargin*2)) / (1000*60*2)
+      widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataLenghtLimit)
     }
   }
   let maxDellay = Math.max(...dataTrimmed.map(dot=>{return dot.pingDellay}));
@@ -1017,7 +1007,6 @@ const getPath = ({dataArray})=>{
       }
     })
   }
-  // console.log(_ret);
   return _ret;
 }
 const checkUnpausedRows = ()=>{

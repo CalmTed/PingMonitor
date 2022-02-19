@@ -146,14 +146,13 @@ var Graph = function(){
   }
 }
 async function requestData({win,row,callback}){
-  let dataFromMain = await ipcRenderer.invoke('graphChannel',{call:'requestData',win:win,row:row});// -1 for all
+  let dataFromMain = await ipcRenderer.invoke('graphChannel',{call:'requestData',win:win,row:row});// -1 means everyone
   callback(dataFromMain)
 }
 ipcRenderer.on('graphChannel', function (evt, message) {
   if(message.call == 'deliver_data'&&typeof message.data != 'undefined'){
     let pingHist = message.data.pingHist;
-    //setting any data in not subscribed for anything
-    // console.log(graph.subscribedTo);
+    //setting any recived data if graph is not subscribed for anything
     if(graph.subscribedTo.r == 'none'){
       graph.set('dataArray',pingHist)
     }else{
@@ -166,8 +165,8 @@ ipcRenderer.on('graphChannel', function (evt, message) {
   }else if(message.call == 'subsciption_set'&&typeof message.data != 'undefined'){
     if(graph.subscribedTo.r != message.data.address.r){
       if(graph.subscribedTo.r != 'none'){
-        //unsubscibe from previes one
-        console.log(`Remowing subscription from w${graph.subscribedTo.w} r${graph.subscribedTo.r}`);
+        //unsubscibe from previous one
+        console.debug(`Remowing subscription from w${graph.subscribedTo.w} r${graph.subscribedTo.r}`);
         ipcRenderer.invoke('graphChannel',{call:'subsciption_remove',winId:graph.subscribedTo.w,rowUid:graph.subscribedTo.r})
       }
       graph.set('subscribedTo',message.data.address)
@@ -241,7 +240,6 @@ const getImage = ({width,height,dataArray,start,range,mousePos})=>{
      let vLines = []
      for(let i=0;(i*step)<_showRange+step;i++){
        let _absTime = -((i*step)+step+(Math.floor(start/step)*step))
-       // this.isAltPressed
        let __ax = _absTime;
        vLines.push({
          ax:__ax,
@@ -253,10 +251,13 @@ const getImage = ({width,height,dataArray,start,range,mousePos})=>{
        __ret.path.push(`M${__x} ${_heightMargin}`)
        __ret.path.push(`L${__x} ${_canvasHeight - _heightMargin}`)
        let __val = vLines[i].ax<-_showRange-start?-_showRange-start:vLines[i].ax;
+       let __valMins = Math.round( ((__val)/1000/60)*10)/10;
+       let __textVal = __valMins<-1?__valMins+'m':Math.round((60*__valMins))+'s'
+       console.log(__valMins);
        __ret.text.push({
          x:__x,
          y:_canvasHeight-1,
-         value:Math.round( (__val/1000/60) *10)/10+'m'
+         value: __textVal
        })
      }
      return __ret
@@ -341,9 +342,9 @@ const getImage = ({width,height,dataArray,start,range,mousePos})=>{
      let _path = ''
      group.dotts.forEach((d,i)=>{
        if(isNaN(d.x)){
-         console.log('NaN dott found: ',group,d);
+         console.debug('NaN, dott found: Dott:',d,' Group:',group);
        }
-       if(_px!=-1&&_py!=-1){//if no previews dott
+       if(_px!=-1&&_py!=-1){//if there is no previews dott
          _path += i==0?`M${_px} ${_py}`:`L${d.x} ${d.y}`;
        }else{
          _path += i==0?`M${d.x} ${d.y}`:`L${d.x} ${d.y}`;
@@ -374,10 +375,9 @@ const getImage = ({width,height,dataArray,start,range,mousePos})=>{
   }
   _ret.meta = [..._ret.meta,...[{
     type:'mainText',
-    value:`${closestDott.pingDellay}ms ${_formatedDate(closestDott.time)}`,
+    value:`${_formatedDate(closestDott.time)} ${closestDott.pingDellay}ms`,
     moreValue:`[${closestDott.status}] TTL:${closestDott.pingTTL} ${_formatedDate(closestDott.time)} ${closestDott.pingDellay}ms`
   }]]
-
 
    return _ret;
  }

@@ -8,7 +8,7 @@ const fs = require("fs");
 const ping = require('ping');
 async function saveAs(){};
 async function openConfig(){};
-var langCode = 'ua';
+var langCode = 'en';
 var lang = {};
 const menuTemplate = [
     {
@@ -58,9 +58,9 @@ const menuTemplate = [
       {
         label: tr('Toggle Dark Mode'),
         click: async () => {
-          new Date().getTime()<1649251404600?toggleDarkMode():0;//works until 6th of april 2022
+          toggleDarkMode();
         },
-        enabled:new Date().getTime()<1649251404600?true:false,//works until 6th of april 2022
+        enabled:false,
         accelerator:'Ctrl+Shift+D'
       },
       { role: 'toggleDevTools' },
@@ -256,7 +256,6 @@ ipcMain.handle('sendDataToMain', async (e,data)=>{
           });
           }
         }
-        //change targeted row if needed
       }else{
         console.error("Expect to resive 'pingHist' and 'winId' and 'rowUid' parameters\nResived:\n",data);
       }
@@ -344,7 +343,7 @@ function createWindows(dataObj){
   try{
     if(dataObj){
       if(dataObj.progName){//if its an old json save
-        //we dont need to remove old ones
+        //we dont need to remove old windows
         if(storage.get('PMDataStr')){
           storedInfoObj = JSON.parse(storage.get('PMDataStr'));
         }else{
@@ -556,19 +555,13 @@ async function pinging(ip,rowId){
 function writeFile (data){
   if(data.name&&data.text&&data.extention&&data.title){
     try{
-      // text = JSON.parse(data.text);
-      // if(typeof text.rows == 'string'){
-      //   text.hash = text.rows
-      // }else{
-      //   text.hash = JSON.stringify(text.rows)
-      // }
-      // text = JSON.stringify(text,undefined,4);
+
       dialog.showSaveDialog({
         filters: [{
           name: (data.extention.toUpperCase())+' file',
           extensions: [data.extention]
         }],
-        title: data.title,//'Saving config',
+        title: data.title,
         defaultPath: data.name
       }).then(fileName => {
         if(fileName.filePath){
@@ -699,12 +692,12 @@ function tr(w){
         if(lang[w]){
           ret = lang[w];
         }else{
-          console.log('getting from backup langCode but still not word for '+w);
+          console.error('getting from backup langCode but still not word for '+w);
         }
       }
     }else{
       //show exeption
-      console.log('tr() exeption');
+      console.error('tr() exeption');
     }
   }
   if(!ret){
