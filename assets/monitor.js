@@ -247,15 +247,13 @@ class Row {
       }
     }
     let toFormat = function(t){
-      if(t<1000){
-        return t+' '+translate('ms');
-      }else if(t<60000){
-        return Math.floor(t/1000)+' '+translate('s');
-      }else if(t<3600000){
-        return Math.floor(t/60000)+' '+translate('m');
-      }else{
-        return Math.floor(t/3600000)+' '+translate('h');
+      let h = Math.floor(t/3600000)
+      let m = Math.floor((t-(h*3600000))/60000)
+      let s = Math.floor((t-(h*3600000)-(m*60000))/1000)
+      let addZero = (num)=>{
+        return num<10?`0${num}`:`${num}`
       }
+      return t===0?`-`:`${addZero(h)}:${addZero(m)}:${addZero(s)}`
     }
     if(needToUpdate('id')){
       $(`.row-${this.uid}`).attr('rowid',this.id);
@@ -367,7 +365,11 @@ class Row {
         if(secsL<10){
           secsL = '0'+secsL;
         }
-        $(`.row-${this.uid} .row-last-conn-lost`).html(`${this.lastConnectionLost.getHours()}:${minsL}:${secsL}`);
+        let hursL = this.lastConnectionLost.getHours()
+        if(hursL<10){
+          hursL = '0'+hursL;
+        }
+        $(`.row-${this.uid} .row-last-conn-lost`).html(`${hursL}:${minsL}:${secsL}`);
         $(`.row-${this.uid} .row-last-conn-lost`).attr('title',this.lastConnectionLost);
       }else{
         $(`.row-${this.uid} .row-last-conn-lost`).html("-");
@@ -382,7 +384,11 @@ class Row {
         if(secsF<10){
           secsF = '0'+secsF;
         }
-        $(`.row-${this.uid} .row-last-conn-found`).html(`${this.lastConnectionFound.getHours()}:${minsF}:${secsF}`);
+        let hursF = this.lastConnectionFound.getHours()
+        if(hursF<10){
+          hursF = '0'+hursF;
+        }
+        $(`.row-${this.uid} .row-last-conn-found`).html(`${hursF}:${minsF}:${secsF}`);
         $(`.row-${this.uid} .row-last-conn-found`).attr('title',this.lastConnectionFound);
       }else{
         $(`.row-${this.uid} .row-last-conn-found`).html(`-`);
