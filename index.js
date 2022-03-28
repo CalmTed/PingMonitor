@@ -1,4 +1,6 @@
-const version = '1.3.5.1';
+
+
+const version = '1.3.5';
 //============
 //  DEFINING
 //============
@@ -8,7 +10,14 @@ const fs = require("fs");
 const ping = require('ping');
 async function saveAs(){};
 async function openConfig(){};
-var langCode = 'en';
+const configFilePath = 'assets/config/config.json';
+var langCode = JSON.parse(fs.readFileSync(configFilePath, 'utf8', (err, retData) => {
+    if (err) {
+      config = [];
+      console.error('ERROR reading config at: '+configFilePath);
+      console.error(err);
+    }
+  })).langCode;
 var lang = {};
 const menuTemplate = [
     {
@@ -65,7 +74,7 @@ const menuTemplate = [
       },
       { role: 'toggleDevTools' },
       { role: 'resetZoom' },
-      { role: 'zoomIn' },
+      { role: 'zoomIn',accelerator:'Ctrl+=' },
       { role: 'zoomOut' }
     ]
   }
@@ -77,6 +86,8 @@ var dontQuitApp = false;//for reopening app with new data
 //=============
 //  APP:EVENTS
 //=============
+
+
 app.whenReady().then( async function(){
   try {
     start();
@@ -107,7 +118,7 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
     const res = await pinging(ip,rowId);
     var status = 'error';
     let pingDellay = 0;
-    if(res.avg == 'undefined' || res.avg == 'unknown' ||2==2){
+    if(res.avg == 'undefined' || res.avg == 'unknown' ||2==2){///HERE IS SOME SHORTCUT
       //get index of 'ms'
       let endOfDellayWord = -1;
       let lineO = res.output;
@@ -134,7 +145,7 @@ ipcMain.handle('ping', async (event, ip, rowId) => {
           ttlArray.push(l);
         }
       })
-      res.ttl = Number(ttlArray.join(''));
+      res.ttl = Number(ttlArray.join(''))
     }
     if(res.alive){
       status = 'online';
@@ -276,7 +287,7 @@ ipcMain.handle('sendDataToMain', async (e,data)=>{
 
 ipcMain.handle('graphChannel', async (e,data)=>{
   try{
-    if(data.call == 'data_request'){
+    if(ipcMain == 'data_request'){
       wins[data.winId].webContents.send('asynchronous-message', {call:'data_graph_request',rowUid:data.rowUid})
     }else if (data.call == 'subsciption_remove'){
       if(typeof data.winId != 'undefined' && typeof data.rowUid != 'undefined'){

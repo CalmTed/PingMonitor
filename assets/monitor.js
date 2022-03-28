@@ -819,6 +819,8 @@ function readDir(callback){
       }
       return callback(ret);
     });
+
+
 }
 ipcRenderer.on('asynchronous-message', function (evt, message) {
 
