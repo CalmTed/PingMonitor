@@ -37,7 +37,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var _this = this;
 var pingMonitor = function () {
     var version = '1.4';
-    var dev = true;
+    var dev = false;
+    var actionTypes = require('./components/actionTypes');
     var fileManager = require('./components/fileManager');
     var config = require('./components/config');
     var loger = require('./components/loger');
@@ -45,31 +46,127 @@ var pingMonitor = function () {
     var stateManager = require('./components/stateManager');
     var store = new stateManager();
     var comunicatorCore = require('./components/comunicatorCore');
-    var pingCheck = function (_coreState) {
-        return true;
+    var pingCheck = function (_coreState, _resolve) {
+        _coreState.monitors.forEach(function (_mon) {
+            // for(every monitor & every row)
+            //ITS MIGHT BE QUITE EXPENCIVE!!
+            _mon.rows.forEach(function (_rowStr) {
+                if (_rowStr.indexOf("\"isBusy\":false") > -1 && _rowStr.indexOf("\"isPaused\":false") > -1) {
+                    var _rowObj_1 = JSON.parse(_rowStr);
+                    // if(not paused and not busy) then timeout pingProbe(monitor,row,ip)
+                    setTimeout(function (_a) {
+                        var _store = _a._store, _actionTypes = _a._actionTypes;
+                        return __awaiter(_this, void 0, void 0, function () {
+                            var pingResult;
+                            return __generator(this, function (_b) {
+                                switch (_b.label) {
+                                    case 0: return [4 /*yield*/, pinger.probe({ address: _rowObj_1.ipAddress, rowId: _rowObj_1.rowId })];
+                                    case 1:
+                                        pingResult = _b.sent();
+                                        if (!pingResult.success) return [3 /*break*/, 3];
+                                        // dispach(rowId,pingReport)
+                                        return [4 /*yield*/, _store.dispach({
+                                                action: _actionTypes.ROW_SUBMIT_PING_PROBE,
+                                                payload: JSON.stringify(pingResult.payload)
+                                            })];
+                                    case 2:
+                                        // dispach(rowId,pingReport)
+                                        _b.sent();
+                                        return [3 /*break*/, 4];
+                                    case 3:
+                                        loger.out("Unsuccessfull ping probe! Error: " + pingResult.errorMessage + ". Row:id:" + _rowObj_1.rowId + " ip:" + _rowObj_1.ipAddress);
+                                        _b.label = 4;
+                                    case 4: return [2 /*return*/];
+                                }
+                            });
+                        });
+                    }, _rowObj_1.updateTimeMS, { _store: store, _actionTypes: actionTypes });
+                    _resolve.set === false ? _resolve = { set: true, action: actionTypes.ROW_SET_PROP, payload: JSON.stringify({
+                            rowId: _rowObj_1.rowId,
+                            key: 'isBusy',
+                            value: true
+                        })
+                    } : 0;
+                }
+            });
+        });
+        return _resolve;
     };
-    var monitorCheck = function (_coreState) {
-        return true;
+    var monitorCheck = function (_coreState, _resolve) { return __awaiter(_this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            //if(no monitor) reduce(add default Monitor with initial Rows)
+            if (_coreState.monitors.length < 1) {
+                _resolve = {
+                    set: true,
+                    action: actionTypes.ADD_NEW_MONITOR
+                };
+            }
+            return [2 /*return*/, _resolve];
+        });
+    }); };
+    var windowCheck = function (_coreState, _prevState, _resolve) {
+        var checkFullDifference = function (_obj1, _obj2) {
+            var _ret = {};
+            //we expect two objects to have the same scheme to minimize computation time
+            // Object.entries(_obj1).forEach(([_k,_v])=>{
+            //   if(typeof _obj1[_k] != 'object'){
+            //     if(_obj1[_k] !== _obj2[_k]){
+            //       _ret._k = _v
+            //     }
+            //   }else{
+            //     // _ret._k = checkFullDifference(_obj1[_k],_obj2[_k])
+            //   }
+            // })
+            return _ret;
+        };
+        // let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
+        // console.log(differenceObject)
+        //checkDifference of monitorStates
+        // if(number on wins not the same)  addWindow|removeWindow
+        // for(windows where subscribiptionKey in the list of changed monitors)
+        // updateWindow(winState) > communicatorCore
+        return _resolve;
     };
-    var windowCheck = function (_coreState) {
-        return true;
-    };
-    var compute = function (_coreState) {
-        if (!pingCheck(_coreState)) {
-        }
-        if (!monitorCheck(_coreState)) {
-        }
-        if (!windowCheck(_coreState)) {
-        }
-        //sconsole.log('computing finished')
-    };
+    var compute = function (_coreState, _prevState) { return __awaiter(_this, void 0, void 0, function () {
+        var _resolve;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _resolve = {
+                        set: false,
+                        action: {
+                            action: ''
+                        }
+                    };
+                    _resolve = pingCheck(_coreState, _resolve);
+                    if (!!_resolve.set) return [3 /*break*/, 2];
+                    return [4 /*yield*/, monitorCheck(_coreState, _resolve)];
+                case 1:
+                    _resolve = _a.sent();
+                    _a.label = 2;
+                case 2:
+                    if (!_resolve.set) {
+                        _resolve = windowCheck(_coreState, _prevState, _resolve);
+                    }
+                    if (!!_resolve.set) return [3 /*break*/, 3];
+                    return [3 /*break*/, 5];
+                case 3:
+                    console.log("computing resolved with " + _resolve.action + " " + _resolve.payload);
+                    return [4 /*yield*/, store.dispach({ action: _resolve.action, payload: _resolve.payload })];
+                case 4:
+                    _a.sent();
+                    _a.label = 5;
+                case 5: return [2 /*return*/];
+            }
+        });
+    }); };
     store.subscribe(compute); //execute compute on any state change
     var app = require('electron').app;
     app.whenReady().then(function () {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 if (dev) {
-                    testComponents(fileManager, config, loger, pinger, store);
+                    // testComponents(fileManager,config,loger,pinger,store)
                 }
                 return [2 /*return*/];
             });
@@ -78,7 +175,7 @@ var pingMonitor = function () {
 };
 pingMonitor();
 var testComponents = function (fileManager, config, loger, pinger, store) { return __awaiter(_this, void 0, void 0, function () {
-    var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, undo;
+    var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, undo, recivedValue;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -135,11 +232,17 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 }
                 valueForTesting = Math.round((Math.random() * 1000) * 1000);
                 stateManagerTestResult = false;
-                store.dispach({ action: 'setPropertyForTesting', payload: valueForTesting });
-                store.dispach({ action: 'setPropertyForTesting', payload: 42 });
+                return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: valueForTesting })];
+            case 7:
+                _a.sent();
+                return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: 42 })];
+            case 8:
+                _a.sent();
                 undo = store.undo();
+                recivedValue = store.__stateNow().propertyForTesting;
+                console.log(recivedValue + " " + valueForTesting);
                 if (undo) {
-                    if (store.__stateNow().propertyForTesting == valueForTesting) {
+                    if (recivedValue == valueForTesting) {
                         stateManagerTestResult = true;
                     }
                 }
@@ -148,7 +251,7 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 }
                 else {
                     console.log('[FAIL] test 5 stateManager!');
-                    console.log("Expected:" + valueForTesting + " Recived:" + store.__stateNow().propertyForTesting);
+                    console.log("Expected:" + valueForTesting + " Recived:" + recivedValue);
                 }
                 return [2 /*return*/];
         }

@@ -48,15 +48,28 @@ var comunicatorCore = /** @class */ (function () {
         this.send = function (message) { return __awaiter(_this, void 0, void 0, function () {
             var _reply;
             return __generator(this, function (_a) {
-                if (typeof message.window == 'undefined' || typeof message.command == 'undefined') {
+                try {
+                    if (typeof message.window == 'undefined' || typeof message.command == 'undefined') {
+                        _reply = {
+                            success: false,
+                            errorMessage: 'Expected to recive at least `window` and `command` parameters'
+                        };
+                        return [2 /*return*/, _reply];
+                    }
+                    message.window.webContents.send('window', {
+                        command: message.command,
+                        payload: message.payload
+                    });
+                    _reply = {
+                        success: true
+                    };
+                }
+                catch (e) {
                     _reply = {
                         success: false,
-                        errorMessage: 'Expected ro recive at least `window` and `command` parameters'
+                        errorMessage: "Error in comunicatorCore send method: " + e
                     };
-                    return [2 /*return*/, _reply];
                 }
-                message.window.webContents.send('graphChannel', {});
-                // wins[data.winId].webContents.send('asynchronous-message', {call:'data_graph_request',rowUid:data.rowUid})
                 return [2 /*return*/, _reply];
             });
         }); };
@@ -70,9 +83,19 @@ var comunicatorCore = /** @class */ (function () {
             return true;
         };
         try {
-            electron_1.ipcMain.handle('window', function (e, data) { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
-                return [2 /*return*/];
-            }); }); });
+            electron_1.ipcMain.handle('window', function (e, data) { return __awaiter(_this, void 0, void 0, function () {
+                var channel, command, payload;
+                return __generator(this, function (_a) {
+                    channel = 'window';
+                    command = data.command;
+                    payload = data.payload;
+                    //looking for the same channel and command in subscriptions
+                    this.__subscriptions.find(function (sub) { return (sub.channel === channel && sub.commandListString.indexOf(command) > -1); }).forEach(function (sub) {
+                        sub.callback(payload);
+                    });
+                    return [2 /*return*/];
+                });
+            }); });
         }
         catch (e) {
             var errorMessage = "Error in comunicator ipc window handling " + e;

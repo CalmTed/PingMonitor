@@ -117,7 +117,7 @@ pinger.probe = function (message) { return __awaiter(_this, void 0, void 0, func
                             dellay: getDellay(result),
                             packetLoss: result.packetLoss * 1,
                             ttl: getTTL(result),
-                            numericHost: result.numericHost,
+                            numericHost: result.numeric_host,
                             fullResponce: JSON.stringify(result)
                         } });
                 }

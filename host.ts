@@ -1,7 +1,8 @@
 const pingMonitor = ()=>{
   const version = '1.4'
-  const dev = true
-
+  const dev = false
+  
+  const actionTypes = require('./components/actionTypes')
   const fileManager = require('./components/fileManager')
   const config = require('./components/config')
   const loger = require('./components/loger')
@@ -9,35 +10,105 @@ const pingMonitor = ()=>{
   const stateManager = require('./components/stateManager')
   const store = new stateManager()
   const comunicatorCore = require('./components/comunicatorCore')
+  const { app } = require('electron')
 
-  const pingCheck = (_coreState)=>{
-    return true
+  const pingCheck = (_coreState:coreState,_resolve:any)=>{
+    _coreState.monitors.forEach(_mon=>{
+      // for(every monitor & every row)
+      //ITS MIGHT BE QUITE EXPENCIVE!!
+      _mon.rows.forEach(_rowStr=>{
+        if(_rowStr.indexOf(`"isBusy":false`)>-1 && _rowStr.indexOf(`"isPaused":false`)>-1){
+          let _rowObj = JSON.parse(_rowStr)
+          // if(not paused and not busy) then timeout pingProbe(monitor,row,ip)
+          setTimeout(async ({_store,_actionTypes})=>{
+            let pingResult = await pinger.probe({address:_rowObj.ipAddress,rowId:_rowObj.rowId})
+            if(pingResult.success){
+              // dispach(rowId,pingReport)
+              await _store.dispach({
+                action:_actionTypes.ROW_SUBMIT_PING_PROBE,
+                payload:JSON.stringify(pingResult.payload)
+              })
+            }else{
+              loger.out(`Unsuccessfull ping probe! Error: ${pingResult.errorMessage}. Row:id:${_rowObj.rowId} ip:${_rowObj.ipAddress}`)
+            }
+          },_rowObj.updateTimeMS,{_store:store,_actionTypes:actionTypes})
+          
+          _resolve.set === false? _resolve = {set:true, action:actionTypes.ROW_SET_PROP,payload:JSON.stringify(
+            {
+              rowId:_rowObj.rowId,
+              key:'isBusy',
+              value:true
+            })
+          }:0;
+        }
+      })
+    })
+    return _resolve;
   }
-  const monitorCheck = (_coreState)=>{
-    return true
+  const monitorCheck = async (_coreState:coreState,_resolve:any)=>{
+    //if(no monitor) reduce(add default Monitor with initial Rows)
+    if(_coreState.monitors.length<1){
+      _resolve = {
+        set:true,
+        action:actionTypes.ADD_NEW_MONITOR
+      }
+    }
+    return _resolve
   }
-  const windowCheck = (_coreState)=>{
-    return true
+  const windowCheck = (_coreState:coreState,_prevState:coreState,_resolve:any)=>{
+    
+    let checkFullDifference = (_obj1:object,_obj2:object)=>{
+      let _ret:any = {}
+      //we expect two objects to have the same scheme to minimize computation time
+      Object.entries(_obj1).forEach(([_k,_v])=>{
+        if(typeof _obj1[_k] != 'object'){
+          if(_obj1[_k] !== _obj2[_k]){
+            _ret._k = _v
+          }
+        }else{
+          // _ret._k = checkFullDifference(_obj1[_k],_obj2[_k])
+        }
+      })
+      return _ret
+    }
+    // let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
+    // console.log(differenceObject)
+
+    //checkDifference of monitorStates
+    // if(number on wins not the same)  addWindow|removeWindow
+    // for(windows where subscribiptionKey in the list of changed monitors)
+      // updateWindow(winState) > communicatorCore
+    return _resolve
   }
-  const compute = (_coreState: coreState)=>{
-    if(!pingCheck(_coreState)){
-
+  const compute = async (_coreState: coreState,_prevState: coreState)=>{
+    let _resolve:{set:boolean,action:actionType,payload?:any} = {
+      set:false,
+      action:{
+        action:''
+      }
     }
-    if(!monitorCheck(_coreState)){
-
+    _resolve = pingCheck(_coreState,_resolve)
+    if(!_resolve.set){
+      _resolve = await monitorCheck(_coreState,_resolve)
     }
-    if(!windowCheck(_coreState)){
-
+    if(!_resolve.set){
+      _resolve = windowCheck(_coreState,_prevState,_resolve)
     }
-    //sconsole.log('computing finished')
+    if(!_resolve.set){
+    }else{
+      console.log(`computing resolved with ${_resolve.action} ${ _resolve.payload}`)
+      await store.dispach({action:_resolve.action,payload:_resolve.payload})
+    }
   }
   store.subscribe(compute)//execute compute on any state change
 
-  const { app } = require('electron');
+
   app.whenReady().then( async function(){
     if(dev){
+      
       testComponents(fileManager,config,loger,pinger,store)
     }
+
   })
 }
 pingMonitor()
@@ -87,11 +158,13 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
 
   let valueForTesting = Math.round((Math.random()*1000)*1000)
   let stateManagerTestResult = false
-  store.dispach({action:'setPropertyForTesting',payload:valueForTesting})
-  store.dispach({action:'setPropertyForTesting',payload:42})
+  await store.dispach({action:'setPropertyForTesting',payload:valueForTesting})
+  await store.dispach({action:'setPropertyForTesting',payload:42})
   let undo = store.undo()
+  let recivedValue = store.__stateNow().propertyForTesting;
+  console.log(`${recivedValue} ${valueForTesting}`)
   if(undo){
-    if(store.__stateNow().propertyForTesting == valueForTesting){
+    if(recivedValue == valueForTesting){
       stateManagerTestResult = true
     }
   }
@@ -99,7 +172,7 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
     console.log('[PASS] test 5 stateManager!')
   }else{
     console.log('[FAIL] test 5 stateManager!')
-    console.log(`Expected:${valueForTesting} Recived:${store.__stateNow().propertyForTesting}`)
+    console.log(`Expected:${valueForTesting} Recived:${recivedValue}`)
   }
 
   //communicatorCore

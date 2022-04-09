@@ -1,6 +1,6 @@
 {
   "name": "pingmonitor",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "ping monitoring",
   "main": "index.js",
   "icon": "assets/icons/PM_nofill.ico",
@@ -9,12 +9,13 @@
     "tcompile":"tsc --project tsconfig.json",
     "tstart":"npm run tcompile && electron host.js",
     "pack": "electron-packager ./ PingMonitor",
-    "build": "electron-builder --dir"
+    "build": "electron-builder --dir",
+    "build_portable": "electron-builder --win portable"
   },
   "build": {
     "appId": "ping.monitor",
     "productName": "Ping Monitor",
-    "buildVersion": "1.3.5",
+    "buildVersion": "1.3.6",
     "target": "portable",
     "icon": "assets/icons/PM.ico",
     "compression": "maximum",

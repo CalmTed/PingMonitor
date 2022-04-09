@@ -78,11 +78,11 @@ pinger.probe = async (message:probeInput)=>{
                 success:true,
                 payload:{
                     rowId:message.rowId,
-                    status:getStatus(result),//TODO
-                    dellay:getDellay(result),//TODO
+                    status:getStatus(result),
+                    dellay:getDellay(result),
                     packetLoss:result.packetLoss*1,
-                    ttl:getTTL(result),//TODO
-                    numericHost:result.numericHost,
+                    ttl:getTTL(result),
+                    numericHost:result.numeric_host,
                     fullResponce:JSON.stringify(result)
                 }
             }

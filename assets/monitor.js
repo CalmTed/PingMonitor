@@ -554,7 +554,8 @@ class Row {
           'timestamp':new Date(timenow),
           'status':_this.status,
           'pingDellay':_this.pingDellayTime,
-          'pingTTL':_this.pingTTL
+          'pingTTL':_this.pingTTL,
+          'pingIP':_this.pingIP
         })
         _this.pingHist = [..._this.pingHist.filter(h=>{
           return timenow - h.time < timeToDelete
@@ -565,7 +566,102 @@ class Row {
           let __hist = _this.pingHist
           let __rowUid = _this.uid;
           //winId is a global variable
-          ipcRenderer.invoke('sendDataToMain',{call:'subscription_deliver',pingHist:__hist,winId:winId,rowUid:__rowUid});
+          ipcRenderer.invoke('sendDataToMain',{call:'subscription_deliver',pingHist:__hist,winId:winId,rowUid:__rowUid});  
+        }
+        const _statusDuration = (_hist,_status)=>{
+          _hist = [..._hist];
+          let haveFoundStatus = false;
+          let targetDurrationIsOver = false;
+          let statusIsRight = (_h_s,_s)=>{
+            return _h_s == _s;
+          }
+          let i = _hist.length-1;
+          let latestTime = -1;
+          let statusDuration = 0;
+          while(i>0){//&&targetDurrationIsOver
+            if(!haveFoundStatus){
+              if(statusIsRight(_hist[i].status,_status)){
+                haveFoundStatus = true;
+                latestTime = _hist[i].time;
+              }
+            }else{
+              if(!targetDurrationIsOver){
+                if(!statusIsRight(_hist[i].status,_status)){
+                  targetDurrationIsOver = true;
+                }else{
+                  statusDuration = latestTime - _hist[i].time;
+                }
+              }
+            }
+            i--;
+          }
+          return statusDuration;
+        }
+        const _previusStatusData = (_hh)=>{
+          let _h = [..._hh]
+          if(_h.length == 0){ 
+            return {success:false};
+          }
+          let i = _h.length-1;
+          let lastStatus = _h[i].status;
+          let prevStatusData = {success:false};
+          let haveFoundSecondState = false;
+          while(i>=0 && !haveFoundSecondState){
+            if(_h[i].status != lastStatus){
+              haveFoundSecondState = true;
+              prevStatusData = _h[i];
+              prevStatusData.success = true
+            }
+            i--
+          }
+          return prevStatusData;
+        }
+        // let _sd = _statusDuration(_this.pingHist,_this.status)
+        // let _lowerEdge = config.timeToLogStatusChangeMS - (_this.pingUpdateTime*500);
+        // let _upperEdge = _lowerEdge + _this.pingUpdateTime*1000
+        // console.log(_sd,_lowerEdge,_upperEdge)
+        // let _paddingTime = (
+        //     Math.ceil(
+        //       config.timeToLogStatusChangeMS/_this.pingUpdateTime
+        //     )
+        //   )/1000;
+        let _pdata = _previusStatusData(_this.pingHist)
+        let _ps = _pdata.status
+        let _paddr = _pdata.pingIP
+        if(_this.pingHist.length>2)
+        if(_this.pingHist[_this.pingHist.length-2].status != _this.status && _pdata.success){
+          let _psduration = _statusDuration(_this.pingHist,_ps)/1000
+          let formatExactTime = function(){
+            let d = new Date();
+            let h = d.getHours();
+            let m = d.getMinutes();
+            let s = d.getSeconds();
+            let addZero = (num)=>{
+              return num<10?`0${num}`:`${num}`
+            }
+            return `${addZero(h)}:${addZero(m)}:${addZero(s)}`
+          }
+          let _formatDurationString = (t_sec)=>{
+            if(t_sec<60){
+              return `${t_sec} ${translate('s')}`
+            }else if(t_sec>60 && t_sec<360){
+              return `${Math.round(t_sec/6)/10} ${translate('m')}`
+            }else{
+              return `${Math.round(t_sec/216)/100} ${translate('h')}`
+            }
+          }
+          let _getIndent = (data)=>{
+            let _ret = ''
+            for(let _i=0;_i<_this.id;_i++){
+              _ret+='                                                  ';
+            }
+
+            return _ret;
+          }
+          let _logLine = `${_getIndent(_this)}${_this.name}(${winId}), ${_formatDurationString(_psduration)}, ${translate(_ps).toUpperCase()}, ${formatExactTime(new Date().getTime()-(_psduration*1000))}-$time, ${_paddr}`
+          loger(_logLine)
+          //send query to save data to log
+          //with rowName(winId(if>1)), duration(5min), status, timestamp, ip (new status) 
         }
         _this.timeout = setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000);
       })
@@ -620,6 +716,7 @@ function createPage(){
   newRowBtns = $('<div class="bottom-tools"><div class="new-row-btn" title="'+translate("Add new row")+' [Ctrl+N]" onclick="addRow()">+ <span>'+translate("Add new row")+'</span></div><div class="full-screen-btn" title="'+translate("Toggle full screen")+' [Ctrl+F]" onclick="toggleFullScreen()"><span class="material-icons">fullscreen</span>'+translate("Toggle full screen")+'</div><div class="pause-all-btn" title="'+translate("Pause all rows")+' [Ctrl+Space]" onclick="togglePause()"><span class="material-icons">pause</span>'+translate("Pause all rows")+'</div></div>');
   root.append(newRowBtns);
   checkUnpausedRows();//to always show tools if needed
+  //logging program starting
 }
 $(document).ready(function(){
   $('.root').html('<div style="background-image: url(assets/icons/PM_nofill.ico);width: 300px;height: 100vh;background-size: 270px;display: flex;justify-content: center;width: 100%;background-repeat: no-repeat;background-position: center;position: fixed;background-position-y: 127px;"> </div><h1 style="display:flex;justify-content:center;align-items:center;height:100vh;position: fixed;width: 100%; ">Ping Monitor</h1><p style=" display: flex; justify-content: center; align-items: center; height: 110vh; position: fixed; width: 100%; opacity: 0.7; ">Reading files...</p>');
@@ -798,6 +895,7 @@ function readDir(callback){
     console.error(e);
     config = [];
   }
+
   //language
   try{
     data.lang = JSON.parse(fs.readFileSync(langDataFile, 'utf8', (err, retData) => {
@@ -852,6 +950,16 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
       }
       //create rows
       createPage()
+      let formatColumn = (_str)=>{
+        let targetLength = 50
+        for(_i=0;_i<(targetLength-_str.length);_i){
+          _str+=' ';
+        }
+        return _str
+      }
+      let _pseudoHeader = data.rows.map(r=>formatColumn(r.name)).join('')
+      loger(`$datetime ${translate('Window')+' '+winId+' '+translate('started')}`)
+      loger(_pseudoHeader); 
     }else if(typeof message.id != 'undefined'){
       // id = title_id - 1
       prevWinId = winId;
@@ -898,6 +1006,15 @@ ipcRenderer.on('asynchronous-message', function (evt, message) {
     }else{
       cosole.error('Cant unsubscibe, rowUid was not provided')
     }
+  }else if(message.call == 'clearRowsPingHistory'){
+    console.log('clearing rows')
+    data.rows.forEach(row=>{
+      row.changeProp('pingHist',[])
+      row.changeProp('lastConnectionFound',0)
+      row.changeProp('lastConnectionLost',0)
+      row.changeProp('lastOutOfConnection',0)
+      row.changeProp('totalOutOfConnection',0)
+    })
   }else{
     console.error('Unknown message call: ',message.call,message);
   }
@@ -949,7 +1066,6 @@ var togglePause = ()=>{
     pausedRows = [];
   }
 }
-
 var configSet = (key,value)=>{
   if(config[key]){
     config[key] = value;
@@ -1026,4 +1142,39 @@ const checkUnpausedRows = ()=>{
   }else{
     $('.pause-all-btn').removeAttr('disabled')
   }
+}
+const loger = (messageString)=>{
+  //$datetime = yyyy-mm-dd hh-mm-ss
+  //$date = yyyy-mm-dd
+  //$time = hh-mm-ss
+  let formatExactTime = function(){
+    let d = new Date();
+    let h = d.getHours();
+    let m = d.getMinutes();
+    let s = d.getSeconds();
+    let addZero = (num)=>{
+      return num<10?`0${num}`:`${num}`
+    }
+    return `${addZero(h)}-${addZero(m)}-${addZero(s)}`
+  }
+  let formatExactDate = function(){
+    let d = new Date()
+    let year = d.getFullYear();
+    let mos = d.getMonth()+1;
+    let day = d.getDate();
+    let addZero = (num)=>{
+      return num<10?`0${num}`:`${num}`
+    }
+    return `${year}-${addZero(mos)}-${addZero(day)}`
+  }
+  let formatLogMessage = (_m)=>{
+    if(_m.indexOf('$time') >-1 || _m.indexOf('$date') >-1 || _m.indexOf('$datetime') >-1){
+      _m = _m.replace('$datetime',`${formatExactDate()} ${formatExactTime()}`);
+      _m = _m.replace('$date',`${formatExactDate()}`);
+      _m = _m.replace('$time',`${formatExactTime()}`);
+    }
+    return _m;
+  }
+  messageString = formatLogMessage(messageString);
+  ipcRenderer.invoke('sendDataToMain',{call:'saveLineToLog',line:messageString})
 }

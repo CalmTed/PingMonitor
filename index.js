@@ -1,6 +1,6 @@
 
 
-const version = '1.3.5';
+const version = '1.3.6';
 //============
 //  DEFINING
 //============
@@ -77,6 +77,14 @@ const menuTemplate = [
       { role: 'zoomIn',accelerator:'Ctrl+=' },
       { role: 'zoomOut' }
     ]
+  },
+  {
+    label:tr("Clear row history"),
+    click: () => {
+      logLine(tr(`Clearing rows history`)+` ${new Date()}`)
+      clearRowsHistory();
+    },
+    accelerator:'Ctrl+W'
   }
   ]
 var wins = [];
@@ -217,8 +225,7 @@ ipcMain.handle('sendDataToMain', async (e,data)=>{
         console.error("Expect to resive 'rowsData' and 'winId' parameters");
       }
     }else if(data.call == 'openGraphWin' || data.call == 'subscription_deliver'){
-      // console.log(data)
-      if(data.pingHist&&data.winId&&data.rowUid){
+      if(data.pingHist && data.winId && data.rowUid){
         if(typeof graphWin == 'undefined'){
             graphWin = getWindow({w:700,h:400,show:false});
             graphWin.loadFile('graph.html');
@@ -270,6 +277,9 @@ ipcMain.handle('sendDataToMain', async (e,data)=>{
       }else{
         console.error("Expect to resive 'pingHist' and 'winId' and 'rowUid' parameters\nResived:\n",data);
       }
+    }else if(data.call == 'saveLineToLog'){
+      logLine(data.line)
+      
     }else{
         console.error("Expect to resive call parameter");
     }
@@ -733,4 +743,16 @@ const getWindow = ({w,h,show})=>{
    // devTools:true,
    show:show,
  })
+}
+const logLine = (_line)=>{
+  let _path = './log.txt'
+  _line = _line+ '\n';
+  fs.writeFile(_path, _line, {'flag':'a+'}, function(err) {
+    if (err) return console.error(err);
+  });
+}
+const clearRowsHistory = ()=>{
+  wins.forEach(win=>{
+    win.webContents.send('asynchronous-message', {call: 'clearRowsPingHistory'});
+  })
 }

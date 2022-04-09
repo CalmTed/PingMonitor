@@ -7,6 +7,14 @@
   "Last Connection Found":"Останнє відновлення зв 'язку",
   "Last Out of Connection":"Останій час без зв'язку",
   "Total Out of Connection":"Загальний час без зв'язку",
+  "Save Config":"Зберегти конфігурацію",
+  "Open Config":"Відкрити конфігурацію",
+  "New window":"Нове вікно",
+  "About":"О програмі",
+  "View":"Відображення",
+  "Toggle Dark Mode":"Світла тема",
+  "Clear row history":"Очистити історію рядків",
+  "Clearing rows history":"Очищення історії рядків",
 
   "Change picture":"Змінити зображення",
   "Pause pinging":"Призупинити пінгування",
@@ -22,6 +30,8 @@
   "Open config":"Відкрити файл налаштувань",
   "Toggle full screen":"Повноекраний режим",
   "Pause all rows":"Призупинити всі",
+  "Window":"Вікно",
+  "started":"запущено",
 
   "ms":"мс",
   "s":"c",
