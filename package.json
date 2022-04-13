@@ -6,8 +6,8 @@
   "icon": "assets/icons/PM_nofill.ico",
   "scripts": {
     "start": "electron index.js",
-    "tcompile":"tsc --project tsconfig.json",
-    "tstart":"npm run tcompile && electron host.js",
+    "tcompile": "tsc --project tsconfig.json",
+    "tstart": "npm run tcompile && electron host.js",
     "pack": "electron-packager ./ PingMonitor",
     "build": "electron-builder --dir",
     "build_portable": "electron-builder --win portable"
@@ -39,9 +39,11 @@
     "local-storage": "^2.0.0",
     "material-icons": "^1.10.3",
     "ping": "^0.4.1",
-    "sortablejs": "^1.14.0"
+    "sortablejs": "^1.14.0",
+    "typescript": "^4.6.3"
   },
   "devDependencies": {
+    "electron-builder": "^23.0.3",
     "electron": "^13.6.9"
   }
 }

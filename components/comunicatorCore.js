@@ -67,7 +67,7 @@ var comunicatorCore = /** @class */ (function () {
                 catch (e) {
                     _reply = {
                         success: false,
-                        errorMessage: "Error in comunicatorCore send method: " + e
+                        errorMessage: "Error in comunicatorCore send method: ".concat(e)
                     };
                 }
                 return [2 /*return*/, _reply];
@@ -98,7 +98,7 @@ var comunicatorCore = /** @class */ (function () {
             }); });
         }
         catch (e) {
-            var errorMessage = "Error in comunicator ipc window handling " + e;
+            var errorMessage = "Error in comunicator ipc window handling ".concat(e);
             loger.out(errorMessage);
         }
     }

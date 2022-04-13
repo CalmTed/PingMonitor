@@ -47,7 +47,7 @@ loger.out = function (message) { return __awaiter(_this, void 0, void 0, functio
                 logFilePath = 'assets/pm.log';
                 fileManager = require('./fileManager');
                 date = new Date();
-                toWrite = "[" + date.getTime() + "|" + date + "] " + message + "\n";
+                toWrite = "[".concat(date.getTime(), "|").concat(date, "] ").concat(message, "\n");
                 return [4 /*yield*/, fileManager.write({ openDialog: false, path: logFilePath, content: toWrite, append: true })];
             case 1:
                 loggingToFile = _a.sent();

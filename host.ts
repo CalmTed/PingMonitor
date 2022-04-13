@@ -1,6 +1,6 @@
 const pingMonitor = ()=>{
   const version = '1.4'
-  const dev = false
+  const dev = true
   
   const actionTypes = require('./components/actionTypes')
   const fileManager = require('./components/fileManager')
@@ -12,7 +12,7 @@ const pingMonitor = ()=>{
   const comunicatorCore = require('./components/comunicatorCore')
   const { app } = require('electron')
 
-  const pingCheck = (_coreState:coreState,_resolve:any)=>{
+  const pingCheck = (_coreState:any,_resolve:any)=>{
     _coreState.monitors.forEach(_mon=>{
       // for(every monitor & every row)
       //ITS MIGHT BE QUITE EXPENCIVE!!
@@ -45,7 +45,7 @@ const pingMonitor = ()=>{
     })
     return _resolve;
   }
-  const monitorCheck = async (_coreState:coreState,_resolve:any)=>{
+  const monitorCheck = (_coreState:any,_resolve:any)=>{
     //if(no monitor) reduce(add default Monitor with initial Rows)
     if(_coreState.monitors.length<1){
       _resolve = {
@@ -55,33 +55,104 @@ const pingMonitor = ()=>{
     }
     return _resolve
   }
-  const windowCheck = (_coreState:coreState,_prevState:coreState,_resolve:any)=>{
-    
-    let checkFullDifference = (_obj1:object,_obj2:object)=>{
-      let _ret:any = {}
-      //we expect two objects to have the same scheme to minimize computation time
-      Object.entries(_obj1).forEach(([_k,_v])=>{
-        if(typeof _obj1[_k] != 'object'){
-          if(_obj1[_k] !== _obj2[_k]){
-            _ret._k = _v
-          }
-        }else{
-          // _ret._k = checkFullDifference(_obj1[_k],_obj2[_k])
+  const windowCheck = (_coreState:any,_prevState:any,_resolve:any)=>{
+    // if number on wins is not the same then  addWindow|removeWindow
+    let monitorsIds = (_state)=>{
+      let _monsArrNum:number[] = [];
+      _monsArrNum = _state.monitors.map(_mon=>Number(_mon.monitorId));
+      return _monsArrNum;
+    }
+    let uniqueWinSubs = (_state)=>{
+      let _numOfWins:number[] = [];
+      _state.windows.forEach(_window=>{
+        let subKey = Number(JSON.parse(_window).subscriptionKey)
+        if(_numOfWins.indexOf(subKey) == -1){
+          _numOfWins.push(subKey)
         }
       })
-      return _ret
+      return _numOfWins;
     }
-    // let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
-    // console.log(differenceObject)
-
-    //checkDifference of monitorStates
-    // if(number on wins not the same)  addWindow|removeWindow
-    // for(windows where subscribiptionKey in the list of changed monitors)
+    let findAllExtraWindowsStr = (_state,_monIds:number[],_subKeys:number[])=>{
+      let _winArr  = []
+      _subKeys.forEach(_subKey=>{
+        if(!_monIds.includes(_subKey)){
+          _state.windows.forEach(_win=>{
+            if(_win.includes(`"subscriptionKey":"${_subKey}"`)){
+              _winArr.push(_win)
+            }
+          })
+        }
+      })
+      return _winArr
+    }
+    let findAllUnwindowedMonitors = (_state,_monIds:number[],_subKeys:number[])=>{
+      let _monitArr = []
+      _coreState.monitors.forEach(_mon=>{
+        if(!_subKeys.includes(_mon.monitorId)){
+          _monitArr.push(_mon)
+        }
+      })
+      return _monitArr
+    }
+    let _uniqueWinSubsArr = uniqueWinSubs(_coreState);
+    let _monitorsIdsArr = monitorsIds(_coreState);
+    let _extraWindowsStrArr = findAllExtraWindowsStr(_coreState,_monitorsIdsArr,_uniqueWinSubsArr)
+    let _unwindowedMonitors = findAllUnwindowedMonitors(_coreState,_monitorsIdsArr,_uniqueWinSubsArr)
+    if(_unwindowedMonitors.length>0){
+      //add Windows
+      _resolve = {
+        set:true,
+        action:actionTypes.ADD_NEW_WINDOW_BY_SUBKEY,
+        //we cant loop thought full list, so lets choose just first one for this iteration
+        payload:_unwindowedMonitors[0].monitorId.toString()
+      }
+    }else if (_extraWindowsStrArr.length>0){
+      //remove all windows with unused monitor id
+      _resolve = {
+        set:true,
+        action:actionTypes.REMOVE_WINDOW_BY_ID,
+        //selecting only first element in case if difference is more then one window
+        payload:JSON.parse(_extraWindowsStrArr[0]).winId.toString()
+      }
+    }
+    if(!_resolve.set){
+      let checkFullDifference = (_obj1:object,_obj2:object)=>{
+        let checkDiffStr = (_one:string,_two:string)=>{
+          let _strdiffret = '';
+          let aArr = _one.split('');
+          let bArr = _two.split('');
+          aArr.forEach((letter,i)=>{
+            if(aArr[i] != bArr[i]){
+              _strdiffret += aArr[i]
+            }
+          })
+          return _strdiffret
+        }
+        let _ret:any = {}
+        //we expect two objects to have the same scheme to minimize computation time
+        Object.entries(_obj1).forEach(([_k,_v])=>{
+          if(typeof _obj1[_k] != 'object'){
+            let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
+            if(strDiff.length>0){
+              _ret[_k] = strDiff
+            }
+          }else{
+            _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+          }
+        })
+        return _ret
+      }
+      if(typeof _coreState.monitors != 'undefined'){
+        let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
+      }
+      // for(windows where subscriptionKey in the list of changed monitors)
       // updateWindow(winState) > communicatorCore
+    }
     return _resolve
   }
-  const compute = async (_coreState: coreState,_prevState: coreState)=>{
-    let _resolve:{set:boolean,action:actionType,payload?:any} = {
+  const compute = async (_coreState:any,_prevState:any)=>{
+    
+    let _resolve:{set:boolean,action,payload?:any} = {
       set:false,
       action:{
         action:''
@@ -89,14 +160,15 @@ const pingMonitor = ()=>{
     }
     _resolve = pingCheck(_coreState,_resolve)
     if(!_resolve.set){
-      _resolve = await monitorCheck(_coreState,_resolve)
+      _resolve = monitorCheck(_coreState,_resolve)
     }
     if(!_resolve.set){
       _resolve = windowCheck(_coreState,_prevState,_resolve)
     }
     if(!_resolve.set){
+
     }else{
-      console.log(`computing resolved with ${_resolve.action} ${ _resolve.payload}`)
+      console.log('Computed with action:',_resolve.action,_resolve.payload)
       await store.dispach({action:_resolve.action,payload:_resolve.payload})
     }
   }
@@ -104,11 +176,14 @@ const pingMonitor = ()=>{
 
 
   app.whenReady().then( async function(){
+    console.log('App is ready')
+    await store.dispach({action:'setPropertyForTesting',payload:42})
+    
     if(dev){
-      
-      testComponents(fileManager,config,loger,pinger,store)
+      // testComponents(fileManager,config,loger,pinger,store)
+    }else{
     }
-
+    
   })
 }
 pingMonitor()
@@ -162,7 +237,6 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
   await store.dispach({action:'setPropertyForTesting',payload:42})
   let undo = store.undo()
   let recivedValue = store.__stateNow().propertyForTesting;
-  console.log(`${recivedValue} ${valueForTesting}`)
   if(undo){
     if(recivedValue == valueForTesting){
       stateManagerTestResult = true

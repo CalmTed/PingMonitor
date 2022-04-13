@@ -167,10 +167,10 @@ config.getParam = function (key) { return __awaiter(_this, void 0, void 0, funct
                 }
                 //return undefined key
                 if (typeof configState[key] == 'undefined') {
-                    loger.out("Key does not exist: " + key);
+                    loger.out("Key does not exist: ".concat(key));
                     return [2 /*return*/, {
                             success: false,
-                            errorMessage: "Key does not exist: " + key
+                            errorMessage: "Key does not exist: ".concat(key)
                         }];
                 }
                 //return from file
@@ -207,10 +207,10 @@ config.setParam = function (message) { return __awaiter(_this, void 0, void 0, f
                 }
                 //return unvalid value format\type
                 if (typeof stateExmple[message.key] !== typeof message.value) {
-                    loger.out("Wrong type of the value. Recived:" + typeof message.value + ". Expected:" + typeof stateExmple[message.key]);
+                    loger.out("Wrong type of the value. Recived:".concat(typeof message.value, ". Expected:").concat(typeof stateExmple[message.key]));
                     return [2 /*return*/, {
                             success: false,
-                            errorMessage: "Wrong type of the value. Recived:" + typeof message.value + ". Expected:" + typeof stateExmple[message.key]
+                            errorMessage: "Wrong type of the value. Recived:".concat(typeof message.value, ". Expected:").concat(typeof stateExmple[message.key])
                         }];
                 }
                 return [4 /*yield*/, updateState({ key: message.key, value: message.value })];

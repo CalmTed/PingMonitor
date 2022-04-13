@@ -37,7 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var _this = this;
 var pingMonitor = function () {
     var version = '1.4';
-    var dev = false;
+    var dev = true;
     var actionTypes = require('./components/actionTypes');
     var fileManager = require('./components/fileManager');
     var config = require('./components/config');
@@ -46,6 +46,7 @@ var pingMonitor = function () {
     var stateManager = require('./components/stateManager');
     var store = new stateManager();
     var comunicatorCore = require('./components/comunicatorCore');
+    var app = require('electron').app;
     var pingCheck = function (_coreState, _resolve) {
         _coreState.monitors.forEach(function (_mon) {
             // for(every monitor & every row)
@@ -74,7 +75,7 @@ var pingMonitor = function () {
                                         _b.sent();
                                         return [3 /*break*/, 4];
                                     case 3:
-                                        loger.out("Unsuccessfull ping probe! Error: " + pingResult.errorMessage + ". Row:id:" + _rowObj_1.rowId + " ip:" + _rowObj_1.ipAddress);
+                                        loger.out("Unsuccessfull ping probe! Error: ".concat(pingResult.errorMessage, ". Row:id:").concat(_rowObj_1.rowId, " ip:").concat(_rowObj_1.ipAddress));
                                         _b.label = 4;
                                     case 4: return [2 /*return*/];
                                 }
@@ -92,39 +93,118 @@ var pingMonitor = function () {
         });
         return _resolve;
     };
-    var monitorCheck = function (_coreState, _resolve) { return __awaiter(_this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            //if(no monitor) reduce(add default Monitor with initial Rows)
-            if (_coreState.monitors.length < 1) {
-                _resolve = {
-                    set: true,
-                    action: actionTypes.ADD_NEW_MONITOR
-                };
-            }
-            return [2 /*return*/, _resolve];
-        });
-    }); };
+    var monitorCheck = function (_coreState, _resolve) {
+        //if(no monitor) reduce(add default Monitor with initial Rows)
+        if (_coreState.monitors.length < 1) {
+            _resolve = {
+                set: true,
+                action: actionTypes.ADD_NEW_MONITOR
+            };
+        }
+        return _resolve;
+    };
     var windowCheck = function (_coreState, _prevState, _resolve) {
-        var checkFullDifference = function (_obj1, _obj2) {
-            var _ret = {};
-            //we expect two objects to have the same scheme to minimize computation time
-            // Object.entries(_obj1).forEach(([_k,_v])=>{
-            //   if(typeof _obj1[_k] != 'object'){
-            //     if(_obj1[_k] !== _obj2[_k]){
-            //       _ret._k = _v
-            //     }
-            //   }else{
-            //     // _ret._k = checkFullDifference(_obj1[_k],_obj2[_k])
-            //   }
-            // })
-            return _ret;
+        // if number on wins is not the same then  addWindow|removeWindow
+        var monitorsIds = function (_state) {
+            var _monsArrNum = [];
+            _monsArrNum = _state.monitors.map(function (_mon) { return Number(_mon.monitorId); });
+            return _monsArrNum;
         };
-        // let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
-        // console.log(differenceObject)
-        //checkDifference of monitorStates
-        // if(number on wins not the same)  addWindow|removeWindow
-        // for(windows where subscribiptionKey in the list of changed monitors)
-        // updateWindow(winState) > communicatorCore
+        var uniqueWinSubs = function (_state) {
+            var _numOfWins = [];
+            _state.windows.forEach(function (_window) {
+                var subKey = Number(JSON.parse(_window).subscriptionKey);
+                if (_numOfWins.indexOf(subKey) == -1) {
+                    _numOfWins.push(subKey);
+                }
+            });
+            return _numOfWins;
+        };
+        var findAllExtraWindowsStr = function (_state, _monIds, _subKeys) {
+            var _winArr = [];
+            _subKeys.forEach(function (_subKey) {
+                if (!_monIds.includes(_subKey)) {
+                    _state.windows.forEach(function (_win) {
+                        if (_win.includes("\"subscriptionKey\":\"".concat(_subKey, "\""))) {
+                            _winArr.push(_win);
+                        }
+                    });
+                }
+            });
+            // _winArr = _coreState.windows.filter((_w)=>{
+            //   return _monIds.indexOf(_w.subscriptionKey) == -1
+            // }).map((_w)=>{
+            //   return _w
+            // })
+            return _winArr;
+        };
+        var findAllUnwindowedMonitors = function (_state, _monIds, _subKeys) {
+            var _monitArr = [];
+            _coreState.monitors.forEach(function (_mon) {
+                if (!_subKeys.includes(_mon.monitorId)) {
+                    _monitArr.push(_mon);
+                }
+            });
+            return _monitArr;
+        };
+        var _uniqueWinSubsArr = uniqueWinSubs(_coreState);
+        var _monitorsIdsArr = monitorsIds(_coreState);
+        var _extraWindowsStrArr = findAllExtraWindowsStr(_coreState, _monitorsIdsArr, _uniqueWinSubsArr);
+        var _unwindowedMonitors = findAllUnwindowedMonitors(_coreState, _monitorsIdsArr, _uniqueWinSubsArr);
+        console.log(_uniqueWinSubsArr, _monitorsIdsArr, _extraWindowsStrArr, _unwindowedMonitors);
+        if (_unwindowedMonitors.length > 0) {
+            //add Windows
+            _resolve = {
+                set: true,
+                action: actionTypes.ADD_NEW_WINDOW_BY_SUBKEY,
+                //we cant loop thought full list, so lets choose just first one for this iteration
+                payload: _unwindowedMonitors[0].monitorId.toString()
+            };
+        }
+        else if (_extraWindowsStrArr.length > 0) {
+            //remove all windows with unused monitor id
+            _resolve = {
+                set: true,
+                action: actionTypes.REMOVE_WINDOW_BY_ID,
+                //selecting only first element in case if difference is more then one window
+                payload: JSON.parse(_extraWindowsStrArr[0]).winId.toString()
+            };
+        }
+        if (!_resolve.set) {
+            var checkFullDifference_1 = function (_obj1, _obj2) {
+                var checkDiffStr = function (_one, _two) {
+                    var _strdiffret = '';
+                    var aArr = _one.split('');
+                    var bArr = _two.split('');
+                    aArr.forEach(function (letter, i) {
+                        if (aArr[i] != bArr[i]) {
+                            _strdiffret += aArr[i];
+                        }
+                    });
+                    return _strdiffret;
+                };
+                var _ret = {};
+                //we expect two objects to have the same scheme to minimize computation time
+                Object.entries(_obj1).forEach(function (_a) {
+                    var _k = _a[0], _v = _a[1];
+                    if (typeof _obj1[_k] != 'object') {
+                        var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
+                        if (strDiff.length > 0) {
+                            _ret[_k] = strDiff;
+                        }
+                    }
+                    else {
+                        _ret[_k] = checkFullDifference_1(_obj1[_k], _obj2[_k]);
+                    }
+                });
+                return _ret;
+            };
+            if (typeof _coreState.monitors != 'undefined') {
+                var differenceObject = checkFullDifference_1(_coreState.monitors, _prevState.monitors);
+            }
+            // for(windows where subscriptionKey in the list of changed monitors)
+            // updateWindow(winState) > communicatorCore
+        }
         return _resolve;
     };
     var compute = function (_coreState, _prevState) { return __awaiter(_this, void 0, void 0, function () {
@@ -139,36 +219,41 @@ var pingMonitor = function () {
                         }
                     };
                     _resolve = pingCheck(_coreState, _resolve);
-                    if (!!_resolve.set) return [3 /*break*/, 2];
-                    return [4 /*yield*/, monitorCheck(_coreState, _resolve)];
-                case 1:
-                    _resolve = _a.sent();
-                    _a.label = 2;
-                case 2:
+                    if (!_resolve.set) {
+                        _resolve = monitorCheck(_coreState, _resolve);
+                    }
                     if (!_resolve.set) {
                         _resolve = windowCheck(_coreState, _prevState, _resolve);
                     }
-                    if (!!_resolve.set) return [3 /*break*/, 3];
-                    return [3 /*break*/, 5];
-                case 3:
-                    console.log("computing resolved with " + _resolve.action + " " + _resolve.payload);
+                    if (!!_resolve.set) return [3 /*break*/, 1];
+                    return [3 /*break*/, 3];
+                case 1:
+                    console.log('Computed with action:', _resolve.action, _resolve.payload);
                     return [4 /*yield*/, store.dispach({ action: _resolve.action, payload: _resolve.payload })];
-                case 4:
+                case 2:
                     _a.sent();
-                    _a.label = 5;
-                case 5: return [2 /*return*/];
+                    _a.label = 3;
+                case 3: return [2 /*return*/];
             }
         });
     }); };
     store.subscribe(compute); //execute compute on any state change
-    var app = require('electron').app;
     app.whenReady().then(function () {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
-                if (dev) {
-                    // testComponents(fileManager,config,loger,pinger,store)
+                switch (_a.label) {
+                    case 0:
+                        console.log('App is ready');
+                        return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: 42 })];
+                    case 1:
+                        _a.sent();
+                        if (dev) {
+                            // testComponents(fileManager,config,loger,pinger,store)
+                        }
+                        else {
+                        }
+                        return [2 /*return*/];
                 }
-                return [2 /*return*/];
             });
         });
     });
@@ -194,8 +279,8 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 }
                 else {
                     console.log('[FAIL] test 1 fileManager!');
-                    console.log("" + (!fileContent.success ? fileContent.errorMessage : ''));
-                    console.log("" + (!wasDeleted.success ? wasDeleted.errorMessage : ''));
+                    console.log("".concat(!fileContent.success ? fileContent.errorMessage : ''));
+                    console.log("".concat(!wasDeleted.success ? wasDeleted.errorMessage : ''));
                 }
                 testConfigValue = Math.round((Math.random() * 1000) * 1000);
                 return [4 /*yield*/, config.setParam({ key: '__keyForTesting', value: testConfigValue })];
@@ -210,7 +295,7 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 else {
                     console.log('[FAIL] test 2 config!');
                     typeof setResult.errorMessage != 'undefined' ? console.log(setResult.errorMessage) : 0;
-                    console.log("Recived: " + testValueResult.value + " Expected:" + testConfigValue);
+                    console.log("Recived: ".concat(testValueResult.value, " Expected:").concat(testConfigValue));
                 }
                 //logger
                 if (loger.out('Initial test')) {
@@ -240,7 +325,6 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 _a.sent();
                 undo = store.undo();
                 recivedValue = store.__stateNow().propertyForTesting;
-                console.log(recivedValue + " " + valueForTesting);
                 if (undo) {
                     if (recivedValue == valueForTesting) {
                         stateManagerTestResult = true;
@@ -251,7 +335,7 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 }
                 else {
                     console.log('[FAIL] test 5 stateManager!');
-                    console.log("Expected:" + valueForTesting + " Recived:" + recivedValue);
+                    console.log("Expected:".concat(valueForTesting, " Recived:").concat(recivedValue));
                 }
                 return [2 /*return*/];
         }

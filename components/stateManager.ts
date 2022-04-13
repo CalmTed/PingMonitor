@@ -1,3 +1,4 @@
+import { version } from "typescript"
 
 
 interface rowState {
@@ -63,11 +64,13 @@ interface actionType {
 }
 
 class stateManager {
+    __appVersion:string
+    __langCode:string
     __state:coreState
     __subscribers = []
     __history = []
     constructor(){
-        this.__state = this.__stateNow()
+        this.__state = {...this.__stateNow()}
 
     }
     __genId(target:'monitor'|'window'|'row'){
@@ -79,6 +82,19 @@ class stateManager {
             default: loger.out('Unknown genId target');break;
         }
         return _ret
+    }
+    __getAppVersion = ()=>{
+        if(typeof this.__appVersion == 'undefined'){
+            this.__appVersion = version
+        }
+        return this.__appVersion
+    }
+    __getLangCode = ()=>{
+        if(typeof this.__langCode == 'undefined'){
+            let config = require('./config')
+            this.__langCode = config.getParam('langCode')
+        }
+        return this.__langCode
     }
     __getInitialPingTimeStrategy = ()=>{
         let _ret = [
@@ -119,12 +135,12 @@ class stateManager {
         }
         return JSON.stringify(_ret)
     }
-    __getInitialWindow = (_appVersion:string,_appLangCode:string)=>{
-        return JSON.stringify({
+    __getInitialWindow = (_appVersion:string,_appLangCode:string,_parameters:object={})=>{
+        let _winData = {
             version: _appVersion,
             langCode: _appLangCode,
             langWords: [{}],
-            winId: -1,
+            winId: this.__genId('window'),
             subscriptionKey: -1,
             title: 'Default window',
             isGraph: false,
@@ -134,11 +150,17 @@ class stateManager {
             isSettingOpen:false,
             isImagePickerOpen:false,
             monitor:{} 
-        })
+        }
+        if(Object.entries(_parameters).length>0){
+            Object.entries(_parameters).forEach(([_key,_value])=>{
+                _winData[_key] = _value
+            })
+        }
+        return JSON.stringify(_winData)
     }
     __getInitialCoreState = ()=>{
-        let _appVersion = '1.4'
-        let _appLangCode = 'ua'
+        let _appVersion = this.__getAppVersion()
+        let _appLangCode = this.__getLangCode()
 
         let _initialMonitorId = this.__genId('monitor')
         return {
@@ -147,25 +169,25 @@ class stateManager {
             langWords: [{}],
             colorMode: 'dark',
             monitors: [
-                {
-                    monitorId:_initialMonitorId,
-                    rows:[
-                        this.__getInitialRowState({_monitorId:_initialMonitorId})
-                    ]
-                }
+                // {
+                    // monitorId:_initialMonitorId,
+                    // rows:[
+                    //     this.__getInitialRowState({_monitorId:_initialMonitorId})
+                    // ]
+                // }
             ],
             windows: [
-                this.__getInitialWindow(_appVersion,_appLangCode)
+                this.__getInitialWindow(_appVersion,_appLangCode,{subscriptionKey:'1232'})
             ],
             propertyForTesting:0
         }
     }
     __stateNow = ()=>{
-        let _reply = this.__getInitialCoreState()
+        let _reply = JSON.stringify(this.__getInitialCoreState())
         if(typeof this.__state !== 'undefined'){
-            _reply = this.__state
+            _reply = JSON.stringify({...this.__state})
         }
-        return _reply
+        return JSON.parse(_reply)
     }
     __reduce = async (_state:coreState, action:actionType)=>{
         const actionTypes = require('./actionTypes')
@@ -205,14 +227,37 @@ class stateManager {
         }
         let _rowInfo:any;
         let _newMonitors:monitState[];
+        let _newWIndowsStr:string[];
         switch(action.action){
             case actionTypes.SET_PROPERTY_FOR_TESTING:
                _state = {..._state,propertyForTesting:action.payload}
                break
             case actionTypes.ADD_NEW_MONITOR:
-                let newMonitors = [..._state.monitors,__newMonitor()]
-                _state = {..._state,monitors:newMonitors}
+                _newMonitors = [..._state.monitors,__newMonitor()]
+                _state = {..._state,monitors:_newMonitors}
                 break
+            case actionTypes.REMOVE_MONITOR_BY_ID:
+                // _newMonitors = [..._state.monitors,__newMonitor()]
+                _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
+                _state = {..._state,monitors:_newMonitors}
+                break
+            case actionTypes.ADD_NEW_WINDOW_BY_SUBKEY:
+                if(typeof action.payload != 'string'){
+                    loger.out(`Reducer error:${action.action} expected to recive subscriptionKey:string`)
+                    break;
+                }
+                _newWIndowsStr = [..._state.windows,this.__getInitialWindow(this.__getAppVersion(),this.__getLangCode(),{subscriptionKey:action.payload})]
+                _state = {..._state,windows:_newWIndowsStr}
+                break;
+            case actionTypes.REMOVE_WINDOW_BY_ID:
+                if(typeof action.payload != 'string'){
+                    loger.out(`Reducer error:${action.action} expected to recive winId:string`)
+                    break;
+                }
+                //going lazy way without parsing json string
+                _newWIndowsStr = [..._state.windows.filter(_w=>_w.indexOf(`"winId":${action.payload}`)  == -1)]
+                _state = {..._state,windows:_newWIndowsStr}
+                break;
             case actionTypes.ROW_SUBMIT_PING_PROBE:
 
                 if(!__validateInputs(action.payload,['rowId','status','dellay','packetLoss','ttl','fullResponce'])){
@@ -293,17 +338,52 @@ class stateManager {
         return _state
     }
     __setState = (_state:coreState)=>{
+        
+        _state = {..._state}
         let _prevState = {...this.__state}
         this.__state = {..._state}
+
+        let checkFullDifference = (_obj1:object,_obj2:object)=>{
+            let checkDiffStr = (_one,_two)=>{
+              let _strdiffret = '';
+              let aArr = _one.split('');
+              let bArr = _two.split('');
+              aArr.forEach((letter,i)=>{
+                if(aArr[i] != bArr[i]){
+                  _strdiffret += aArr[i]
+                }
+              })
+              return _strdiffret
+            }
+            let _ret:any = {}
+            //we expect two objects to have the same scheme to minimize computation time
+            Object.entries(_obj1).forEach(([_k,_v])=>{
+              if(typeof _obj1[_k] != 'object'){
+                let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
+                if(strDiff.length > 0){
+                  _ret[_k] = _v
+                }
+              }else{
+                _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+              }
+            })
+            return _ret
+          }
+        if(typeof _state.monitors > 'undefined'){
+            let _fullMonotorDifference = checkFullDifference(_state.monitors,_prevState.monitors)
+        }
+          
+
+
+        //TODO we need to save history only on user inputs not background services like ping report
+        // but how cat we get list of changed parameters?
+        // if([].indexOf() != -1){
+        // }
         //limit to 20 elements
         if(this.__history.length>=20){
             // removes first element of the array: [1,2,3] > [2,3]
             this.__history.shift()
         }
-        //TODO we need to save hispory only on user inputs not background services
-        // but how cat we get list of changed parameters?
-        // if([].indexOf() != -1){
-        // }
         this.__history.push(_state)
         return this.__notifySubscribers(_state,_prevState) ? true : false;
     }
@@ -330,7 +410,10 @@ class stateManager {
         return _ret;
     }
     dispach = async (action:actionType)=>{
-        let _newState = await this.__reduce(this.__state,action)
+        // let _oldState = {...this.__stateNow()}
+        // let _oldState = JSON.stringify({...this.__stateNow()})
+        let _newState = await this.__reduce(this.__stateNow(),action)
+
         return this.__setState(_newState) ? true : false;
     }
     subscribe = (_callback:any)=>{
