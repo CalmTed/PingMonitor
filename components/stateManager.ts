@@ -1,4 +1,4 @@
-import { version } from "typescript"
+
 
 
 interface rowState {
@@ -69,7 +69,8 @@ class stateManager {
     __state:coreState
     __subscribers = []
     __history = []
-    constructor(){
+    constructor(data:any){
+        this.__appVersion = data.version
         this.__state = {...this.__stateNow()}
 
     }
@@ -84,9 +85,6 @@ class stateManager {
         return _ret
     }
     __getAppVersion = ()=>{
-        if(typeof this.__appVersion == 'undefined'){
-            this.__appVersion = version
-        }
         return this.__appVersion
     }
     __getLangCode = ()=>{
@@ -162,19 +160,27 @@ class stateManager {
         let _appVersion = this.__getAppVersion()
         let _appLangCode = this.__getLangCode()
 
-        let _initialMonitorId = this.__genId('monitor')
+        let _initialMonitorId1 = this.__genId('monitor')
+        let _initialMonitorId2 = this.__genId('monitor')
+
         return {
             version: _appVersion,//SHOULD BE SET AUTOMATICALY
             langCode: _appLangCode,
             langWords: [{}],
             colorMode: 'dark',
             monitors: [
-                // {
-                    // monitorId:_initialMonitorId,
-                    // rows:[
-                    //     this.__getInitialRowState({_monitorId:_initialMonitorId})
-                    // ]
-                // }
+                {
+                    monitorId:_initialMonitorId1,
+                    rows:[
+                        this.__getInitialRowState({_monitorId:_initialMonitorId1}),
+                    ]
+                },
+                {
+                    monitorId:_initialMonitorId2,
+                    rows:[
+                        this.__getInitialRowState({_monitorId:_initialMonitorId2}),
+                    ]
+                }
             ],
             windows: [
                 this.__getInitialWindow(_appVersion,_appLangCode,{subscriptionKey:'1232'})
@@ -218,7 +224,7 @@ class stateManager {
             let _rwObj = JSON.parse(_rwStr)
             return {
                 payloadObj:_plObj,
-                monitirObj:_selMon,
+                monitorObj:_selMon,
                 monitorIndex:_monInd,
                 rowStr:_monInd,
                 rowIndex:_rwInd,
@@ -276,7 +282,6 @@ class stateManager {
                     ttl:action.payload.ttl,
                     fullResponce:action.payload.fillResponce
                 })
-
                 //TODO make it work for different conditions
                 try{
                     if(_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == action.payload.status).updateTimeMS != _rowInfo.rowObj.updateTimeMS){
@@ -344,6 +349,7 @@ class stateManager {
         this.__state = {..._state}
 
         let checkFullDifference = (_obj1:object,_obj2:object)=>{
+            //TODO make this work properly
             let checkDiffStr = (_one,_two)=>{
               let _strdiffret = '';
               let aArr = _one.split('');

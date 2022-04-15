@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -34,7 +35,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var _this = this;
+exports.__esModule = true;
+var electron_1 = require("electron");
 var pingMonitor = function () {
     var version = '1.4';
     var dev = true;
@@ -44,9 +46,22 @@ var pingMonitor = function () {
     var loger = require('./components/loger');
     var pinger = require('./components/pinger');
     var stateManager = require('./components/stateManager');
-    var store = new stateManager();
+    var store = new stateManager({ version: version });
     var comunicatorCore = require('./components/comunicatorCore');
+    var comunicator = new comunicatorCore();
     var app = require('electron').app;
+    var windows = {};
+    //add, remove, edit param
+    //send data, 
+    // windowManager
+    // .add({win data})
+    // winId, type, isHidden, title, fileToLoad
+    // .get(winId)
+    // .remove(winId)
+    // .set([prop,value])
+    // .query()
+    // setId, setWinData, pingReply
+    // for graph: setRowData, setSubscription, 
     var pingCheck = function (_coreState, _resolve) {
         _coreState.monitors.forEach(function (_mon) {
             // for(every monitor & every row)
@@ -57,7 +72,7 @@ var pingMonitor = function () {
                     // if(not paused and not busy) then timeout pingProbe(monitor,row,ip)
                     setTimeout(function (_a) {
                         var _store = _a._store, _actionTypes = _a._actionTypes;
-                        return __awaiter(_this, void 0, void 0, function () {
+                        return __awaiter(void 0, void 0, void 0, function () {
                             var pingResult;
                             return __generator(this, function (_b) {
                                 switch (_b.label) {
@@ -93,7 +108,7 @@ var pingMonitor = function () {
         });
         return _resolve;
     };
-    var monitorCheck = function (_coreState, _resolve) {
+    var monitorCheck = function (_coreState, _prevState, _resolve) {
         //if(no monitor) reduce(add default Monitor with initial Rows)
         if (_coreState.monitors.length < 1) {
             _resolve = {
@@ -101,9 +116,9 @@ var pingMonitor = function () {
                 action: actionTypes.ADD_NEW_MONITOR
             };
         }
-        return _resolve;
-    };
-    var windowCheck = function (_coreState, _prevState, _resolve) {
+        if (_resolve.set) {
+            return _resolve;
+        }
         // if number on wins is not the same then  addWindow|removeWindow
         var monitorsIds = function (_state) {
             var _monsArrNum = [];
@@ -131,11 +146,6 @@ var pingMonitor = function () {
                     });
                 }
             });
-            // _winArr = _coreState.windows.filter((_w)=>{
-            //   return _monIds.indexOf(_w.subscriptionKey) == -1
-            // }).map((_w)=>{
-            //   return _w
-            // })
             return _winArr;
         };
         var findAllUnwindowedMonitors = function (_state, _monIds, _subKeys) {
@@ -151,18 +161,15 @@ var pingMonitor = function () {
         var _monitorsIdsArr = monitorsIds(_coreState);
         var _extraWindowsStrArr = findAllExtraWindowsStr(_coreState, _monitorsIdsArr, _uniqueWinSubsArr);
         var _unwindowedMonitors = findAllUnwindowedMonitors(_coreState, _monitorsIdsArr, _uniqueWinSubsArr);
-        console.log(_uniqueWinSubsArr, _monitorsIdsArr, _extraWindowsStrArr, _unwindowedMonitors);
-        if (_unwindowedMonitors.length > 0) {
-            //add Windows
+        if (_unwindowedMonitors.length > 0) { //add window
             _resolve = {
                 set: true,
                 action: actionTypes.ADD_NEW_WINDOW_BY_SUBKEY,
-                //we cant loop thought full list, so lets choose just first one for this iteration
+                //we can't loop throght full list, so lets choose just first one for this iteration
                 payload: _unwindowedMonitors[0].monitorId.toString()
             };
         }
-        else if (_extraWindowsStrArr.length > 0) {
-            //remove all windows with unused monitor id
+        else if (_extraWindowsStrArr.length > 0) { //remove window with unused monitor id
             _resolve = {
                 set: true,
                 action: actionTypes.REMOVE_WINDOW_BY_ID,
@@ -170,44 +177,137 @@ var pingMonitor = function () {
                 payload: JSON.parse(_extraWindowsStrArr[0]).winId.toString()
             };
         }
-        if (!_resolve.set) {
-            var checkFullDifference_1 = function (_obj1, _obj2) {
-                var checkDiffStr = function (_one, _two) {
-                    var _strdiffret = '';
-                    var aArr = _one.split('');
-                    var bArr = _two.split('');
-                    aArr.forEach(function (letter, i) {
-                        if (aArr[i] != bArr[i]) {
-                            _strdiffret += aArr[i];
-                        }
+        return _resolve;
+    };
+    var windowCheck = function (_coreState, _prevState, _resolve) {
+        var getNormalWindow = function (winData) {
+            if (winData === void 0) { winData = { w: 700, h: 400, show: false }; }
+            var _ret = new electron_1.BrowserWindow({
+                width: winData.w,
+                height: winData.h,
+                icon: __dirname + '/assets/PM.ico',
+                autoHideMenuBar: true,
+                webPreferences: {
+                    nodeIntegration: true,
+                    contextIsolation: false
+                },
+                // devTools:true,
+                show: winData.show
+            });
+            return _ret;
+        };
+        // do we need to add new browser window?
+        var uncreatedBrowserWIndowsF = function (_state) {
+            var _ret = [];
+            _state.windows.forEach(function (_wStr) {
+                var _wObj = JSON.parse(_wStr);
+                if (windows[_wObj.winId] == undefined) {
+                    _ret.push(_wObj.winId);
+                }
+            });
+            return _ret;
+        };
+        // do we need to remove some browser windows?
+        var undelitedBrowserWindowsF = function (_state) {
+            var _ret = [];
+            Object.keys(windows).forEach(function (_wId) {
+                if (_state.windows.filter(function (_wStr) { return _wStr.indexOf("\"winId\":".concat(_wId)) > -1; }).length == 0) {
+                    _ret.push(_wId);
+                }
+            });
+            return _ret;
+        };
+        var uncreatedBrowserWIndows = uncreatedBrowserWIndowsF(_coreState);
+        var undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState);
+        // console.log('Uncreated windows',uncreatedBrowserWIndows)
+        // console.log('Undeleted windows',undelitedBrowserWindows)
+        if (uncreatedBrowserWIndows.length) {
+            uncreatedBrowserWIndows.forEach(function (_winId) {
+                windows[_winId] = getNormalWindow();
+                windows[_winId].loadFile('pm.html');
+                windows[_winId].on('ready-to-show', function () {
+                    comunicator.send({
+                        window: windows[_winId],
+                        command: 'sendWinId',
+                        payload: _winId
                     });
-                    return _strdiffret;
-                };
-                var _ret = {};
-                //we expect two objects to have the same scheme to minimize computation time
-                Object.entries(_obj1).forEach(function (_a) {
-                    var _k = _a[0], _v = _a[1];
-                    if (typeof _obj1[_k] != 'object') {
-                        var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
-                        if (strDiff.length > 0) {
-                            _ret[_k] = strDiff;
-                        }
-                    }
-                    else {
-                        _ret[_k] = checkFullDifference_1(_obj1[_k], _obj2[_k]);
+                    windows[_winId].show();
+                });
+            });
+        }
+        if (undelitedBrowserWindows.length) {
+            undelitedBrowserWindows.forEach(function (_winId) {
+                windows[_winId].destroy();
+            });
+        }
+        if (_resolve.set) {
+            return _resolve;
+        }
+        var checkFullDifference = function (_obj1, _obj2) {
+            var checkDiffStr = function (_one, _two) {
+                var _strdiffret = '';
+                var aArr = _one.split('');
+                var bArr = _two.split('');
+                aArr.forEach(function (letter, i) {
+                    if (aArr[i] != bArr[i]) {
+                        _strdiffret += aArr[i];
                     }
                 });
-                return _ret;
+                return _strdiffret;
             };
-            if (typeof _coreState.monitors != 'undefined') {
-                var differenceObject = checkFullDifference_1(_coreState.monitors, _prevState.monitors);
-            }
-            // for(windows where subscriptionKey in the list of changed monitors)
-            // updateWindow(winState) > communicatorCore
+            var _ret = {};
+            //we expect two objects to have the same scheme to minimize computation time
+            Object.entries(_obj1).forEach(function (_a) {
+                var _k = _a[0], _v = _a[1];
+                if (typeof _obj1[_k] != 'object') {
+                    var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
+                    if (strDiff.length > 0) {
+                        _ret[_k] = _obj1[_k];
+                    }
+                }
+                else {
+                    _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
+                }
+            });
+            return _ret;
+        };
+        if (typeof _coreState.monitors != 'undefined') {
+            var differenceObject = checkFullDifference(_coreState.monitors, _prevState.monitors);
+            Object.entries(differenceObject).forEach(function (_a) {
+                var _monInd = _a[0], _monVal = _a[1];
+                return __awaiter(void 0, void 0, void 0, function () {
+                    var targetId;
+                    return __generator(this, function (_b) {
+                        targetId = _coreState.monitors[_monInd].monitorId;
+                        _coreState.windows.forEach(function (_winStr) { return __awaiter(void 0, void 0, void 0, function () {
+                            var _winObj;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        if (!(_winStr.indexOf("\"subscriptionKey\":".concat(targetId)) > -1)) return [3 /*break*/, 2];
+                                        _winObj = JSON.parse(_winStr);
+                                        // updateWindow(winState) > communicatorCore
+                                        return [4 /*yield*/, comunicator.send({
+                                                window: windows[_winObj.winId],
+                                                command: 'sendWinState',
+                                                payload: _winStr
+                                            })];
+                                    case 1:
+                                        // updateWindow(winState) > communicatorCore
+                                        _a.sent();
+                                        _a.label = 2;
+                                    case 2: return [2 /*return*/];
+                                }
+                            });
+                        }); });
+                        return [2 /*return*/];
+                    });
+                });
+            });
         }
         return _resolve;
     };
-    var compute = function (_coreState, _prevState) { return __awaiter(_this, void 0, void 0, function () {
+    var compute = function (_coreState, _prevState) { return __awaiter(void 0, void 0, void 0, function () {
         var _resolve;
         return __generator(this, function (_a) {
             switch (_a.label) {
@@ -220,7 +320,7 @@ var pingMonitor = function () {
                     };
                     _resolve = pingCheck(_coreState, _resolve);
                     if (!_resolve.set) {
-                        _resolve = monitorCheck(_coreState, _resolve);
+                        _resolve = monitorCheck(_coreState, _prevState, _resolve);
                     }
                     if (!_resolve.set) {
                         _resolve = windowCheck(_coreState, _prevState, _resolve);
@@ -242,10 +342,11 @@ var pingMonitor = function () {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0:
-                        console.log('App is ready');
-                        return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: 42 })];
+                    case 0: 
+                    // console.log('App is ready')
+                    return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: 42 })];
                     case 1:
+                        // console.log('App is ready')
                         _a.sent();
                         if (dev) {
                             // testComponents(fileManager,config,loger,pinger,store)
@@ -259,7 +360,7 @@ var pingMonitor = function () {
     });
 };
 pingMonitor();
-var testComponents = function (fileManager, config, loger, pinger, store) { return __awaiter(_this, void 0, void 0, function () {
+var testComponents = function (fileManager, config, loger, pinger, store) { return __awaiter(void 0, void 0, void 0, function () {
     var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, undo, recivedValue;
     return __generator(this, function (_a) {
         switch (_a.label) {

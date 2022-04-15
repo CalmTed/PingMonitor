@@ -1,4 +1,3 @@
-"use strict";
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -55,17 +54,12 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
-exports.__esModule = true;
-var typescript_1 = require("typescript");
 var stateManager = /** @class */ (function () {
-    function stateManager() {
+    function stateManager(data) {
         var _this = this;
         this.__subscribers = [];
         this.__history = [];
         this.__getAppVersion = function () {
-            if (typeof _this.__appVersion == 'undefined') {
-                _this.__appVersion = typescript_1.version;
-            }
             return _this.__appVersion;
         };
         this.__getLangCode = function () {
@@ -143,19 +137,26 @@ var stateManager = /** @class */ (function () {
         this.__getInitialCoreState = function () {
             var _appVersion = _this.__getAppVersion();
             var _appLangCode = _this.__getLangCode();
-            var _initialMonitorId = _this.__genId('monitor');
+            var _initialMonitorId1 = _this.__genId('monitor');
+            var _initialMonitorId2 = _this.__genId('monitor');
             return {
                 version: _appVersion,
                 langCode: _appLangCode,
                 langWords: [{}],
                 colorMode: 'dark',
                 monitors: [
-                // {
-                // monitorId:_initialMonitorId,
-                // rows:[
-                //     this.__getInitialRowState({_monitorId:_initialMonitorId})
-                // ]
-                // }
+                    {
+                        monitorId: _initialMonitorId1,
+                        rows: [
+                            _this.__getInitialRowState({ _monitorId: _initialMonitorId1 }),
+                        ]
+                    },
+                    {
+                        monitorId: _initialMonitorId2,
+                        rows: [
+                            _this.__getInitialRowState({ _monitorId: _initialMonitorId2 }),
+                        ]
+                    }
                 ],
                 windows: [
                     _this.__getInitialWindow(_appVersion, _appLangCode, { subscriptionKey: '1232' })
@@ -205,7 +206,7 @@ var stateManager = /** @class */ (function () {
                             var _rwObj = JSON.parse(_rwStr);
                             return {
                                 payloadObj: _plObj,
-                                monitirObj: _selMon,
+                                monitorObj: _selMon,
                                 monitorIndex: _monInd,
                                 rowStr: _monInd,
                                 rowIndex: _rwInd,
@@ -339,6 +340,7 @@ var stateManager = /** @class */ (function () {
             var _prevState = __assign({}, _this.__state);
             _this.__state = __assign({}, _state);
             var checkFullDifference = function (_obj1, _obj2) {
+                //TODO make this work properly
                 var checkDiffStr = function (_one, _two) {
                     var _strdiffret = '';
                     var aArr = _one.split('');
@@ -417,6 +419,7 @@ var stateManager = /** @class */ (function () {
         this.subscribe = function (_callback) {
             _this.__subscribers.push(_callback);
         };
+        this.__appVersion = data.version;
         this.__state = __assign({}, this.__stateNow());
     }
     stateManager.prototype.__genId = function (target) {

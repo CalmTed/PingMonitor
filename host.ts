@@ -1,3 +1,5 @@
+import { BrowserWindow } from "electron"
+
 const pingMonitor = ()=>{
   const version = '1.4'
   const dev = true
@@ -8,10 +10,13 @@ const pingMonitor = ()=>{
   const loger = require('./components/loger')
   const pinger = require('./components/pinger')
   const stateManager = require('./components/stateManager')
-  const store = new stateManager()
+  const store = new stateManager({version:version})
   const comunicatorCore = require('./components/comunicatorCore')
+  const comunicator = new comunicatorCore()
   const { app } = require('electron')
 
+  var windows:object = {}
+  
   const pingCheck = (_coreState:any,_resolve:any)=>{
     _coreState.monitors.forEach(_mon=>{
       // for(every monitor & every row)
@@ -45,7 +50,7 @@ const pingMonitor = ()=>{
     })
     return _resolve;
   }
-  const monitorCheck = (_coreState:any,_resolve:any)=>{
+  const monitorCheck = (_coreState:any,_prevState:any,_resolve:any)=>{
     //if(no monitor) reduce(add default Monitor with initial Rows)
     if(_coreState.monitors.length<1){
       _resolve = {
@@ -53,9 +58,9 @@ const pingMonitor = ()=>{
         action:actionTypes.ADD_NEW_MONITOR
       }
     }
-    return _resolve
-  }
-  const windowCheck = (_coreState:any,_prevState:any,_resolve:any)=>{
+    if(_resolve.set){
+      return _resolve
+    }
     // if number on wins is not the same then  addWindow|removeWindow
     let monitorsIds = (_state)=>{
       let _monsArrNum:number[] = [];
@@ -98,16 +103,14 @@ const pingMonitor = ()=>{
     let _monitorsIdsArr = monitorsIds(_coreState);
     let _extraWindowsStrArr = findAllExtraWindowsStr(_coreState,_monitorsIdsArr,_uniqueWinSubsArr)
     let _unwindowedMonitors = findAllUnwindowedMonitors(_coreState,_monitorsIdsArr,_uniqueWinSubsArr)
-    if(_unwindowedMonitors.length>0){
-      //add Windows
+    if(_unwindowedMonitors.length>0){//add window
       _resolve = {
         set:true,
         action:actionTypes.ADD_NEW_WINDOW_BY_SUBKEY,
-        //we cant loop thought full list, so lets choose just first one for this iteration
+        //we can't loop throght full list, so lets choose just first one for this iteration
         payload:_unwindowedMonitors[0].monitorId.toString()
       }
-    }else if (_extraWindowsStrArr.length>0){
-      //remove all windows with unused monitor id
+    }else if (_extraWindowsStrArr.length>0){//remove window with unused monitor id
       _resolve = {
         set:true,
         action:actionTypes.REMOVE_WINDOW_BY_ID,
@@ -115,43 +118,120 @@ const pingMonitor = ()=>{
         payload:JSON.parse(_extraWindowsStrArr[0]).winId.toString()
       }
     }
-    if(!_resolve.set){
-      let checkFullDifference = (_obj1:object,_obj2:object)=>{
-        let checkDiffStr = (_one:string,_two:string)=>{
-          let _strdiffret = '';
-          let aArr = _one.split('');
-          let bArr = _two.split('');
-          aArr.forEach((letter,i)=>{
-            if(aArr[i] != bArr[i]){
-              _strdiffret += aArr[i]
-            }
-          })
-          return _strdiffret
+
+    return _resolve
+  }
+  const windowCheck = (_coreState:any,_prevState:any,_resolve:any)=>{//this function depends on global variable: windows
+    let getNormalWindow = (winData = {w:700,h:400,show:false})=>{
+      let _ret = new BrowserWindow({
+        width: winData.w,
+        height: winData.h,
+        icon: __dirname + '/assets/PM.ico',
+        autoHideMenuBar:true,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: false
+        },
+        // devTools:true,
+        show:winData.show,
+      })
+      return _ret
+    }
+    // do we need to add new browser window
+    let uncreatedBrowserWIndowsF = (_state)=>{
+      let _ret:string[] = []
+      _state.windows.forEach(_wStr=>{
+        let _wObj = JSON.parse(_wStr)
+        if(windows[_wObj.winId] == undefined){
+          _ret.push(_wObj.winId)
         }
-        let _ret:any = {}
-        //we expect two objects to have the same scheme to minimize computation time
-        Object.entries(_obj1).forEach(([_k,_v])=>{
-          if(typeof _obj1[_k] != 'object'){
-            let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
-            if(strDiff.length>0){
-              _ret[_k] = strDiff
-            }
-          }else{
-            _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+      })
+      return _ret
+    }
+    // do we need to remove some browser windows
+    let undelitedBrowserWindowsF = (_state)=>{
+      let _ret:string[] = []
+      Object.keys(windows).forEach(_wId=>{
+        if(_state.windows.filter(_wStr=>{return _wStr.indexOf(`"winId":${_wId}`)>-1}).length == 0){
+          _ret.push(_wId)
+        }
+      })
+      return _ret
+    }
+    let uncreatedBrowserWIndows = uncreatedBrowserWIndowsF(_coreState)
+    let undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState)
+    // console.log('Uncreated windows',uncreatedBrowserWIndows)
+    // console.log('Undeleted windows',undelitedBrowserWindows)
+    if(uncreatedBrowserWIndows.length){
+      uncreatedBrowserWIndows.forEach(_winId => {
+        windows[_winId] = getNormalWindow()
+        windows[_winId].loadFile('pm.html');
+        windows[_winId].on('ready-to-show',()=>{
+          comunicator.send({
+            window:windows[_winId],
+            command:'sendWinId',
+            payload:_winId
+          })
+          windows[_winId].show()
+        })
+      });
+    }
+    if(undelitedBrowserWindows.length){
+      undelitedBrowserWindows.forEach(_winId => {
+        windows[_winId].destroy();
+      });
+    }
+    
+    if(_resolve.set){
+      return _resolve
+    }
+    let checkFullDifference = (_obj1:object,_obj2:object)=>{
+      let checkDiffStr = (_one:string,_two:string)=>{
+        let _strdiffret = '';
+        let aArr = _one.split('');
+        let bArr = _two.split('');
+        aArr.forEach((letter,i)=>{
+          if(aArr[i] != bArr[i]){
+            _strdiffret += aArr[i]
           }
         })
-        return _ret
+        return _strdiffret
       }
-      if(typeof _coreState.monitors != 'undefined'){
-        let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
-      }
-      // for(windows where subscriptionKey in the list of changed monitors)
-      // updateWindow(winState) > communicatorCore
+      let _ret:any = {}
+      //we expect two objects to have the same scheme to minimize computation time
+      Object.entries(_obj1).forEach(([_k,_v])=>{
+        if(typeof _obj1[_k] != 'object'){
+          let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
+          if(strDiff.length>0){
+            _ret[_k] = _obj1[_k]
+          }
+        }else{
+          _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+        }
+      })
+      return _ret
+    }
+    if(typeof _coreState.monitors != 'undefined'){
+      let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
+      Object.entries(differenceObject).forEach(async ([_monInd,_monVal])=>{
+        let targetId = _coreState.monitors[_monInd].monitorId
+        _coreState.windows.forEach(async _winStr=>{
+          // for(windows where subscriptionKey in the list of changed monitors)
+          if(_winStr.indexOf(`"subscriptionKey":${targetId}`) > -1){
+            let _winObj:any = JSON.parse(_winStr)
+            // update window with communicatorCore
+            await comunicator.send({
+              window:windows[_winObj.winId],
+              command:'sendWinState',
+              payload:_winStr
+            })
+          }
+        })
+      }) 
     }
     return _resolve
   }
   const compute = async (_coreState:any,_prevState:any)=>{
-    
     let _resolve:{set:boolean,action,payload?:any} = {
       set:false,
       action:{
@@ -160,7 +240,7 @@ const pingMonitor = ()=>{
     }
     _resolve = pingCheck(_coreState,_resolve)
     if(!_resolve.set){
-      _resolve = monitorCheck(_coreState,_resolve)
+      _resolve = monitorCheck(_coreState,_prevState,_resolve)
     }
     if(!_resolve.set){
       _resolve = windowCheck(_coreState,_prevState,_resolve)
@@ -174,9 +254,8 @@ const pingMonitor = ()=>{
   }
   store.subscribe(compute)//execute compute on any state change
 
-
   app.whenReady().then( async function(){
-    console.log('App is ready')
+    // console.log('App is ready')
     await store.dispach({action:'setPropertyForTesting',payload:42})
     
     if(dev){
@@ -198,8 +277,8 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
     console.log('[PASS] test 1 fileManager!')
   }else{
     console.log('[FAIL] test 1 fileManager!')
-    console.log(`${!fileContent.success?fileContent.errorMessage:''}`);
-    console.log(`${!wasDeleted.success?wasDeleted.errorMessage:''}`);
+    console.log(`${!fileContent.success?fileContent.errorMessage:''}`)
+    console.log(`${!wasDeleted.success?wasDeleted.errorMessage:''}`)
   }
 
   //config
@@ -248,7 +327,5 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
     console.log('[FAIL] test 5 stateManager!')
     console.log(`Expected:${valueForTesting} Recived:${recivedValue}`)
   }
-
-  //communicatorCore
 
 }
