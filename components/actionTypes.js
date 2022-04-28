@@ -4,9 +4,12 @@ var actionTypes = {
     REMOVE_MONITOR_BY_ID: "removeMonitorById",
     ADD_NEW_WINDOW_BY_SUBKEY: 'addNewWindowBySubKey',
     REMOVE_WINDOW_BY_ID: 'removeWindowById',
+    WIN_SET_PROP: 'winSetProp',
+    WIN_TOGGLE_PROP: 'winToggleProp',
     ADD_ROW: "addRow",
     REMOVE_ROW: "removeRow",
     ROW_SUBMIT_PING_PROBE: "rowSubmitPingProbe",
-    ROW_SET_PROP: 'rowSetProp'
+    ROW_SET_PROP: 'rowSetProp',
+    ROW_PAUSE_ALL: 'rowPauseAllActive'
 };
 module.exports = actionTypes;

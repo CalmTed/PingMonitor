@@ -275,7 +275,7 @@ TODO
       - [+] ping>(27.03.22 17:42)
       - [+] stateManager>(28.03.22 15:45)
       - [+] communicatorCore pt1>(28.03.22 17:00)
-      - [ ] pinging without interface
+      - [+] pinging without interface (2022-04-01)
 
       - [ ] createPage>
       - [ ] communicatorWindow & communicatorCore pt2>
@@ -311,5 +311,122 @@ TODO
       - file manager
       - log
       - config
-
     - one button to unAlarm all rows
+
+
+    Files from pre 1.4 version:
+    index.html
+    graph.html
+    index.js
+    monitor.js
+    graph.js
+
+    #### Tasks from 2022-04-27
+    - [+] Render(initial create) empty modals(menu,setting,imgPicker) 0.3 day 2022-04-27 11:18
+    - [+] Add optimizers for them to rerender from stateDifference object 0.3 day 2022-04-27 11:39
+      - [+] open/hide
+    - [+] Add screen tools render (open menu, add row,full screen, pause all,unalarm all) 0.3 day  2022-04-27 12:40
+    ---- before 28.04
+    - [+] Add dispatches for tools for state change 0.3 day 2022-04-28 11:00
+      - [+] openMenu, fullScreenToggle, addRow, pauseAllActive <- SAVE PAUSED ROWS AS A LIST
+    - [] Render rows optimaly 0.6 day
+      - [+] add/remove row 2022-04-28 19:00
+      - [] + swaping rows
+      - [] selector,property,value for
+        - [+] isPaused,status,isBusy 2022-04-28 22:00
+        - [] isSelected,isAlarmed,isEditing,imageLink,graph,updateTime,size,,name,address
+    ---- before 29.04
+    - [] Row action dispatches 1 day
+      - [] remove,pause
+      - [] name,address,updateTime(change PTS too)
+      - [] in context menu: change row size,open image picker, mute(unalarm)
+      - [] if alarmed show "unalarm" instead of "pause"
+    ---- before 30.04
+    - [] Menu action dispaches 1 day
+      - [] new window, duplicate window
+      - [] export&import PM config <- WITH OR WITHOUT HISTORY
+      - [] scale screen
+      - [] hide tools buttons if unneded
+    ---- before 01.04
+    ---- 01.04 not for work!
+    - [] Settings 2 days
+      - [] Sync config data
+        - [] colorMode, timeToAlarm, unmuteOnGettingOnline, pingHistLimitMINS, minigraphLimitMINS, savePingHistToExportConfig
+        - [] initial rows
+        - [] default new row (newRowRule fromLast|default)
+      - [] Dispach config change <-SET DEFAULTS BUTTON
+    - [] Language settings 2 days
+    ---- before 03.04
+
+    //create window process
+    //init vars
+    //get data from the core
+    //render data
+    //create event listeners
+    
+//on resive data
+    //check difference
+    //render needed parts, rows, fields
+
+//PARTS TO RENDER
+//modal: menu,setting,imgPicker
+//tools: add, full screen, pause all, clear history, scale, new window
+//row list order
+//rows:
+    //full rerender (lang,size)
+    //image, name, address, updateTime,graph
+    //mute, alarm
+    //isPaused
+    //isEditing
+    //isSelected
+    //menu
+        //pause,mute(alarm)(show on ringing),size,remove
+
+//ROW SIZES
+//1(1x1) image,name,ip,status border
+//2(1x2) image,name,ip,status text,icons(dellay,update,quality)
+//4x(2x2) image,name,ip,status text,icons(dellay,update,quality),graph
+//8x(4x2) image,name,ip,status text,icons(dellay,update,quality),graph,offline(last,total),online(last,total)
+
+//GRID TO SCREEN SIZE:
+//480x720 (3x5)
+//720x1080 
+//1080x1920
+//2160x3840
+//4320x7680 (30x50)
+//different(largest possible):
+    //480:3
+    //...
+    //7680:50
+//if row is larger then screen width: try to wrap: otherwise overflow
+    //remove extra places of height in case of  wraping
+
+//EVENTS
+//window
+    //add row(ctrl+N)
+    //full screen(ctrl+F)
+    //pause all(ctrl+P)
+    //mute all(ctrl+M)
+    //open menu/close menu
+        //new window (ctrl+shift+N)
+        //duplicate window (ctrl+shift+D)
+        //export config (ctrl+shift+E) (with history or without)
+        //import config (ctrl+shift+I)
+        //settings (ctrl+shift+S)
+        //scale screen (ctrl+=/ctrl+-)
+        //change language
+    //img picker select img for the row
+    //open settings/close settings
+        //change settings value
+    //row
+        //open image picker
+        //change
+            //name
+            //ip
+            //updateTime
+        //remove
+        //pause
+        //mute
+        //unalarm
+        //change row size
+        //long-press: select, change order

@@ -8,7 +8,7 @@ interface rowState {
     ipAddress: string
     updateTimeMS: number
     name: string
-    imageBase64: string
+    imageLink: string
     history: {
         timestamp:number
         time:Date
@@ -23,10 +23,11 @@ interface rowState {
     }[]
     isBusy:boolean
     isPaused:boolean
+    isPausedGrouped:boolean
     isMuted:boolean
     isAlarmed:boolean
     isEditing:boolean
-    filedEditing:'name'|'address'|'updatetime'|'image'|'none'
+    feiledEditing:'name'|'address'|'updatetime'|'image'|'none'
     isGraphSubscribed:boolean
     isSelected:boolean
 }
@@ -47,7 +48,7 @@ interface winState {
     isMenuOpen:boolean
     isSettingOpen:boolean
     isImagePickerOpen:boolean
-    monitor:monitState//only one here just a copy from the list
+    monitor:monitState//only one here just a copy from the list for Comunicator
 }
 interface coreState {
     readonly version: string
@@ -72,7 +73,6 @@ class stateManager {
     constructor(data:any){
         this.__appVersion = data.version
         this.__state = {...this.__stateNow()}
-
     }
     __genId(target:'monitor'|'window'|'row'){
         let _ret = -1;
@@ -90,7 +90,7 @@ class stateManager {
     __getLangCode = ()=>{
         if(typeof this.__langCode == 'undefined'){
             let config = require('./config')
-            this.__langCode = config.getParam('langCode')
+            this.__langCode = config.getParam('langCode').value
         }
         return this.__langCode
     }
@@ -115,19 +115,20 @@ class stateManager {
         let _ret:rowState = {
             rowId: Number(`${_monitorId}.${this.__genId('row')}`),//generate random
             position: 0,
-            size: '1Little',//default size
+            size: '2Small',//default size
             ipAddress: '1.1.1.1',//default address
             updateTimeMS: 5000,//defaul time
             name: 'name',//defaultname
-            imageBase64: '',//default picture
+            imageLink: '0 PingMonitor.png',
             history: [],
             pingTimeStrategy: this.__getInitialPingTimeStrategy(),
             isBusy:false,
             isPaused:false,//initialPause
+            isPausedGrouped:false,
             isMuted:false,
             isAlarmed:false,
             isEditing:false,
-            filedEditing:'none',
+            feiledEditing:'none',
             isGraphSubscribed:false,
             isSelected:false
         }
@@ -142,7 +143,7 @@ class stateManager {
             subscriptionKey: -1,
             title: 'Default window',
             isGraph: false,
-            isHidden: true,
+            isHidden: false,
             isFullscreen: false,
             isMenuOpen:false,
             isSettingOpen:false,
@@ -161,7 +162,7 @@ class stateManager {
         let _appLangCode = this.__getLangCode()
 
         let _initialMonitorId1 = this.__genId('monitor')
-        let _initialMonitorId2 = this.__genId('monitor')
+        // let _initialMonitorId2 = this.__genId('monitor')
 
         return {
             version: _appVersion,//SHOULD BE SET AUTOMATICALY
@@ -175,12 +176,12 @@ class stateManager {
                         this.__getInitialRowState({_monitorId:_initialMonitorId1}),
                     ]
                 },
-                {
-                    monitorId:_initialMonitorId2,
-                    rows:[
-                        this.__getInitialRowState({_monitorId:_initialMonitorId2}),
-                    ]
-                }
+                // {
+                //     monitorId:_initialMonitorId2,
+                //     rows:[
+                //         this.__getInitialRowState({_monitorId:_initialMonitorId2}),
+                //     ]
+                // }
             ],
             windows: [
                 this.__getInitialWindow(_appVersion,_appLangCode,{subscriptionKey:'1232'})
@@ -208,6 +209,10 @@ class stateManager {
         }
         let __validateInputs = (_payload:string,_targetInputsArray:string[]):boolean=>{
             let _ret = true
+            if(typeof action.payload != 'string'){
+                console.log('Payload should be a JSON string')
+                _ret = false
+            }
             _targetInputsArray.forEach(_in=>{
                 if(action.payload.indexOf(`"${_in}":`) == -1 ){
                     _ret = false
@@ -215,8 +220,8 @@ class stateManager {
             })
             return _ret
         }
-        let __getRow = (_payloadStr:string,_monitors:monitState[])=>{
-            let _plObj:{rowId:number,key:string,value:string} = JSON.parse(_payloadStr)
+        let __getRow = (_payloadStrJson:string,_monitors:monitState[])=>{
+            let _plObj:{rowId:number,key:string,value:string} = JSON.parse(_payloadStrJson)
             let _selMon:monitState = _monitors.find(_mon=>_mon.monitorId == Number(_plObj.rowId.toString().split('.')[0]))
             let _monInd:number = _monitors.indexOf(_selMon)
             let _rwStr = _selMon.rows.find(_row=>_row.indexOf(`"rowId":${_plObj.rowId}`) >-1)
@@ -233,27 +238,32 @@ class stateManager {
         }
         let _rowInfo:any;
         let _newMonitors:monitState[];
-        let _newWIndowsStr:string[];
+        let _neededMonitorIndex:number
+        let _newWindowsStr:string[];
+        let _newWindowsObj:any;
+        let _neededWindowIndex:number;
+        let _payloadObj:any;
         switch(action.action){
             case actionTypes.SET_PROPERTY_FOR_TESTING:
                _state = {..._state,propertyForTesting:action.payload}
                break
+            /*MONITOR      MONITOR      MONITOR      MONITOR      MONITOR      MONITOR      MONITOR*/
             case actionTypes.ADD_NEW_MONITOR:
                 _newMonitors = [..._state.monitors,__newMonitor()]
                 _state = {..._state,monitors:_newMonitors}
                 break
             case actionTypes.REMOVE_MONITOR_BY_ID:
-                // _newMonitors = [..._state.monitors,__newMonitor()]
                 _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
                 _state = {..._state,monitors:_newMonitors}
                 break
+            /*WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW*/
             case actionTypes.ADD_NEW_WINDOW_BY_SUBKEY:
                 if(typeof action.payload != 'string'){
                     loger.out(`Reducer error:${action.action} expected to recive subscriptionKey:string`)
                     break;
                 }
-                _newWIndowsStr = [..._state.windows,this.__getInitialWindow(this.__getAppVersion(),this.__getLangCode(),{subscriptionKey:action.payload})]
-                _state = {..._state,windows:_newWIndowsStr}
+                _newWindowsStr = [..._state.windows,this.__getInitialWindow(this.__getAppVersion(),this.__getLangCode(),{subscriptionKey:action.payload})]
+                _state = {..._state,windows:_newWindowsStr}
                 break;
             case actionTypes.REMOVE_WINDOW_BY_ID:
                 if(typeof action.payload != 'string'){
@@ -261,26 +271,77 @@ class stateManager {
                     break;
                 }
                 //going lazy way without parsing json string
-                _newWIndowsStr = [..._state.windows.filter(_w=>_w.indexOf(`"winId":${action.payload}`)  == -1)]
-                _state = {..._state,windows:_newWIndowsStr}
+                _newWindowsStr = [..._state.windows.filter(_w=>_w.indexOf(`"winId":${action.payload}`)  == -1)]
+                _state = {..._state,windows:_newWindowsStr}
+                break;
+            case actionTypes.WIN_SET_PROP:
+                if(typeof action.payload != 'string'){
+                    loger.out(`Reducer error:${action.action} expected to recive winId:string,key:string,value:string`)
+                    break;
+                }
+                _newWindowsStr = [..._state.windows]
+                _payloadObj = JSON.parse(action.payload)
+                _neededWindowIndex = _newWindowsStr.map((_w)=>{
+                    return _w.indexOf(`"winId":${_payloadObj.winId}`) >-1 
+                }).indexOf(true)
+                if(_neededWindowIndex == -1){
+                    loger.out(`Reducer error:${action.action} window with entered winId is not found`)
+                    break;
+                }
+                _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex])
+                _newWindowsObj[_payloadObj.key] = _payloadObj.value;
+                _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
+                _state = {..._state,windows:_newWindowsStr}
+                break;
+            case actionTypes.WIN_TOGGLE_PROP:
+                if(typeof action.payload != 'string'){
+                    loger.out(`Reducer error:${action.action} expected to recive winId:string,key:string`)
+                    break;
+                }
+                _newWindowsStr = [..._state.windows]
+                _payloadObj = JSON.parse(action.payload)
+                _neededWindowIndex = _newWindowsStr.map((_w)=>{
+                    return _w.indexOf(`"winId":${_payloadObj.winId}`) >-1
+                }).indexOf(true)
+                _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex])
+                _newWindowsObj[_payloadObj.key] = !_newWindowsObj[_payloadObj.key]
+                _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
+                _state = {..._state,windows:_newWindowsStr}
+                break;
+            /*ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW*/
+            case actionTypes.ADD_ROW:
+                if(!__validateInputs(action.payload,['monitorId'])){
+                    loger.out(`ROW_SET_PROP Error: expected to recive monitorId`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                _newMonitors = [..._state.monitors]
+                _neededMonitorIndex = _newMonitors.map((_m)=>{
+                    return _m.monitorId == _payloadObj.monitorId
+                }).indexOf(true)
+                _newMonitors[_neededMonitorIndex].rows.push(__newRow({_monitorId:_payloadObj.monitorId}))
+                _state = {..._state,monitors:_newMonitors}
+                break;
+            case actionTypes.REMOVE_ROW:
+                console.log('TODO add remove row reducer')
                 break;
             case actionTypes.ROW_SUBMIT_PING_PROBE:
-
                 if(!__validateInputs(action.payload,['rowId','status','dellay','packetLoss','ttl','fullResponce'])){
-                    loger.out(`ROW_SET_PROP Error: expected to recive rowId,key and value`)
+                    loger.out(`ROW_SET_PROP Error: expected to recive rowId,status,dellay,packetLoss,ttl,fullResponce`)
                     break
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
                 _rowInfo.rowObj.isBusy = false
+                _payloadObj = JSON.parse(action.payload)
                 //TODO: limit history size
                 _rowInfo.rowObj.history.push({
                     timestamp: new Date().getTime(),
                     time: new Date(),
-                    status:action.payload.status,
-                    dellayMS:action.payload.dellay,
-                    ttl:action.payload.ttl,
-                    fullResponce:action.payload.fillResponce
+                    status:_payloadObj.status,
+                    dellayMS:_payloadObj.dellay,
+                    ttl:_payloadObj.ttl,
+                    fullResponce:_payloadObj.fillResponce
                 })
                 //TODO make it work for different conditions
                 try{
@@ -335,8 +396,47 @@ class stateManager {
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
                 _state = {..._state,monitors:_newMonitors}
                 break;
+            case actionTypes.ROW_PAUSE_ALL:
+                if(!__validateInputs(action.payload,['monitorId'])){
+                    loger.out(`ROW_SET_PROP Error: expected to recive monitorId`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                _newMonitors = [..._state.monitors]
+                _neededMonitorIndex = _newMonitors.map((_m)=>{
+                    return _m.monitorId == _payloadObj.monitorId
+                }).indexOf(true)
+                //if some unpaused
+                    //pause unpaused
+                    //set grouppaused flag
+                let _unpausedIndexes:number[] = []
+                _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
+                    let _rowObj = JSON.parse(_rowStr)
+                    if(_rowObj.isPaused !== true){
+                        _unpausedIndexes.push(_i)
+                        _rowObj.isPaused = true
+                        _rowObj.isPausedGrouped = true
+                        _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj)
+                    }
+                })
+                //if all paused
+                    //unpause all with grouppaused flag
+                    //take off the flag
+                if(_unpausedIndexes.length == 0){
+                    _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
+                        let _rowObj = JSON.parse(_rowStr)
+                        if(_rowObj.isPausedGrouped === true){
+                            _rowObj.isPaused = false
+                            _rowObj.isPausedGrouped = false                
+                            _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj)
+                        }
+                    })
+                }
+                _state = {..._state,monitors:_newMonitors}
+                break;
             default:
                 loger.out(`Reducer error: Unknown action type: ${action.action}`)
+                console.error(`Reducer error: Unknown action type: ${action.action}`)
                 break;
         }
 

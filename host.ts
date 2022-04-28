@@ -16,7 +16,8 @@ const pingMonitor = ()=>{
   const { app } = require('electron')
 
   var windows:object = {}
-  
+  var timeOfStart = 0
+
   const pingCheck = (_coreState:any,_resolve:any)=>{
     _coreState.monitors.forEach(_mon=>{
       // for(every monitor & every row)
@@ -163,11 +164,11 @@ const pingMonitor = ()=>{
     // console.log('Uncreated windows',uncreatedBrowserWIndows)
     // console.log('Undeleted windows',undelitedBrowserWindows)
     if(uncreatedBrowserWIndows.length){
-      uncreatedBrowserWIndows.forEach(_winId => {
+      uncreatedBrowserWIndows.forEach(async _winId => {
         windows[_winId] = getNormalWindow()
         windows[_winId].loadFile('pm.html');
-        windows[_winId].on('ready-to-show',()=>{
-          comunicator.send({
+        windows[_winId].on('ready-to-show',async ()=>{
+          await comunicator.send({
             window:windows[_winId],
             command:'sendWinId',
             payload:_winId
@@ -217,13 +218,15 @@ const pingMonitor = ()=>{
         let targetId = _coreState.monitors[_monInd].monitorId
         _coreState.windows.forEach(async _winStr=>{
           // for(windows where subscriptionKey in the list of changed monitors)
-          if(_winStr.indexOf(`"subscriptionKey":${targetId}`) > -1){
+          if(_winStr.indexOf(`"subscriptionKey":"${targetId}"`) > -1){
             let _winObj:any = JSON.parse(_winStr)
+            //copying monitor state to send row data to the window
+            _winObj.monitor = _coreState.monitors[_monInd]
             // update window with communicatorCore
             await comunicator.send({
               window:windows[_winObj.winId],
               command:'sendWinState',
-              payload:_winStr
+              payload:JSON.stringify(_winObj)
             })
           }
         })
@@ -238,6 +241,68 @@ const pingMonitor = ()=>{
         action:''
       }
     }
+    // if(new Date().getTime() - timeOfStart > 5000)
+    //   if(_coreState.monitors.length){
+    //     let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
+    //     let existingRowId = rowObj.rowId
+    //     let existingRowSize = rowObj.size
+    //     if(existingRowSize != '2Small')
+    //     _resolve = {
+    //       set:true,
+    //       action:actionTypes.ROW_SET_PROP,
+    //       payload:JSON.stringify({rowId:existingRowId,key:'size',value:'2Small'})
+    //     }
+    //   }
+      if(!_resolve.set)
+      if(new Date().getTime() - timeOfStart > 12000){
+        let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
+        let existingRowId = rowObj.rowId
+        let existingRowaddr = rowObj.ipAddress
+        
+        if(!_resolve.set && rowObj.isPaused != true){
+          _resolve = {
+            set:true,
+            action:actionTypes.ROW_SET_PROP,
+            payload:JSON.stringify({rowId:existingRowId,key:'isPaused',value:true})
+          }
+        }
+      }
+      if(!_resolve.set)
+      // if(new Date().getTime() - timeOfStart > 10000){
+      //   let winObj = JSON.parse(_coreState.windows[0])
+      //   let existingWinId = winObj.winId;
+      //   if(winObj.isMenuOpen != true){
+      //     _resolve = {
+      //       set:true,
+      //       action:actionTypes.WIN_SET_PROP,
+      //       payload:JSON.stringify({winId:existingWinId,key:'isMenuOpen',value:true})
+      //     }
+      //   }
+      // }
+      if(!_resolve.set)
+      // if(new Date().getTime() - timeOfStart > 10000){
+      //   let winObj = JSON.parse(_coreState.windows[0])
+      //   let existingWinId = winObj.winId;
+      //   if(winObj.isSettingOpen != true){
+      //     _resolve = {
+      //       set:true,
+      //       action:actionTypes.WIN_SET_PROP,
+      //       payload:JSON.stringify({winId:existingWinId,key:'isSettingOpen',value:true})
+      //     }
+      //   }
+      // }
+      // if(!_resolve.set)
+      // if(new Date().getTime() - timeOfStart > 10000){
+      //   let winObj = JSON.parse(_coreState.windows[0])
+      //   let existingWinId = winObj.winId;
+      //   if(winObj.isImagePickerOpen != true){
+      //     _resolve = {
+      //       set:true,
+      //       action:actionTypes.WIN_SET_PROP,
+      //       payload:JSON.stringify({winId:existingWinId,key:'isImagePickerOpen',value:true})
+      //     }
+      //   }
+      // }
     _resolve = pingCheck(_coreState,_resolve)
     if(!_resolve.set){
       _resolve = monitorCheck(_coreState,_prevState,_resolve)
@@ -246,21 +311,39 @@ const pingMonitor = ()=>{
       _resolve = windowCheck(_coreState,_prevState,_resolve)
     }
     if(!_resolve.set){
-
+      if(new Date().getTime() - timeOfStart > 5000)
+      if(_coreState.monitors.length){
+        let existingRowId = JSON.parse(_coreState.monitors[0].rows[0]).rowId
+        
+        _resolve = {
+          set:true,
+          action:actionTypes.ROW_SET_PROP,
+          payload:{rowId:existingRowId,key:'size',value:'2Small'}
+        }
+      }
     }else{
-      console.log('Computed with action:',_resolve.action,_resolve.payload)
+      dev?console.log('Computed with action:',_resolve.action,_resolve.payload):0
       await store.dispach({action:_resolve.action,payload:_resolve.payload})
     }
   }
   store.subscribe(compute)//execute compute on any state change
-
+  comunicator.subscribe({
+    channel:'window',
+    commandListString:'dispachAction',
+    callback: async (_pl)=>{
+      dev?console.log('resived action',_pl):0
+      let _plObj = JSON.parse(_pl.payload)
+      await store.dispach({action:_plObj.action,payload:_plObj.payload}) 
+    }
+  })
   app.whenReady().then( async function(){
-    // console.log('App is ready')
-    await store.dispach({action:'setPropertyForTesting',payload:42})
+    timeOfStart  = new Date().getTime()
+    await store.dispach({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})
     
     if(dev){
       // testComponents(fileManager,config,loger,pinger,store)
     }else{
+
     }
     
   })

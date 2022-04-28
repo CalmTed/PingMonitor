@@ -34,8 +34,8 @@ class comunicatorCore {
                 let command = data.command
                 let payload = data.payload
                 //looking for the same channel and command in subscriptions
-                this.__subscriptions.find(sub=>(sub.channel === channel && sub.commandListString.indexOf(command)>-1)).forEach((sub:any)=>{
-                    sub.callback(payload)
+                this.__subscriptions.filter(sub=>(sub.channel === channel && sub.commandListString.indexOf(command)>-1)).forEach((sub:any)=>{
+                    sub.callback({payload})
                 })
             })
         }catch(e){

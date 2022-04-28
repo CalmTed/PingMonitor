@@ -51,17 +51,7 @@ var pingMonitor = function () {
     var comunicator = new comunicatorCore();
     var app = require('electron').app;
     var windows = {};
-    //add, remove, edit param
-    //send data, 
-    // windowManager
-    // .add({win data})
-    // winId, type, isHidden, title, fileToLoad
-    // .get(winId)
-    // .remove(winId)
-    // .set([prop,value])
-    // .query()
-    // setId, setWinData, pingReply
-    // for graph: setRowData, setSubscription, 
+    var timeOfStart = 0;
     var pingCheck = function (_coreState, _resolve) {
         _coreState.monitors.forEach(function (_mon) {
             // for(every monitor & every row)
@@ -196,7 +186,7 @@ var pingMonitor = function () {
             });
             return _ret;
         };
-        // do we need to add new browser window?
+        // do we need to add new browser window
         var uncreatedBrowserWIndowsF = function (_state) {
             var _ret = [];
             _state.windows.forEach(function (_wStr) {
@@ -207,7 +197,7 @@ var pingMonitor = function () {
             });
             return _ret;
         };
-        // do we need to remove some browser windows?
+        // do we need to remove some browser windows
         var undelitedBrowserWindowsF = function (_state) {
             var _ret = [];
             Object.keys(windows).forEach(function (_wId) {
@@ -222,18 +212,28 @@ var pingMonitor = function () {
         // console.log('Uncreated windows',uncreatedBrowserWIndows)
         // console.log('Undeleted windows',undelitedBrowserWindows)
         if (uncreatedBrowserWIndows.length) {
-            uncreatedBrowserWIndows.forEach(function (_winId) {
-                windows[_winId] = getNormalWindow();
-                windows[_winId].loadFile('pm.html');
-                windows[_winId].on('ready-to-show', function () {
-                    comunicator.send({
-                        window: windows[_winId],
-                        command: 'sendWinId',
-                        payload: _winId
-                    });
-                    windows[_winId].show();
+            uncreatedBrowserWIndows.forEach(function (_winId) { return __awaiter(void 0, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    windows[_winId] = getNormalWindow();
+                    windows[_winId].loadFile('pm.html');
+                    windows[_winId].on('ready-to-show', function () { return __awaiter(void 0, void 0, void 0, function () {
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, comunicator.send({
+                                        window: windows[_winId],
+                                        command: 'sendWinId',
+                                        payload: _winId
+                                    })];
+                                case 1:
+                                    _a.sent();
+                                    windows[_winId].show();
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); });
+                    return [2 /*return*/];
                 });
-            });
+            }); });
         }
         if (undelitedBrowserWindows.length) {
             undelitedBrowserWindows.forEach(function (_winId) {
@@ -284,16 +284,18 @@ var pingMonitor = function () {
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0:
-                                        if (!(_winStr.indexOf("\"subscriptionKey\":".concat(targetId)) > -1)) return [3 /*break*/, 2];
+                                        if (!(_winStr.indexOf("\"subscriptionKey\":\"".concat(targetId, "\"")) > -1)) return [3 /*break*/, 2];
                                         _winObj = JSON.parse(_winStr);
-                                        // updateWindow(winState) > communicatorCore
+                                        //copying monitor state to send row data to the window
+                                        _winObj.monitor = _coreState.monitors[_monInd];
+                                        // update window with communicatorCore
                                         return [4 /*yield*/, comunicator.send({
                                                 window: windows[_winObj.winId],
                                                 command: 'sendWinState',
-                                                payload: _winStr
+                                                payload: JSON.stringify(_winObj)
                                             })];
                                     case 1:
-                                        // updateWindow(winState) > communicatorCore
+                                        // update window with communicatorCore
                                         _a.sent();
                                         _a.label = 2;
                                     case 2: return [2 /*return*/];
@@ -308,7 +310,7 @@ var pingMonitor = function () {
         return _resolve;
     };
     var compute = function (_coreState, _prevState) { return __awaiter(void 0, void 0, void 0, function () {
-        var _resolve;
+        var _resolve, rowObj, existingRowId, existingRowaddr, existingRowId;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -318,7 +320,68 @@ var pingMonitor = function () {
                             action: ''
                         }
                     };
-                    _resolve = pingCheck(_coreState, _resolve);
+                    // if(new Date().getTime() - timeOfStart > 5000)
+                    //   if(_coreState.monitors.length){
+                    //     let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
+                    //     let existingRowId = rowObj.rowId
+                    //     let existingRowSize = rowObj.size
+                    //     if(existingRowSize != '2Small')
+                    //     _resolve = {
+                    //       set:true,
+                    //       action:actionTypes.ROW_SET_PROP,
+                    //       payload:JSON.stringify({rowId:existingRowId,key:'size',value:'2Small'})
+                    //     }
+                    //   }
+                    if (!_resolve.set)
+                        if (new Date().getTime() - timeOfStart > 12000) {
+                            rowObj = JSON.parse(_coreState.monitors[0].rows[0]);
+                            existingRowId = rowObj.rowId;
+                            existingRowaddr = rowObj.ipAddress;
+                            if (!_resolve.set && rowObj.isPaused != true) {
+                                _resolve = {
+                                    set: true,
+                                    action: actionTypes.ROW_SET_PROP,
+                                    payload: JSON.stringify({ rowId: existingRowId, key: 'isPaused', value: true })
+                                };
+                            }
+                        }
+                    if (!_resolve.set)
+                        // if(new Date().getTime() - timeOfStart > 10000){
+                        //   let winObj = JSON.parse(_coreState.windows[0])
+                        //   let existingWinId = winObj.winId;
+                        //   if(winObj.isMenuOpen != true){
+                        //     _resolve = {
+                        //       set:true,
+                        //       action:actionTypes.WIN_SET_PROP,
+                        //       payload:JSON.stringify({winId:existingWinId,key:'isMenuOpen',value:true})
+                        //     }
+                        //   }
+                        // }
+                        if (!_resolve.set)
+                            // if(new Date().getTime() - timeOfStart > 10000){
+                            //   let winObj = JSON.parse(_coreState.windows[0])
+                            //   let existingWinId = winObj.winId;
+                            //   if(winObj.isSettingOpen != true){
+                            //     _resolve = {
+                            //       set:true,
+                            //       action:actionTypes.WIN_SET_PROP,
+                            //       payload:JSON.stringify({winId:existingWinId,key:'isSettingOpen',value:true})
+                            //     }
+                            //   }
+                            // }
+                            // if(!_resolve.set)
+                            // if(new Date().getTime() - timeOfStart > 10000){
+                            //   let winObj = JSON.parse(_coreState.windows[0])
+                            //   let existingWinId = winObj.winId;
+                            //   if(winObj.isImagePickerOpen != true){
+                            //     _resolve = {
+                            //       set:true,
+                            //       action:actionTypes.WIN_SET_PROP,
+                            //       payload:JSON.stringify({winId:existingWinId,key:'isImagePickerOpen',value:true})
+                            //     }
+                            //   }
+                            // }
+                            _resolve = pingCheck(_coreState, _resolve);
                     if (!_resolve.set) {
                         _resolve = monitorCheck(_coreState, _prevState, _resolve);
                     }
@@ -326,9 +389,18 @@ var pingMonitor = function () {
                         _resolve = windowCheck(_coreState, _prevState, _resolve);
                     }
                     if (!!_resolve.set) return [3 /*break*/, 1];
+                    if (new Date().getTime() - timeOfStart > 5000)
+                        if (_coreState.monitors.length) {
+                            existingRowId = JSON.parse(_coreState.monitors[0].rows[0]).rowId;
+                            _resolve = {
+                                set: true,
+                                action: actionTypes.ROW_SET_PROP,
+                                payload: { rowId: existingRowId, key: 'size', value: '2Small' }
+                            };
+                        }
                     return [3 /*break*/, 3];
                 case 1:
-                    console.log('Computed with action:', _resolve.action, _resolve.payload);
+                    dev ? console.log('Computed with action:', _resolve.action, _resolve.payload) : 0;
                     return [4 /*yield*/, store.dispach({ action: _resolve.action, payload: _resolve.payload })];
                 case 2:
                     _a.sent();
@@ -338,15 +410,32 @@ var pingMonitor = function () {
         });
     }); };
     store.subscribe(compute); //execute compute on any state change
+    comunicator.subscribe({
+        channel: 'window',
+        commandListString: 'dispachAction',
+        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
+            var _plObj;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        dev ? console.log('resived action', _pl) : 0;
+                        _plObj = JSON.parse(_pl.payload);
+                        return [4 /*yield*/, store.dispach({ action: _plObj.action, payload: _plObj.payload })];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        }); }
+    });
     app.whenReady().then(function () {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: 
-                    // console.log('App is ready')
-                    return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: 42 })];
+                    case 0:
+                        timeOfStart = new Date().getTime();
+                        return [4 /*yield*/, store.dispach({ action: actionTypes.SET_PROPERTY_FOR_TESTING, payload: 42 })];
                     case 1:
-                        // console.log('App is ready')
                         _a.sent();
                         if (dev) {
                             // testComponents(fileManager,config,loger,pinger,store)
