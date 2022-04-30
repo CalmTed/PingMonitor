@@ -1,8 +1,3 @@
-//create window process
-//init vars
-//get data from the core
-//render data
-//create event listeners
 var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
         if (ar || !(i in from)) {
@@ -13,53 +8,44 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 var _this = this;
+var Siren = function () {
+    _this.dom = document.querySelector('audio');
+    _this.playState = false;
+    _this.start = function () {
+        if (!_this.playState) {
+            _this.playState = true;
+            _this.dom.play();
+            _this.dom.volume = 0;
+            _this.volumeUp();
+        }
+    };
+    _this.stop = function () {
+        if (_this.playState) {
+            _this.playState = false;
+            _this.dom.pause();
+        }
+    };
+    _this.volumeUp = function () {
+        if (_this.playState) {
+            if (_this.dom.volume + 0.1 < 1) {
+                _this.dom.volume += 0.1;
+                console.log(_this.dom.volume);
+                setTimeout(function () {
+                    _this.volumeUp();
+                }, 1000);
+            }
+        }
+    };
+    return _this;
+};
 var Page = function (_winId) {
     _this.winId = _winId;
     _this.state;
+    _this.siren = Siren();
     _this.optimize = function (_stateNew, _stateOld) {
         var _renObj;
         var _stateDiff = function (_stateNew, _stateOld) {
             var _diffList = [];
-            // let _getStrDiff = (_str1,_str2)=>{
-            //     return _str1!=_str2?_str1:undefined
-            // }
-            // let _getArrDiff = (_arr1,_arr2)=>{
-            //     let _retArr = []
-            //     //we supose to have the same state scheme
-            //     _arr1.forEach((_elm,_i)=>{
-            //         let _getDiff:any;
-            //         if(typeof _elm != 'object'){
-            //             _getDiff = _getStrDiff(_arr1[_i],_arr2[_i])
-            //         }else if(Array.isArray(_elm)){
-            //             _getDiff = _getArrDiff(_arr1[_i],_arr2[_i])
-            //         }else{
-            //             _getDiff = _getObjDiff(_arr1[_i],_arr2[_i])
-            //         }
-            //         if(_getDiff){
-            //             _retArr.push(_getDiff)
-            //         }
-            //     })
-            //     return _retArr.length>0?_retArr:undefined
-            // }
-            // let _getObjDiff = (_obj1,_obj2)=>{
-            //     let _ret = {}
-            //     //we supose to have the same state scheme
-            //     Object.entries(_obj1).forEach(([_key,_value])=>{
-            //         let _getDiff:any
-            //         if(typeof _value != 'object'){
-            //             _getDiff = _getStrDiff(_obj1[_key],_obj2[_key])
-            //         }else if(Array.isArray(_value)){
-            //             _getDiff = _getArrDiff(_obj1[_key],_obj2[_key])
-            //         }else{
-            //             _getDiff = _getObjDiff(_obj1[_key],_obj2[_key])
-            //         }
-            //         if(_getDiff ){
-            //             _ret[_key] = _getDiff
-            //         }
-            //     })
-            //     return Object.keys(_ret).length>0?_ret:undefined
-            // }
-            // _diffObj = _getObjDiff(_stateNew,_stateOld)
             var _getMainChanges = function (_stateNew, _stateOld) {
                 var _mainChangesList = [];
                 Object.keys(_stateNew).forEach(function (_key) {
@@ -97,8 +83,7 @@ var Page = function (_winId) {
                             }
                             else {
                                 if (_key == 'history') {
-                                    //what if they are the same length but diff still
-                                    console.log(_key, _rowObjNew[_key].length, _rowObjOld_1[_key].length);
+                                    //what if they are the same length but diff 
                                     if (_rowObjNew[_key].length > 0 && _rowObjOld_1[_key].length > 0) {
                                         var _lastElementOfNewHist = _rowObjNew[_key][_rowObjNew[_key].length - 1];
                                         var _lastElementOfOldHist = _rowObjOld_1[_key][_rowObjOld_1[_key].length - 1];
@@ -111,10 +96,70 @@ var Page = function (_winId) {
                             }
                         });
                     }
-                    //new rows
-                    //removed rows
-                    //switched place
                 });
+                //switched place
+                if (_newRows.length + _removedRows.length == 0) {
+                    var _checkOfSwaped = function (_new, _old) {
+                        var swapped = false;
+                        _new.forEach(function (_a, i) {
+                            var rid = _a[0], pos = _a[1];
+                            _new[i][1] != _old[i][1] ? swapped = true : 0;
+                        });
+                        return swapped;
+                    };
+                    var _getSwapPairs = function (_new, _old) {
+                        var _r = [];
+                        console.log('TODO swaping differencing');
+                        // //check if uts not out of order
+                        // //sort a
+                        // _new = _new.sort((a,b)=>{return a[1]<b[1]?-1:1})
+                        // let _bt = JSON.parse(JSON.stringify(_old))
+                        // //loop a
+                        // _new.forEach((_newEl,_i)=>{
+                        //     //find element with the same id
+                        //     let _oldElSameId = _bt.find(_el=>{return _el[0] == _newEl[0]})
+                        //     //save its position
+                        //     let _oldElSameIdPos = _bt.indexOf(_oldElSameId)
+                        //     if(_oldElSameId[1] != _newEl[1]){//if they have different positions
+                        //         let swap = (_arr,_ind1,_ind2) => {
+                        //             let _arr2 = JSON.parse(JSON.stringify(_arr))
+                        //             let _buffer = _arr2[_ind1]
+                        //             _arr2[_ind1] = _arr2[_ind2]
+                        //             _arr2[_ind2] = _buffer
+                        //             return _arr2
+                        //         }
+                        //         console.log(_bt.toString())
+                        //         _bt = swap(_bt,_i,_oldElSameIdPos)
+                        //         console.log(_bt.toString())
+                        //         _r.push({selector:'swap_row',id:_newEl[0],value:_oldElSameId[0]})
+                        //     }
+                        //if a[i] != bt[i]
+                        // if(_new[_i][0] != bt[_i][0] && _new[_i][1] != bt[_i][1]){
+                        //     //start place
+                        //     let _startPlace = _i
+                        //     let _finishElIndex = bt.indexOf(bt.find(el=>{ return el[0] == _new[_i][0]}))
+                        //     if(typeof _finishElIndex != 'undefined'){
+                        //         //finish place
+                        //         //swap bt
+                        //         let __t = bt[_i]
+                        //         bt[_i] = _new[_i]
+                        //         bt[_finishElIndex] = __t
+                        //         _r.push({selector:'swap_row',id:_new[_i][0],value:__t[0]})
+                        //     }
+                        // }
+                        // })
+                        return _r;
+                    };
+                    if (_newStateIds.length + _oldStateIds.length > 3) {
+                        var __t = _newStateIds[0][1];
+                        _newStateIds[0][1] = _newStateIds[1][1];
+                        _newStateIds[1][1] = __t;
+                    }
+                    var isSwapped = _checkOfSwaped(_newStateIds, _oldStateIds);
+                    if (isSwapped) {
+                        _rowChangesList = __spreadArray(__spreadArray([], _rowChangesList, true), _getSwapPairs(_newStateIds, _oldStateIds), true);
+                    }
+                }
                 return _rowChangesList;
             };
             _diffList = __spreadArray(__spreadArray([], _getMainChanges(_stateNew, _stateOld), true), _getRowChanges(_stateNew, _stateOld), true);
@@ -161,7 +206,7 @@ var Page = function (_winId) {
             _tool.setAttribute('alt', altText);
             _tool.classList.add('material-icons');
             _tool.innerHTML = icon;
-            _tool.onclick = function () {
+            _tool.onclick = function (e) {
                 var comunicator = Comunicator();
                 comunicator.send({
                     command: 'dispachAction',
@@ -174,9 +219,81 @@ var Page = function (_winId) {
             var _ret = document.createElement('list');
             return _ret;
         };
-        var _createRowDOM = function (_a) {
-            var rowId = _a.rowId, name = _a.name, imageLink = _a.imageLink, ipAddress = _a.ipAddress, isBusy = _a.isBusy, isPaused = _a.isPaused, size = _a.size, isSelected = _a.isSelected, history = _a.history, updateTimeMS = _a.updateTimeMS;
-            var _rowDOM = document.createElement('row');
+        var _addEditEvents = function (_a) {
+            var domElement = _a.domElement, name = _a.name, className = _a.className, rowId = _a.rowId;
+            domElement.onclick = function (e) {
+                var eventElement = e.target;
+                if (eventElement.classList.contains(className)) {
+                    eventElement.focus();
+                    eventElement.select();
+                    var comunicator = Comunicator();
+                    comunicator.send({
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'rowEditProperySet',
+                            payload: JSON.stringify({ rowId: rowId, key: name })
+                        })
+                    });
+                }
+            };
+            domElement.onkeyup = function (e) {
+                var eventElement = e.target;
+                var _name = name;
+                var _value = e.target.value;
+                if (name == 'updatetime') {
+                    _name = 'updateTimeMS';
+                    _value = Number(_value.replace(/[^0-9]/g, '')) * 1000;
+                    console.log(_value, e.target.value);
+                }
+                if (name == 'address') {
+                    _name = 'ipAddress';
+                }
+                if (eventElement.validity) {
+                    var comunicator = Comunicator();
+                    comunicator.send({
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'rowSetProp',
+                            payload: JSON.stringify({ rowId: rowId, key: _name, value: _value })
+                        })
+                    });
+                }
+            };
+            domElement.onblur = function (e) {
+                // let eventElement = e.target as HTMLElement
+                var comunicator = Comunicator();
+                comunicator.send({
+                    command: 'dispachAction',
+                    payload: JSON.stringify({
+                        action: 'rowEditProperyRemove',
+                        payload: JSON.stringify({ rowId: rowId, key: name })
+                    })
+                });
+            };
+        };
+        var _getCol1Content = function (imageLink, name, ipAddress, rowId) {
+            var _col1Content = document.createElement('col1');
+            //picture
+            var _picDOMElement = document.createElement('pic');
+            _picDOMElement.setAttribute('style', "background-image: url('assets/icons/".concat(imageLink, "')"));
+            _col1Content.append(_picDOMElement);
+            //name
+            var _nameDOMElement = document.createElement('input');
+            _nameDOMElement.classList.add('name');
+            _nameDOMElement.value = name;
+            // _nameDOMElement.setAttribute('disabled','')
+            _addEditEvents({ domElement: _nameDOMElement, name: 'name', className: 'name', rowId: rowId });
+            _col1Content.append(_nameDOMElement);
+            //address
+            var _addressDOMElement = document.createElement('input');
+            _addressDOMElement.classList.add('address');
+            _addressDOMElement.value = ipAddress;
+            // _addressDOMElement.setAttribute('disabled','')
+            _addEditEvents({ domElement: _addressDOMElement, name: 'address', className: 'address', rowId: rowId });
+            _col1Content.append(_addressDOMElement);
+            return _col1Content;
+        };
+        var _getCol2Content = function (history, updateTimeMS, rowId) {
             var _knownHistory = { status: 'unknown', dellayMS: 0 };
             var _knownQuality = 0;
             if (history.length > 0) {
@@ -186,55 +303,129 @@ var Page = function (_winId) {
             var status = _knownHistory.status;
             var dellayMS = _knownHistory.dellayMS;
             var quality = _knownQuality;
+            var _col2Content = document.createElement('col2');
+            //status
+            var _statusDOMElement = document.createElement('status');
+            _statusDOMElement.innerHTML = status;
+            //trio
+            var _trioDOMElement = document.createElement('trio');
+            // dellay
+            var _dellayDOMElement = document.createElement('triodelay');
+            _dellayDOMElement.innerHTML = "".concat(dellayMS, "ms");
+            // update
+            var _updateDOMElement = document.createElement('input');
+            _updateDOMElement.value = "".concat(updateTimeMS / 1000, "s");
+            _updateDOMElement.classList.add('trioupdate');
+            _addEditEvents({ domElement: _updateDOMElement, name: 'updatetime', className: 'trioupdate', rowId: rowId });
+            // quality
+            var _qualityDOMElement = document.createElement('trioquality');
+            _qualityDOMElement.innerHTML = "".concat(quality, "%");
+            _trioDOMElement.append(_dellayDOMElement);
+            _trioDOMElement.append(_updateDOMElement);
+            _trioDOMElement.append(_qualityDOMElement);
+            _col2Content.append(_statusDOMElement);
+            _col2Content.append(_trioDOMElement);
+            return _col2Content;
+        };
+        var _getPath = function (_a) {
+            var dataArray = _a.dataArray;
+            var _ret = '';
+            var _canvasWidth = 200;
+            var _canvasHeight = 100;
+            var _heightMargin = 5;
+            var _widthMargin = _heightMargin;
+            var dataLenghtLimit = 60000; //TODO get from config
+            var timeOfBegining = new Date().getTime() - dataLenghtLimit; //cut to last N min
+            var dataTrimmed = dataArray.filter(function (dot) { return dot.timestamp >= timeOfBegining; });
+            var widthKoof = (100 - (_widthMargin * 2));
+            if (dataTrimmed.length > 1) {
+                if (dataTrimmed[dataTrimmed.length - 1].time - dataTrimmed[0].timestamp > dataLenghtLimit) {
+                    widthKoof = (_canvasWidth - (_widthMargin * 2)) / (dataTrimmed[dataTrimmed.length - 1].timestamp - dataTrimmed[0].timestamp);
+                }
+                else {
+                    widthKoof = (_canvasWidth - (_widthMargin * 2)) / (dataLenghtLimit);
+                }
+            }
+            var maxDellay = Math.max.apply(Math, dataTrimmed.map(function (dot) { return dot.dellayMS; }));
+            var _map = function (val, start1, stop1, start2, stop2) {
+                var __a = (val - start1) / (stop1 - start1) * (stop2 - start2) + start2;
+                return start2 < stop2 ? Math.round(Math.max(Math.min(__a, stop2), start2) * 10) / 10 : Math.round(Math.max(Math.min(__a, start2), stop2) * 10) / 10;
+            };
+            if (dataTrimmed.length > 0) {
+                _ret += "M".concat(_widthMargin, " ").concat(_map(dataTrimmed[0].dellayMS, maxDellay, 0, _heightMargin, _canvasHeight - _heightMargin));
+                var _firstTime_1 = dataTrimmed[0].timestamp;
+                dataTrimmed.forEach(function (dot, i) {
+                    if (i > 0) {
+                        var _x = Math.round((_widthMargin + (dot.timestamp - _firstTime_1) * widthKoof) * 100) / 100;
+                        var _y = _map(dot.dellayMS, maxDellay, 0, _heightMargin, _canvasHeight - _heightMargin);
+                        if (dot.status == 'offline' || dot.status == 'timeout' || dot.status == 'error') {
+                            _ret += "M".concat(_x, " ").concat(_y);
+                        }
+                        else {
+                            _ret += "L".concat(_x, " ").concat(_y);
+                        }
+                    }
+                });
+            }
+            return _ret;
+        };
+        var _getCol3Content = function (history, rowId) {
+            var _col3Content = document.createElement('col3');
+            // let _col3PathDom = document.createElement('path')
+            // _col3PathDom.setAttribute('d',_getPath({dataArray:history}))
+            // let _col3SVGdom = document.createElement('svg')
+            // _col3SVGdom.setAttribute('width','100%')
+            // _col3SVGdom.setAttribute('height','100%')
+            // _col3SVGdom.setAttribute('viewBox','0 20 100 6')
+            // _col3SVGdom.innerHTML = '<path d=""></path>';
+            // _col3SVGdom.append(_col3PathDom)
+            // _col3Content.append(_col3SVGdom)
+            _col3Content.innerHTML = '<svg width="100%" height="100%" viewBox="0 0 200 100"><path d=""/></svg>';
+            return _col3Content;
+        };
+        var _getCol4Content = function (history, rowId) {
+            var _col4Content = document.createElement('col4');
+            _col4Content.innerHTML = 'stats will go here';
+            return _col4Content;
+        };
+        var _createRowDOM = function (_a) {
+            var rowId = _a.rowId, name = _a.name, imageLink = _a.imageLink, ipAddress = _a.ipAddress, isBusy = _a.isBusy, isPaused = _a.isPaused, size = _a.size, isSelected = _a.isSelected, history = _a.history, updateTimeMS = _a.updateTimeMS;
+            var _rowDOM = document.createElement('row');
+            var _knownHistory = { status: 'unknown', dellayMS: 0 };
+            if (history.length > 0) {
+                _knownHistory = history[history.length - 1];
+            }
+            var status = _knownHistory.status;
             _rowDOM.setAttribute('id', rowId);
             _rowDOM.setAttribute('busy', isBusy);
             _rowDOM.setAttribute('paused', isPaused);
             _rowDOM.setAttribute('size', size);
             _rowDOM.setAttribute('selected', isSelected);
             _rowDOM.setAttribute('status', status);
-            var _getCol1Content = function (imageLink, name, ipAddress) {
-                var _col1Content = document.createElement('col1');
-                //picture
-                var _picDOMElement = document.createElement('pic');
-                _picDOMElement.setAttribute('style', "background-image: url('assets/icons/".concat(imageLink, "')"));
-                _col1Content.append(_picDOMElement);
-                //name
-                var _nameDOMElement = document.createElement('name');
-                _nameDOMElement.innerHTML = name;
-                _col1Content.append(_nameDOMElement);
-                //address
-                var _addressDOMElement = document.createElement('address');
-                _addressDOMElement.innerHTML = ipAddress;
-                _col1Content.append(_addressDOMElement);
-                return _col1Content;
-            };
-            var _getCol2Content = function (status, dellayMS, updateTimeMS, quality) {
-                var _col2Content = document.createElement('col2');
-                //status
-                var _statusDOMElement = document.createElement('status');
-                _statusDOMElement.innerHTML = status;
-                //trio
-                var _trioDOMElement = document.createElement('trio');
-                // dellay
-                var _dellayDOMElement = document.createElement('triodelay');
-                _dellayDOMElement.innerHTML = "".concat(dellayMS, "ms");
-                // update
-                var _updateDOMElement = document.createElement('trioupdate');
-                _updateDOMElement.innerHTML = "".concat(updateTimeMS / 1000, "s");
-                // quality
-                var _qualityDOMElement = document.createElement('trioquality');
-                _qualityDOMElement.innerHTML = "".concat(quality, "%");
-                _trioDOMElement.append(_dellayDOMElement);
-                _trioDOMElement.append(_updateDOMElement);
-                _trioDOMElement.append(_qualityDOMElement);
-                _col2Content.append(_statusDOMElement);
-                _col2Content.append(_trioDOMElement);
-                return _col2Content;
-            };
-            _rowDOM.append(_getCol1Content(imageLink, name, ipAddress));
+            _rowDOM.append(_getCol1Content(imageLink, name, ipAddress, rowId));
             if (size != '1Little') {
-                _rowDOM.append(_getCol2Content(status, dellayMS, updateTimeMS, quality));
+                _rowDOM.append(_getCol2Content(history, updateTimeMS, rowId));
             }
+            if (['4Middle', '6Big'].includes(size)) {
+                _rowDOM.append(_getCol3Content(history, rowId));
+            }
+            if (['6Big'].includes(size)) {
+                _rowDOM.append(_getCol4Content(history, rowId));
+            }
+            //event handler
+            _rowDOM.onclick = function (e) {
+                var eventElement = e.target;
+                if (['ROW', 'COL1', 'COL2'].includes(eventElement.tagName)) {
+                    var comunicator = Comunicator();
+                    comunicator.send({
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'rowToggleProp',
+                            payload: JSON.stringify({ rowId: rowId, key: 'isSelected' })
+                        })
+                    });
+                }
+            };
             return _rowDOM;
         };
         var _createToolsDOM = function () {
@@ -282,7 +473,7 @@ var Page = function (_winId) {
                 altText: 'unalarm all',
                 action: {
                     action: 'winUnalarmAllRows',
-                    payload: JSON.stringify({ winId: _this.winId })
+                    payload: JSON.stringify({ monitorId: Number(_state.subscriptionKey) })
                 }
             });
             _toolsDOM.append(toolMenu);
@@ -313,8 +504,6 @@ var Page = function (_winId) {
             }) : 0;
         }
         else {
-            //render modal
-            var _localDiff = difference;
             difference.forEach(function (_dif) {
                 var _renderMainGroup = function (diffUnit) {
                     switch (diffUnit.key) {
@@ -355,16 +544,109 @@ var Page = function (_winId) {
                 var _renderRowGroup = function (diffUnit) {
                     //if size changed we beed to check what do we need to render more, of hide!
                     //check all parts and add or remove them if needed
-                    var targetRow = document.querySelector("row[id=\"".concat(diffUnit.id, "\"]"));
+                    var targetRowDom = document.querySelector("row[id=\"".concat(diffUnit.id, "\"]"));
+                    var targetRowObj = JSON.parse(_state.monitor.rows.find(function (_r) { return _r.indexOf("\"rowId\":".concat(diffUnit.id)) > -1; }));
+                    var _updateInputElement = function (_a) {
+                        var _selector = _a._selector, _value = _a._value;
+                        var _newInputValue = _value;
+                        var _inputTarget = document.querySelector("row[id=\"".concat(diffUnit.id, "\"] ").concat(_selector));
+                        if (targetRowObj.fieldEditing !== 'updateTime' && _selector == '.trioupdate') {
+                            _newInputValue = (_newInputValue / 1000) + 's';
+                        }
+                        _inputTarget.value = _newInputValue;
+                    };
+                    var _changeHtmlIfNedded = function (selector, value) {
+                        if (document.querySelector(selector).innerHTML != value) {
+                            document.querySelector(selector).innerHTML = value;
+                        }
+                    };
+                    var _renderCol2 = function (_a) {
+                        var diffUnit = _a.diffUnit;
+                        //check size
+                        var _col2DOM = document.querySelector("row[id=\"".concat(diffUnit.id, "\"] col2"));
+                        if (['2Small', '4Middle', '6Big'].includes(targetRowObj.size)) {
+                            if (_col2DOM == null) {
+                                //we need to create col2
+                                targetRowDom.append(_getCol2Content(targetRowObj.history, targetRowObj.updateTimeMS, diffUnit.id));
+                            }
+                            else {
+                                //we just need to rerender values
+                            }
+                        }
+                        else {
+                            //do we need to remove col
+                            if (!_col2DOM == null) {
+                                _col2DOM.parentNode.removeChild(_col2DOM);
+                            }
+                        }
+                    };
+                    var _renderCol3 = function (_a) {
+                        var diffUnit = _a.diffUnit;
+                        var _col3DOM = document.querySelector("row[id=\"".concat(diffUnit.id, "\"] col3"));
+                        if (['4Middle', '6Big'].includes(targetRowObj.size)) {
+                            if (_col3DOM == null) {
+                                targetRowDom.append(_getCol3Content(targetRowObj.history, diffUnit.id));
+                            }
+                        }
+                        else {
+                            if (!_col3DOM == null) {
+                                _col3DOM.parentNode.removeChild(_col3DOM);
+                            }
+                        }
+                    };
+                    var _renderCol4 = function (_a) {
+                        var diffUnit = _a.diffUnit;
+                        var _col4DOM = document.querySelector("row[id=\"".concat(diffUnit.id, "\"] col4"));
+                        if (['6Big'].includes(targetRowObj.size)) {
+                            if (_col4DOM == null) {
+                                targetRowDom.append(_getCol4Content(targetRowObj.history, diffUnit.id));
+                            }
+                        }
+                        else {
+                            if (!_col4DOM == null) {
+                                _col4DOM.parentNode.removeChild(_col4DOM);
+                            }
+                        }
+                    };
+                    //if we have isEditing we create input somewhere and we do not update its value later
+                    if (diffUnit.key == 'isEditing') {
+                        if (diffUnit.value) {
+                            var _enableInput = function (_selector) {
+                                document.querySelector("row[id=\"".concat(diffUnit.id, "\"] ").concat(_selector)).classList.remove('disabled');
+                            };
+                            switch (targetRowObj.fieldEditing) {
+                                case 'name':
+                                    _enableInput('.name');
+                                    break;
+                                case 'address':
+                                    _enableInput('.address');
+                                    break;
+                                case 'updatetime':
+                                    _enableInput('.trioupdate');
+                                    break;
+                            }
+                        }
+                        else {
+                            var _removeInput_1 = function (_selector) {
+                                document.querySelector(_selector).classList.add('disabled');
+                            };
+                            ['.name', '.address', '.trioupdate'].forEach(function (_selector) {
+                                _removeInput_1(_selector);
+                                if (_selector == '.trioupdate') {
+                                    _updateInputElement({ _selector: _selector, _value: targetRowObj['updateTimeMS'] });
+                                }
+                            });
+                        }
+                    }
                     if (diffUnit.key == 'size') {
+                        //do we need to create it to remove it to update it
+                        _renderCol2({ diffUnit: diffUnit }); //status
+                        _renderCol3({ diffUnit: diffUnit }); //graph
+                        _renderCol4({ diffUnit: diffUnit }); //statistics
                     }
                     if (diffUnit.key == 'history') {
+                        //TODO check do we have row size 2 or bigger
                         //status, dellay, quality, graph
-                        var _changeHtmlIfNedded = function (selector, value) {
-                            if (document.querySelector(selector).innerHTML != value) {
-                                document.querySelector(selector).innerHTML = value;
-                            }
-                        };
                         var status_1 = diffUnit.value.status;
                         var dellayMS = diffUnit.value.dellayMS;
                         var quality = diffUnit.value.quality;
@@ -372,28 +654,36 @@ var Page = function (_winId) {
                         document.querySelector("row[id=\"".concat(diffUnit.id, "\"]")).setAttribute('status', status_1);
                         _changeHtmlIfNedded("row[id=\"".concat(diffUnit.id, "\"] col2 trio triodelay"), "".concat(dellayMS, "ms"));
                         _changeHtmlIfNedded("row[id=\"".concat(diffUnit.id, "\"] col2 trio trioquality"), "".concat(quality, "%"));
-                        // document.querySelector(`row[id="${diffUnit.id}"]`)
+                        if (document.querySelector("row[id=\"".concat(diffUnit.id, "\"] path")) != null) {
+                            document.querySelector("row[id=\"".concat(diffUnit.id, "\"] path")).setAttribute('d', _getPath({ dataArray: targetRowObj.history }));
+                        }
                     }
                     switch (diffUnit.key) {
                         case 'isBusy':
-                            targetRow.setAttribute('busy', diffUnit.value);
+                            targetRowDom.setAttribute('busy', diffUnit.value);
                             break;
                         case 'isPaused':
-                            targetRow.setAttribute('paused', diffUnit.value);
-                            console.log(targetRow.getAttribute('paused'), diffUnit.value);
+                            targetRowDom.setAttribute('paused', diffUnit.value);
                             break;
                         case 'isSelected':
-                            targetRow.setAttribute('selected', diffUnit.value);
+                            targetRowDom.setAttribute('selected', diffUnit.value);
                             break;
-                        case 'image':
+                        case 'isAlarmed':
+                            targetRowDom.setAttribute('alarmed', diffUnit.value);
+                            break;
+                        case 'imageLink':
+                            var _pictureTarget = document.querySelector("row[id=\"".concat(diffUnit.id, "\"] pic"));
+                            _pictureTarget.style.backgroundImage = "url(".concat(diffUnit.value, ")");
                             break;
                         case 'name':
+                            _updateInputElement({ _selector: '.name', _value: diffUnit.value });
+                            // document.querySelector(`row[id="${diffUnit.id}"] col1 .name`).setAttribute('value',diffUnit.value)
                             break;
                         case 'ipAdress':
+                            _updateInputElement({ _selector: '.address', _value: diffUnit.value });
                             break;
                         case 'updateTime':
-                            break;
-                        case 'isEditing?':
+                            _updateInputElement({ _selector: '.trioupdate', _value: diffUnit.value });
                             break;
                     }
                     //change row property
@@ -407,6 +697,13 @@ var Page = function (_winId) {
                 }
                 else if (_dif.selector == 'row') {
                     _renderRowGroup(_dif);
+                }
+                if (_state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isAlarmed\":true") > -1; }).length > 0) {
+                    //TODO filter out muted alarmed rows
+                    _this.siren.start();
+                }
+                else {
+                    _this.siren.stop();
                 }
             });
         }

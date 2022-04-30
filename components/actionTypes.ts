@@ -12,7 +12,11 @@ const actionTypes = {
         REMOVE_ROW:"removeRow",
         ROW_SUBMIT_PING_PROBE:"rowSubmitPingProbe",
         ROW_SET_PROP:'rowSetProp',
-        ROW_PAUSE_ALL:'rowPauseAllActive'
+        ROW_TOGGLE_PROP:'rowToggleProp',
+        ROW_PAUSE_ALL:'rowPauseAllActive',
+        ROW_UNALARM_ALL:'winUnalarmAllRows',
+        ROW_EDIT_PROP_SET:'rowEditProperySet',
+        ROW_EDIT_PROP_REMOVE:'rowEditProperyRemove',
 
 }
 module.exports = actionTypes;

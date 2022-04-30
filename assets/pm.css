@@ -100,9 +100,6 @@ body:hover toolset .tool{
 toolmenu{
     left: 0;
 }
-tooladdrow{
-    float:right;
-}
 list{
     display: flex;
     flex-wrap: wrap;
@@ -118,10 +115,12 @@ row{
     display: flex;
     --row-status:var(--status-white);
     border: 2px solid var(--row-status);
-    border-radius: 4px;
+    border-radius: 7px;
     align-items: center;
     justify-content: center;
     margin: 0.2em 0 0 0.2em;
+    transition: all .3s ease;
+    flex-wrap: wrap;
 }
 row[size='1Little']{
     --clamph: calc(var(--row_unit_h));
@@ -154,6 +153,43 @@ row[paused='true'] status{
     background-color: var(--background);
     border: 2px solid var(--row-status);
 }
+row[busy='false']{
+    border-color: var(--background);
+}
+row[busy='true']{
+    border-color: var(--row-status);
+}
+row[selected='true'],row[alarmed='true']{
+    transform: scale(0.9)
+}
+row:before{
+    width: 1em;
+    height: 1em;
+    position: absolute;
+    font-family: "Material Icons";
+    background: var(--background);
+    border-radius: 50%;
+    font-size: 1.2em;
+    font-weight: 700;
+    padding: 0.2em;
+    border: 2px solid var( --row-status);
+    top: -0.5em;
+    left: -0.7em;
+    transition: all .2s ease;
+    opacity: 0;
+    transform: scale(0);
+}
+row[selected='true']:before{
+    content: 'checkmark';
+}
+row[alarmed='true']:before{
+    content: 'volume_up';
+}
+row[selected='true']:before,row[alarmed='true']:before{
+    opacity: 1;
+    transform: scale(1);
+}
+
 
 row col1{
     height: 100%;
@@ -163,6 +199,12 @@ row col1{
     align-content: center;
     justify-content: center;
 }
+row[size='4Middle'] col1{
+    height: 50%;
+}
+row[size='8Big'] col1{
+    height: 25%;
+}
 row col2{
     width: 50%;
     height: 100%;
@@ -171,18 +213,41 @@ row col2{
     justify-content: center;
     align-content: space-evenly;
 }
+row[size='4Middle'] col2{
+    height: 50%;
+}
+row[size='8Big'] col2{
+    height: 25%;
+}
+row col3{
+    height: 50%;
+    display: flex;
+    width: 100%;
+}
+row col3 path{
+    stroke: var(--row-status);
+    stroke-width: 1px;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: 0.2s;
+}
 row pic{
     height: 60%;
     aspect-ratio: 1;
     background-size: cover;
 }
-row name{
-    width:100%;
+row .name,row .address{
+    display: inline;
+    width: 100%;
+    position: relative;
+    background: transparent;
+    color: inherit;
+    border: none;
     text-align: center;
+    font-size: inherit; 
 }
-row address{
-    width:100%;
-    text-align: center;
+row .address{
     opacity: 0.7;
     font-size: 70%;
 }
@@ -199,16 +264,25 @@ row trio{
     display: flex;
     justify-content: space-evenly;
 }
+row .trioupdate{
+    width: 3em;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    text-align: center;
+    font-size: inherit;
+}
+
 @media only screen and (min-width : 320px) and (max-width : 480px)
 {
     row{
-        --row_unit_h: calc(100vw / 3)
+        --row_unit_h: calc(100vw / 2)
     }
 }
 @media only screen and (min-width : 480px) and (max-width : 720px)
 {
     row{
-        --row_unit_h: calc(100vw / 4)
+        --row_unit_h: calc(100vw / 3)
     }
 }
 @media only screen and (min-width : 720px) and (max-width : 1080px)

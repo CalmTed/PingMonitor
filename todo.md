@@ -331,16 +331,17 @@ TODO
       - [+] openMenu, fullScreenToggle, addRow, pauseAllActive <- SAVE PAUSED ROWS AS A LIST
     - [] Render rows optimaly 0.6 day
       - [+] add/remove row 2022-04-28 19:00
-      - [] + swaping rows
-      - [] selector,property,value for
+      - [] swaping rows
+      - [+] selector,property,value for 2022-04-30 18:00 
         - [+] isPaused,status,isBusy 2022-04-28 22:00
-        - [] isSelected,isAlarmed,isEditing,imageLink,graph,updateTime,size,,name,address
+        - [+] +isSelected,+isAlarmed,+isEditing,+updateTime,+name,+address,+imageLink 2022-04-30 10:00
+        - [+] +size,+graph
     ---- before 29.04
     - [] Row action dispatches 1 day
       - [] remove,pause
       - [] name,address,updateTime(change PTS too)
       - [] in context menu: change row size,open image picker, mute(unalarm)
-      - [] if alarmed show "unalarm" instead of "pause"
+      - [] if alarmed show "unalarm" instead of "pause" in row
     ---- before 30.04
     - [] Menu action dispaches 1 day
       - [] new window, duplicate window

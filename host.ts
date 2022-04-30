@@ -38,7 +38,6 @@ const pingMonitor = ()=>{
               loger.out(`Unsuccessfull ping probe! Error: ${pingResult.errorMessage}. Row:id:${_rowObj.rowId} ip:${_rowObj.ipAddress}`)
             }
           },_rowObj.updateTimeMS,{_store:store,_actionTypes:actionTypes})
-          
           _resolve.set === false? _resolve = {set:true, action:actionTypes.ROW_SET_PROP,payload:JSON.stringify(
             {
               rowId:_rowObj.rowId,
@@ -46,6 +45,7 @@ const pingMonitor = ()=>{
               value:true
             })
           }:0;
+          
         }
       })
     })
@@ -202,9 +202,15 @@ const pingMonitor = ()=>{
       //we expect two objects to have the same scheme to minimize computation time
       Object.entries(_obj1).forEach(([_k,_v])=>{
         if(typeof _obj1[_k] != 'object'){
-          let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
-          if(strDiff.length>0){
-            _ret[_k] = _obj1[_k]
+          
+          if(typeof _obj2[_k] != 'undefined'){
+            let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
+            if(strDiff.length>0){
+              _ret[_k] = _obj1[_k]
+            }
+
+          }else{
+            _ret[_k] = _obj1[_k]//added new element
           }
         }else{
           _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
@@ -253,62 +259,64 @@ const pingMonitor = ()=>{
     //       payload:JSON.stringify({rowId:existingRowId,key:'size',value:'2Small'})
     //     }
     //   }
-      if(!_resolve.set)
-      if(new Date().getTime() - timeOfStart > 12000){
-        let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
-        let existingRowId = rowObj.rowId
-        let existingRowaddr = rowObj.ipAddress
-        
-        if(!_resolve.set && rowObj.isPaused != true){
-          _resolve = {
-            set:true,
-            action:actionTypes.ROW_SET_PROP,
-            payload:JSON.stringify({rowId:existingRowId,key:'isPaused',value:true})
-          }
-        }
-      }
-      if(!_resolve.set)
-      // if(new Date().getTime() - timeOfStart > 10000){
-      //   let winObj = JSON.parse(_coreState.windows[0])
-      //   let existingWinId = winObj.winId;
-      //   if(winObj.isMenuOpen != true){
-      //     _resolve = {
-      //       set:true,
-      //       action:actionTypes.WIN_SET_PROP,
-      //       payload:JSON.stringify({winId:existingWinId,key:'isMenuOpen',value:true})
-      //     }
-      //   }
-      // }
-      if(!_resolve.set)
-      // if(new Date().getTime() - timeOfStart > 10000){
-      //   let winObj = JSON.parse(_coreState.windows[0])
-      //   let existingWinId = winObj.winId;
-      //   if(winObj.isSettingOpen != true){
-      //     _resolve = {
-      //       set:true,
-      //       action:actionTypes.WIN_SET_PROP,
-      //       payload:JSON.stringify({winId:existingWinId,key:'isSettingOpen',value:true})
-      //     }
-      //   }
-      // }
-      // if(!_resolve.set)
-      // if(new Date().getTime() - timeOfStart > 10000){
-      //   let winObj = JSON.parse(_coreState.windows[0])
-      //   let existingWinId = winObj.winId;
-      //   if(winObj.isImagePickerOpen != true){
-      //     _resolve = {
-      //       set:true,
-      //       action:actionTypes.WIN_SET_PROP,
-      //       payload:JSON.stringify({winId:existingWinId,key:'isImagePickerOpen',value:true})
-      //     }
-      //   }
-      // }
-    _resolve = pingCheck(_coreState,_resolve)
-    if(!_resolve.set){
-      _resolve = monitorCheck(_coreState,_prevState,_resolve)
-    }
+    // if(!_resolve.set)
+    // if(new Date().getTime() - timeOfStart > 12000){
+    //   let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
+    //   let existingRowId = rowObj.rowId
+    //   let existingRowaddr = rowObj.ipAddress
+      
+    //   if(!_resolve.set && rowObj.isPaused != true){
+    //     _resolve = {
+    //       set:true,
+    //       action:actionTypes.ROW_SET_PROP,
+    //       payload:JSON.stringify({rowId:existingRowId,key:'isPaused',value:true})
+    //     }
+    //   }
+    // }
+    if(!_resolve.set)
+    // if(new Date().getTime() - timeOfStart > 10000){
+    //   let winObj = JSON.parse(_coreState.windows[0])
+    //   let existingWinId = winObj.winId;
+    //   if(winObj.isMenuOpen != true){
+    //     _resolve = {
+    //       set:true,
+    //       action:actionTypes.WIN_SET_PROP,
+    //       payload:JSON.stringify({winId:existingWinId,key:'isMenuOpen',value:true})
+    //     }
+    //   }
+    // }
+    if(!_resolve.set)
+    // if(new Date().getTime() - timeOfStart > 10000){
+    //   let winObj = JSON.parse(_coreState.windows[0])
+    //   let existingWinId = winObj.winId;
+    //   if(winObj.isSettingOpen != true){
+    //     _resolve = {
+    //       set:true,
+    //       action:actionTypes.WIN_SET_PROP,
+    //       payload:JSON.stringify({winId:existingWinId,key:'isSettingOpen',value:true})
+    //     }
+    //   }
+    // }
+    // if(!_resolve.set)
+    // if(new Date().getTime() - timeOfStart > 10000){
+    //   let winObj = JSON.parse(_coreState.windows[0])
+    //   let existingWinId = winObj.winId;
+    //   if(winObj.isImagePickerOpen != true){
+    //     _resolve = {
+    //       set:true,
+    //       action:actionTypes.WIN_SET_PROP,
+    //       payload:JSON.stringify({winId:existingWinId,key:'isImagePickerOpen',value:true})
+    //     }
+    //   }
+    // }
     if(!_resolve.set){
       _resolve = windowCheck(_coreState,_prevState,_resolve)
+    }
+    if(!_resolve.set){
+      _resolve = pingCheck(_coreState,_resolve)
+    }
+    if(!_resolve.set){
+      _resolve = monitorCheck(_coreState,_prevState,_resolve)
     }
     if(!_resolve.set){
       if(new Date().getTime() - timeOfStart > 5000)

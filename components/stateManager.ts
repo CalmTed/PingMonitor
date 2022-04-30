@@ -27,7 +27,7 @@ interface rowState {
     isMuted:boolean
     isAlarmed:boolean
     isEditing:boolean
-    feiledEditing:'name'|'address'|'updatetime'|'image'|'none'
+    fieldEditing:'name'|'address'|'updatetime'|'image'|'none'
     isGraphSubscribed:boolean
     isSelected:boolean
 }
@@ -111,11 +111,11 @@ class stateManager {
         ]
         return _ret;
     }
-    __getInitialRowState = ({_monitorId})=>{
+    __getInitialRowState = ({_monitorId,_position=0})=>{
         let _ret:rowState = {
             rowId: Number(`${_monitorId}.${this.__genId('row')}`),//generate random
-            position: 0,
-            size: '2Small',//default size
+            position: _position,
+            size: '4Middle',//default size
             ipAddress: '1.1.1.1',//default address
             updateTimeMS: 5000,//defaul time
             name: 'name',//defaultname
@@ -128,7 +128,7 @@ class stateManager {
             isMuted:false,
             isAlarmed:false,
             isEditing:false,
-            feiledEditing:'none',
+            fieldEditing:'none',
             isGraphSubscribed:false,
             isSelected:false
         }
@@ -200,8 +200,8 @@ class stateManager {
         const actionTypes = require('./actionTypes')
         const config = require('./config')
         const loger = require('./loger')
-        let __newRow = ({_monitorId}/* MAY BE THERE SHOULD BE CUSTOM VALUES*/)=>{
-            return this.__getInitialRowState({_monitorId:_monitorId})
+        let __newRow = ({_monitorId,_position=0}/* MAY BE THERE SHOULD BE CUSTOM VALUES*/)=>{
+            return this.__getInitialRowState({_monitorId:_monitorId,_position:_position})
         }
         let __newMonitor = ()=>{
             let _monitorId = this.__genId('monitor')
@@ -319,7 +319,8 @@ class stateManager {
                 _neededMonitorIndex = _newMonitors.map((_m)=>{
                     return _m.monitorId == _payloadObj.monitorId
                 }).indexOf(true)
-                _newMonitors[_neededMonitorIndex].rows.push(__newRow({_monitorId:_payloadObj.monitorId}))
+                let _newRowElement = __newRow({_monitorId:_payloadObj.monitorId,_position:_newMonitors[_neededMonitorIndex].rows.length})
+                _newMonitors[_neededMonitorIndex].rows.push(_newRowElement)
                 _state = {..._state,monitors:_newMonitors}
                 break;
             case actionTypes.REMOVE_ROW:
@@ -345,10 +346,13 @@ class stateManager {
                 })
                 //TODO make it work for different conditions
                 try{
-                    if(_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == action.payload.status).updateTimeMS != _rowInfo.rowObj.updateTimeMS){
-                        _rowInfo.rowObj.updateTimeMS = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == action.payload.status).updateTimeMS
+                    if(_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status).updateTimeMS != _rowInfo.rowObj.updateTimeMS){
+                        _rowInfo.rowObj.updateTimeMS = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status).updateTimeMS
                     }
-                }catch(e){}
+                }catch(e){
+                    console.log('PTS ERROR',_rowInfo.rowObj.pingTimeStrategy,_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status),_payloadObj.status)
+                    //loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
+                }
                 //do we need to turn on alarm
                 if(action.payload.status != 'online'){
                     let lastNotOnlineProbeTime:number
@@ -359,8 +363,8 @@ class stateManager {
                         }
                         i--
                     }
-                    let timeToAlarmMS = await config.getParam('timeToAlarmMS');
-                    if(new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS.value){
+                    let timeToAlarmMS = await config.getParam('timeToAlarmMS')
+                    if(new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS.value && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].status != 'online'){
                         _rowInfo.rowObj.isAlarmed = true
                     }
                 }
@@ -375,7 +379,7 @@ class stateManager {
                 _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj)
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
                 _state = {..._state}
-                break
+                break;
             case actionTypes.ROW_SET_PROP:
                 if(!__validateInputs(action.payload,['rowId','key','value'])){
                     loger.out(`ROW_SET_PROP Error: expected to recive rowId,key and value`)
@@ -388,17 +392,95 @@ class stateManager {
                     break;
                 }
                 if(_rowInfo.rowObj[_rowInfo.payloadObj.key] === _rowInfo.payloadObj.value){
-                    loger.out(`ROW_SET_PROP warn value is already set. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    loger.out(`ROW_SET_PROP warn value is already set. Key:${_rowInfo.payloadObj.key} Values:${_rowInfo.rowObj[_rowInfo.payloadObj.key]}>>${_rowInfo.payloadObj.value} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
+                }
+                if(['name','address','updateTimeMS'].includes(_rowInfo.payloadObj.key)){
+                    if(_rowInfo.payloadObj.key == 'name'){
+                        if(_rowInfo.payloadObj.value.length<1 || _rowInfo.payloadObj.value.length>20){
+                            break;
+                        } 
+                    }
+                    if(_rowInfo.payloadObj.key == 'address'){
+                        if(_rowInfo.payloadObj.value.length<1 || _rowInfo.payloadObj.value.length>50){
+                            break;
+                        }
+                    }
+                    if(_rowInfo.payloadObj.key == 'updateTimeMS'){
+                        if(_rowInfo.payloadObj.value<1000 || _rowInfo.payloadObj.value>300000){
+                            break;
+                        } 
+                        try{
+                            let _actualStatus = _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].status
+                            _rowInfo.rowObj.pingTimeStrategy.find(_pts=>{return _pts.conditions.status == _actualStatus}).updateTimeMS = _rowInfo.payloadObj.value
+                        }catch(e){
+                            loger.out(`ROW_SET_PROP unable to write PTS Key:${_rowInfo.payloadObj.key} Values:${_rowInfo.rowObj[_rowInfo.payloadObj.key]}>>${_rowInfo.payloadObj.value} RowId:${_rowInfo.payloadObj.rowId}`)
+                        }
+                    }
                 }
                 _rowInfo.rowObj[_rowInfo.payloadObj.key] = _rowInfo.payloadObj.value
                 _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj)
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
                 _state = {..._state,monitors:_newMonitors}
                 break;
+            case actionTypes.ROW_TOGGLE_PROP:
+                if(!__validateInputs(action.payload,['rowId','key'])){
+                    loger.out(`ROW_TOGGLE_PROP Error: expected to recive rowId and key`)
+                    break;
+                }
+                _newMonitors = [..._state.monitors]
+                _rowInfo = __getRow(action.payload,_newMonitors)
+                if(typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined'){
+                    loger.out(`ROW_TOGGLE_PROP error unknown key of the row. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    break;
+                }
+                _rowInfo.rowObj[_rowInfo.payloadObj.key] = !_rowInfo.rowObj[_rowInfo.payloadObj.key]
+                _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj)
+                _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
+                _state = {..._state,monitors:_newMonitors}
+            break;
+            case actionTypes.ROW_EDIT_PROP_SET:
+                if(!__validateInputs(action.payload,['rowId','key'])){
+                    loger.out(`ROW_EDIT_PROP_SET Error: expected to recive rowId,key`)
+                    break;
+                }
+                _newMonitors = [..._state.monitors]
+                _rowInfo = __getRow(action.payload,_newMonitors)
+                
+                if(!['name','address','updatetime','image'].includes(_rowInfo.payloadObj.key)){
+                    loger.out(`ROW_EDIT_PROP_SET error unknown key(${_rowInfo.payloadObj.key}). Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    break;
+                }
+                if(!_rowInfo.rowObj['isEditing']){
+                    _rowInfo.rowObj['isEditing'] = true
+                    _rowInfo.rowObj['fieldEditing'] = _rowInfo.payloadObj.key
+                    _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj)
+                    _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
+                    _state = {..._state,monitors:_newMonitors}
+                }
+                break;
+            case actionTypes.ROW_EDIT_PROP_REMOVE:
+                if(!__validateInputs(action.payload,['rowId','key'])){
+                    loger.out(`ROW_EDIT_PROP_REMOVE Error: expected to recive rowId,key`)
+                    break;
+                }
+                _newMonitors = [..._state.monitors]
+                _rowInfo = __getRow(action.payload,_newMonitors)
+                if(!['name','address','updatetime','image'].includes(_rowInfo.payloadObj.key)){
+                    loger.out(`ROW_EDIT_PROP_REMOVE error unknown key(${_rowInfo.payloadObj.key}). Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    break;
+                }
+                if(_rowInfo.rowObj['isEditing']){
+                    _rowInfo.rowObj['isEditing'] = false
+                    _rowInfo.rowObj['fieldEditing'] = 'none'
+                    _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj)
+                    _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
+                    _state = {..._state,monitors:_newMonitors}
+                }
+                break;
             case actionTypes.ROW_PAUSE_ALL:
                 if(!__validateInputs(action.payload,['monitorId'])){
-                    loger.out(`ROW_SET_PROP Error: expected to recive monitorId`)
+                    loger.out(`ROW_PAUSE_ALL Error: expected to recive monitorId`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -432,6 +514,25 @@ class stateManager {
                         }
                     })
                 }
+                _state = {..._state,monitors:_newMonitors}
+                break;
+            case actionTypes.ROW_UNALARM_ALL:
+                if(!__validateInputs(action.payload,['monitorId'])){
+                    loger.out(`ROW_UNALARM_ALL Error: expected to recive monitorId`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                _newMonitors = [..._state.monitors]
+                _neededMonitorIndex = _newMonitors.map((_m)=>{
+                    return _m.monitorId == _payloadObj.monitorId
+                }).indexOf(true)
+                _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
+                    let _rowObj = JSON.parse(_rowStr)
+                    if(_rowObj.isAlarmed == true){
+                        _rowObj.isAlarmed = false
+                        _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj)
+                    }
+                })
                 _state = {..._state,monitors:_newMonitors}
                 break;
             default:

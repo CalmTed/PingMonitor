@@ -1118,7 +1118,6 @@ const getPath = ({dataArray})=>{
   if(dataTrimmed.length>0){
     _ret += `M${_widthMargin} ${_map(dataTrimmed[0].pingDellay,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin)}`
     let _firstTime = dataTrimmed[0].time;
-    let _isDrawing = true;
     dataTrimmed.forEach((dot,i)=>{
       if(i>0){
         let _x = Math.round((_widthMargin+(dot.time - _firstTime)*widthKoof)*100)/100;

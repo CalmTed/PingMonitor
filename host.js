@@ -260,9 +260,14 @@ var pingMonitor = function () {
             Object.entries(_obj1).forEach(function (_a) {
                 var _k = _a[0], _v = _a[1];
                 if (typeof _obj1[_k] != 'object') {
-                    var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
-                    if (strDiff.length > 0) {
-                        _ret[_k] = _obj1[_k];
+                    if (typeof _obj2[_k] != 'undefined') {
+                        var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
+                        if (strDiff.length > 0) {
+                            _ret[_k] = _obj1[_k];
+                        }
+                    }
+                    else {
+                        _ret[_k] = _obj1[_k]; //added new element
                     }
                 }
                 else {
@@ -310,7 +315,7 @@ var pingMonitor = function () {
         return _resolve;
     };
     var compute = function (_coreState, _prevState) { return __awaiter(void 0, void 0, void 0, function () {
-        var _resolve, rowObj, existingRowId, existingRowaddr, existingRowId;
+        var _resolve, existingRowId;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -332,19 +337,19 @@ var pingMonitor = function () {
                     //       payload:JSON.stringify({rowId:existingRowId,key:'size',value:'2Small'})
                     //     }
                     //   }
-                    if (!_resolve.set)
-                        if (new Date().getTime() - timeOfStart > 12000) {
-                            rowObj = JSON.parse(_coreState.monitors[0].rows[0]);
-                            existingRowId = rowObj.rowId;
-                            existingRowaddr = rowObj.ipAddress;
-                            if (!_resolve.set && rowObj.isPaused != true) {
-                                _resolve = {
-                                    set: true,
-                                    action: actionTypes.ROW_SET_PROP,
-                                    payload: JSON.stringify({ rowId: existingRowId, key: 'isPaused', value: true })
-                                };
-                            }
-                        }
+                    // if(!_resolve.set)
+                    // if(new Date().getTime() - timeOfStart > 12000){
+                    //   let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
+                    //   let existingRowId = rowObj.rowId
+                    //   let existingRowaddr = rowObj.ipAddress
+                    //   if(!_resolve.set && rowObj.isPaused != true){
+                    //     _resolve = {
+                    //       set:true,
+                    //       action:actionTypes.ROW_SET_PROP,
+                    //       payload:JSON.stringify({rowId:existingRowId,key:'isPaused',value:true})
+                    //     }
+                    //   }
+                    // }
                     if (!_resolve.set)
                         // if(new Date().getTime() - timeOfStart > 10000){
                         //   let winObj = JSON.parse(_coreState.windows[0])
@@ -381,12 +386,14 @@ var pingMonitor = function () {
                             //     }
                             //   }
                             // }
-                            _resolve = pingCheck(_coreState, _resolve);
+                            if (!_resolve.set) {
+                                _resolve = windowCheck(_coreState, _prevState, _resolve);
+                            }
                     if (!_resolve.set) {
-                        _resolve = monitorCheck(_coreState, _prevState, _resolve);
+                        _resolve = pingCheck(_coreState, _resolve);
                     }
                     if (!_resolve.set) {
-                        _resolve = windowCheck(_coreState, _prevState, _resolve);
+                        _resolve = monitorCheck(_coreState, _prevState, _resolve);
                     }
                     if (!!_resolve.set) return [3 /*break*/, 1];
                     if (new Date().getTime() - timeOfStart > 5000)

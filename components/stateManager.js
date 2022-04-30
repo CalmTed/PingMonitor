@@ -87,11 +87,11 @@ var stateManager = /** @class */ (function () {
             return _ret;
         };
         this.__getInitialRowState = function (_a) {
-            var _monitorId = _a._monitorId;
+            var _monitorId = _a._monitorId, _b = _a._position, _position = _b === void 0 ? 0 : _b;
             var _ret = {
                 rowId: Number("".concat(_monitorId, ".").concat(_this.__genId('row'))),
-                position: 0,
-                size: '2Small',
+                position: _position,
+                size: '4Middle',
                 ipAddress: '1.1.1.1',
                 updateTimeMS: 5000,
                 name: 'name',
@@ -104,7 +104,7 @@ var stateManager = /** @class */ (function () {
                 isMuted: false,
                 isAlarmed: false,
                 isEditing: false,
-                feiledEditing: 'none',
+                fieldEditing: 'none',
                 isGraphSubscribed: false,
                 isSelected: false
             };
@@ -173,7 +173,7 @@ var stateManager = /** @class */ (function () {
             return JSON.parse(_reply);
         };
         this.__reduce = function (_state, action) { return __awaiter(_this, void 0, void 0, function () {
-            var actionTypes, config, loger, __newRow, __newMonitor, __validateInputs, __getRow, _rowInfo, _newMonitors, _neededMonitorIndex, _newWindowsStr, _newWindowsObj, _neededWindowIndex, _payloadObj, _a, lastNotOnlineProbeTime, i, timeToAlarmMS, unmuteOnGettingOnline, _unpausedIndexes_1;
+            var actionTypes, config, loger, __newRow, __newMonitor, __validateInputs, __getRow, _rowInfo, _newMonitors, _neededMonitorIndex, _newWindowsStr, _newWindowsObj, _neededWindowIndex, _payloadObj, _a, _newRowElement, lastNotOnlineProbeTime, i, timeToAlarmMS, unmuteOnGettingOnline, _actualStatus_1, _unpausedIndexes_1;
             var _this = this;
             return __generator(this, function (_b) {
                 switch (_b.label) {
@@ -182,8 +182,8 @@ var stateManager = /** @class */ (function () {
                         config = require('./config');
                         loger = require('./loger');
                         __newRow = function (_a /* MAY BE THERE SHOULD BE CUSTOM VALUES*/) {
-                            var _monitorId = _a._monitorId;
-                            return _this.__getInitialRowState({ _monitorId: _monitorId });
+                            var _monitorId = _a._monitorId, _b = _a._position, _position = _b === void 0 ? 0 : _b;
+                            return _this.__getInitialRowState({ _monitorId: _monitorId, _position: _position });
                         };
                         __newMonitor = function () {
                             var _monitorId = _this.__genId('monitor');
@@ -231,41 +231,45 @@ var stateManager = /** @class */ (function () {
                             case actionTypes.REMOVE_ROW: return [3 /*break*/, 9];
                             case actionTypes.ROW_SUBMIT_PING_PROBE: return [3 /*break*/, 10];
                             case actionTypes.ROW_SET_PROP: return [3 /*break*/, 15];
-                            case actionTypes.ROW_PAUSE_ALL: return [3 /*break*/, 16];
+                            case actionTypes.ROW_TOGGLE_PROP: return [3 /*break*/, 16];
+                            case actionTypes.ROW_EDIT_PROP_SET: return [3 /*break*/, 17];
+                            case actionTypes.ROW_EDIT_PROP_REMOVE: return [3 /*break*/, 18];
+                            case actionTypes.ROW_PAUSE_ALL: return [3 /*break*/, 19];
+                            case actionTypes.ROW_UNALARM_ALL: return [3 /*break*/, 20];
                         }
-                        return [3 /*break*/, 17];
+                        return [3 /*break*/, 21];
                     case 1:
                         _state = __assign(__assign({}, _state), { propertyForTesting: action.payload });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 2:
                         _newMonitors = __spreadArray(__spreadArray([], _state.monitors, true), [__newMonitor()], false);
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 3:
                         _newMonitors = __spreadArray([], _state.monitors.filter(function (_m) { return _m.monitorId != action.payload; }), true);
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 4:
                         if (typeof action.payload != 'string') {
                             loger.out("Reducer error:".concat(action.action, " expected to recive subscriptionKey:string"));
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         _newWindowsStr = __spreadArray(__spreadArray([], _state.windows, true), [this.__getInitialWindow(this.__getAppVersion(), this.__getLangCode(), { subscriptionKey: action.payload })], false);
                         _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 5:
                         if (typeof action.payload != 'string') {
                             loger.out("Reducer error:".concat(action.action, " expected to recive winId:string"));
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         //going lazy way without parsing json string
                         _newWindowsStr = __spreadArray([], _state.windows.filter(function (_w) { return _w.indexOf("\"winId\":".concat(action.payload)) == -1; }), true);
                         _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 6:
                         if (typeof action.payload != 'string') {
                             loger.out("Reducer error:".concat(action.action, " expected to recive winId:string,key:string,value:string"));
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         _newWindowsStr = __spreadArray([], _state.windows, true);
                         _payloadObj = JSON.parse(action.payload);
@@ -274,17 +278,17 @@ var stateManager = /** @class */ (function () {
                         }).indexOf(true);
                         if (_neededWindowIndex == -1) {
                             loger.out("Reducer error:".concat(action.action, " window with entered winId is not found"));
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex]);
                         _newWindowsObj[_payloadObj.key] = _payloadObj.value;
                         _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj);
                         _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 7:
                         if (typeof action.payload != 'string') {
                             loger.out("Reducer error:".concat(action.action, " expected to recive winId:string,key:string"));
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         _newWindowsStr = __spreadArray([], _state.windows, true);
                         _payloadObj = JSON.parse(action.payload);
@@ -295,27 +299,28 @@ var stateManager = /** @class */ (function () {
                         _newWindowsObj[_payloadObj.key] = !_newWindowsObj[_payloadObj.key];
                         _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj);
                         _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 8:
                         if (!__validateInputs(action.payload, ['monitorId'])) {
                             loger.out("ROW_SET_PROP Error: expected to recive monitorId");
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _neededMonitorIndex = _newMonitors.map(function (_m) {
                             return _m.monitorId == _payloadObj.monitorId;
                         }).indexOf(true);
-                        _newMonitors[_neededMonitorIndex].rows.push(__newRow({ _monitorId: _payloadObj.monitorId }));
+                        _newRowElement = __newRow({ _monitorId: _payloadObj.monitorId, _position: _newMonitors[_neededMonitorIndex].rows.length });
+                        _newMonitors[_neededMonitorIndex].rows.push(_newRowElement);
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 9:
                         console.log('TODO add remove row reducer');
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 10:
                         if (!__validateInputs(action.payload, ['rowId', 'status', 'dellay', 'packetLoss', 'ttl', 'fullResponce'])) {
                             loger.out("ROW_SET_PROP Error: expected to recive rowId,status,dellay,packetLoss,ttl,fullResponce");
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _rowInfo = __getRow(action.payload, _newMonitors);
@@ -332,11 +337,14 @@ var stateManager = /** @class */ (function () {
                         });
                         //TODO make it work for different conditions
                         try {
-                            if (_rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == action.payload.status; }).updateTimeMS != _rowInfo.rowObj.updateTimeMS) {
-                                _rowInfo.rowObj.updateTimeMS = _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == action.payload.status; }).updateTimeMS;
+                            if (_rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _payloadObj.status; }).updateTimeMS != _rowInfo.rowObj.updateTimeMS) {
+                                _rowInfo.rowObj.updateTimeMS = _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _payloadObj.status; }).updateTimeMS;
                             }
                         }
-                        catch (e) { }
+                        catch (e) {
+                            console.log('PTS ERROR', _rowInfo.rowObj.pingTimeStrategy, _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _payloadObj.status; }), _payloadObj.status);
+                            //loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
+                        }
                         if (!(action.payload.status != 'online')) return [3 /*break*/, 12];
                         lastNotOnlineProbeTime = void 0;
                         i = _rowInfo.rowObj.history.length - 1;
@@ -349,7 +357,7 @@ var stateManager = /** @class */ (function () {
                         return [4 /*yield*/, config.getParam('timeToAlarmMS')];
                     case 11:
                         timeToAlarmMS = _b.sent();
-                        if (new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS.value) {
+                        if (new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS.value && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 1].status != 'online') {
                             _rowInfo.rowObj.isAlarmed = true;
                         }
                         _b.label = 12;
@@ -367,31 +375,109 @@ var stateManager = /** @class */ (function () {
                         _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
                         _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                         _state = __assign({}, _state);
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 15:
                         if (!__validateInputs(action.payload, ['rowId', 'key', 'value'])) {
                             loger.out("ROW_SET_PROP Error: expected to recive rowId,key and value");
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _rowInfo = __getRow(action.payload, _newMonitors);
                         if (typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined') {
                             loger.out("ROW_SET_PROP error unknown key of the row. Key:".concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
-                            return [3 /*break*/, 18];
+                            return [3 /*break*/, 22];
                         }
                         if (_rowInfo.rowObj[_rowInfo.payloadObj.key] === _rowInfo.payloadObj.value) {
-                            loger.out("ROW_SET_PROP warn value is already set. Key:".concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
-                            return [3 /*break*/, 18];
+                            loger.out("ROW_SET_PROP warn value is already set. Key:".concat(_rowInfo.payloadObj.key, " Values:").concat(_rowInfo.rowObj[_rowInfo.payloadObj.key], ">>").concat(_rowInfo.payloadObj.value, " RowId:").concat(_rowInfo.payloadObj.rowId));
+                            return [3 /*break*/, 22];
+                        }
+                        if (['name', 'address', 'updateTimeMS'].includes(_rowInfo.payloadObj.key)) {
+                            if (_rowInfo.payloadObj.key == 'name') {
+                                if (_rowInfo.payloadObj.value.length < 1 || _rowInfo.payloadObj.value.length > 20) {
+                                    return [3 /*break*/, 22];
+                                }
+                            }
+                            if (_rowInfo.payloadObj.key == 'address') {
+                                if (_rowInfo.payloadObj.value.length < 1 || _rowInfo.payloadObj.value.length > 50) {
+                                    return [3 /*break*/, 22];
+                                }
+                            }
+                            if (_rowInfo.payloadObj.key == 'updateTimeMS') {
+                                if (_rowInfo.payloadObj.value < 1000 || _rowInfo.payloadObj.value > 300000) {
+                                    return [3 /*break*/, 22];
+                                }
+                                try {
+                                    _actualStatus_1 = _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 1].status;
+                                    _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _actualStatus_1; }).updateTimeMS = _rowInfo.payloadObj.value;
+                                }
+                                catch (e) {
+                                    loger.out("ROW_SET_PROP unable to write PTS Key:".concat(_rowInfo.payloadObj.key, " Values:").concat(_rowInfo.rowObj[_rowInfo.payloadObj.key], ">>").concat(_rowInfo.payloadObj.value, " RowId:").concat(_rowInfo.payloadObj.rowId));
+                                }
+                            }
                         }
                         _rowInfo.rowObj[_rowInfo.payloadObj.key] = _rowInfo.payloadObj.value;
                         _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
                         _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 18];
+                        return [3 /*break*/, 22];
                     case 16:
+                        if (!__validateInputs(action.payload, ['rowId', 'key'])) {
+                            loger.out("ROW_TOGGLE_PROP Error: expected to recive rowId and key");
+                            return [3 /*break*/, 22];
+                        }
+                        _newMonitors = __spreadArray([], _state.monitors, true);
+                        _rowInfo = __getRow(action.payload, _newMonitors);
+                        if (typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined') {
+                            loger.out("ROW_TOGGLE_PROP error unknown key of the row. Key:".concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
+                            return [3 /*break*/, 22];
+                        }
+                        _rowInfo.rowObj[_rowInfo.payloadObj.key] = !_rowInfo.rowObj[_rowInfo.payloadObj.key];
+                        _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
+                        _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
+                        _state = __assign(__assign({}, _state), { monitors: _newMonitors });
+                        return [3 /*break*/, 22];
+                    case 17:
+                        if (!__validateInputs(action.payload, ['rowId', 'key'])) {
+                            loger.out("ROW_EDIT_PROP_SET Error: expected to recive rowId,key");
+                            return [3 /*break*/, 22];
+                        }
+                        _newMonitors = __spreadArray([], _state.monitors, true);
+                        _rowInfo = __getRow(action.payload, _newMonitors);
+                        if (!['name', 'address', 'updatetime', 'image'].includes(_rowInfo.payloadObj.key)) {
+                            loger.out("ROW_EDIT_PROP_SET error unknown key(".concat(_rowInfo.payloadObj.key, "). Key:").concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
+                            return [3 /*break*/, 22];
+                        }
+                        if (!_rowInfo.rowObj['isEditing']) {
+                            _rowInfo.rowObj['isEditing'] = true;
+                            _rowInfo.rowObj['fieldEditing'] = _rowInfo.payloadObj.key;
+                            _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
+                            _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
+                            _state = __assign(__assign({}, _state), { monitors: _newMonitors });
+                        }
+                        return [3 /*break*/, 22];
+                    case 18:
+                        if (!__validateInputs(action.payload, ['rowId', 'key'])) {
+                            loger.out("ROW_EDIT_PROP_REMOVE Error: expected to recive rowId,key");
+                            return [3 /*break*/, 22];
+                        }
+                        _newMonitors = __spreadArray([], _state.monitors, true);
+                        _rowInfo = __getRow(action.payload, _newMonitors);
+                        if (!['name', 'address', 'updatetime', 'image'].includes(_rowInfo.payloadObj.key)) {
+                            loger.out("ROW_EDIT_PROP_REMOVE error unknown key(".concat(_rowInfo.payloadObj.key, "). Key:").concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
+                            return [3 /*break*/, 22];
+                        }
+                        if (_rowInfo.rowObj['isEditing']) {
+                            _rowInfo.rowObj['isEditing'] = false;
+                            _rowInfo.rowObj['fieldEditing'] = 'none';
+                            _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
+                            _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
+                            _state = __assign(__assign({}, _state), { monitors: _newMonitors });
+                        }
+                        return [3 /*break*/, 22];
+                    case 19:
                         if (!__validateInputs(action.payload, ['monitorId'])) {
-                            loger.out("ROW_SET_PROP Error: expected to recive monitorId");
-                            return [3 /*break*/, 18];
+                            loger.out("ROW_PAUSE_ALL Error: expected to recive monitorId");
+                            return [3 /*break*/, 22];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
@@ -422,12 +508,31 @@ var stateManager = /** @class */ (function () {
                             });
                         }
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 18];
-                    case 17:
+                        return [3 /*break*/, 22];
+                    case 20:
+                        if (!__validateInputs(action.payload, ['monitorId'])) {
+                            loger.out("ROW_UNALARM_ALL Error: expected to recive monitorId");
+                            return [3 /*break*/, 22];
+                        }
+                        _payloadObj = JSON.parse(action.payload);
+                        _newMonitors = __spreadArray([], _state.monitors, true);
+                        _neededMonitorIndex = _newMonitors.map(function (_m) {
+                            return _m.monitorId == _payloadObj.monitorId;
+                        }).indexOf(true);
+                        _newMonitors[_neededMonitorIndex].rows.forEach(function (_rowStr, _i) {
+                            var _rowObj = JSON.parse(_rowStr);
+                            if (_rowObj.isAlarmed == true) {
+                                _rowObj.isAlarmed = false;
+                                _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj);
+                            }
+                        });
+                        _state = __assign(__assign({}, _state), { monitors: _newMonitors });
+                        return [3 /*break*/, 22];
+                    case 21:
                         loger.out("Reducer error: Unknown action type: ".concat(action.action));
                         console.error("Reducer error: Unknown action type: ".concat(action.action));
-                        return [3 /*break*/, 18];
-                    case 18: return [2 /*return*/, _state];
+                        return [3 /*break*/, 22];
+                    case 22: return [2 /*return*/, _state];
                 }
             });
         }); };

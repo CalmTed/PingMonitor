@@ -8,9 +8,40 @@ interface comunicatorMessage {
     command:string,
     payload:string
 }
+const Siren = ()=>{
+    this.dom = document.querySelector('audio')
+    this.playState = false
+    this.start = ()=>{
+        if(!this.playState){
+            this.playState = true
+            this.dom.play()
+            this.dom.volume = 0
+            this.volumeUp()
+        }
+    }
+    this.stop = ()=>{
+        if(this.playState){
+            this.playState = false
+            this.dom.pause()
+        }
+    }
+    this.volumeUp = ()=>{
+        if(this.playState){
+            if(this.dom.volume+0.1 < 1){
+                this.dom.volume+=0.1
+                console.log(this.dom.volume)
+                setTimeout(()=>{
+                    this.volumeUp()
+                },1000)
+            }
+        }
+    }
+    return this
+  }
 const Page = (_winId)=>{
     this.winId = _winId
     this.state
+    this.siren = Siren()
     this.optimize = (_stateNew:any,_stateOld:any):renderItem[]=>{
         let _renObj:any
         let _stateDiff = (_stateNew:any,_stateOld:any)=>{
@@ -53,11 +84,10 @@ const Page = (_winId)=>{
                             if(typeof _rowObjNew[_key] != 'object'){
                                 if(_rowObjNew[_key] != _rowObjOld[_key]){
                                     _rowChangesList.push({selector:'row',id:_rowObjNew.rowId,key:_key,value:_rowObjNew[_key]})
-                                }                
+                                }
                             }else{
                                 if(_key == 'history'){
-                                    //what if they are the same length but diff still
-                                    console.log(_key,_rowObjNew[_key].length,_rowObjOld[_key].length)
+                                    //what if they are the same length but diff 
                                     if(_rowObjNew[_key].length>0 && _rowObjOld[_key].length>0){
                                         var _lastElementOfNewHist = _rowObjNew[_key][_rowObjNew[_key].length-1]
                                         var _lastElementOfOldHist = _rowObjOld[_key][_rowObjOld[_key].length-1]
@@ -72,11 +102,70 @@ const Page = (_winId)=>{
                         
                     }
                     
-                    //new rows
-                    //removed rows
-                    //switched place
-                    
                 })
+                //switched place
+                if(_newRows.length + _removedRows.length == 0){
+                    let _checkOfSwaped = (_new,_old)=>{
+                        let swapped = false
+                        _new.forEach(([rid,pos],i)=>{
+                            _new[i][1] != _old[i][1]?swapped=true:0
+                        })
+                        return swapped
+                    }
+                    let _getSwapPairs = (_new,_old)=>{
+                        let _r = []
+                        console.log('TODO swaping differencing')
+                        // //check if uts not out of order
+                        // //sort a
+                        // _new = _new.sort((a,b)=>{return a[1]<b[1]?-1:1})
+                        // let _bt = JSON.parse(JSON.stringify(_old))
+                        // //loop a
+                        // _new.forEach((_newEl,_i)=>{
+                        //     //find element with the same id
+                        //     let _oldElSameId = _bt.find(_el=>{return _el[0] == _newEl[0]})
+                        //     //save its position
+                        //     let _oldElSameIdPos = _bt.indexOf(_oldElSameId)
+                        //     if(_oldElSameId[1] != _newEl[1]){//if they have different positions
+                        //         let swap = (_arr,_ind1,_ind2) => {
+                        //             let _arr2 = JSON.parse(JSON.stringify(_arr))
+                        //             let _buffer = _arr2[_ind1]
+                        //             _arr2[_ind1] = _arr2[_ind2]
+                        //             _arr2[_ind2] = _buffer
+                        //             return _arr2
+                        //         }
+                        //         console.log(_bt.toString())
+                        //         _bt = swap(_bt,_i,_oldElSameIdPos)
+                        //         console.log(_bt.toString())
+                        //         _r.push({selector:'swap_row',id:_newEl[0],value:_oldElSameId[0]})
+                        //     }
+                        //if a[i] != bt[i]
+                        // if(_new[_i][0] != bt[_i][0] && _new[_i][1] != bt[_i][1]){
+                        //     //start place
+                        //     let _startPlace = _i
+                        //     let _finishElIndex = bt.indexOf(bt.find(el=>{ return el[0] == _new[_i][0]}))
+                        //     if(typeof _finishElIndex != 'undefined'){
+                        //         //finish place
+                        //         //swap bt
+                        //         let __t = bt[_i]
+                        //         bt[_i] = _new[_i]
+                        //         bt[_finishElIndex] = __t
+                        //         _r.push({selector:'swap_row',id:_new[_i][0],value:__t[0]})
+                        //     }
+                        // }
+                        // })
+                        return _r
+                    }
+                    if(_newStateIds.length + _oldStateIds.length > 3){
+                        let __t = _newStateIds[0][1]
+                        _newStateIds[0][1] = _newStateIds[1][1]
+                        _newStateIds[1][1] = __t
+                    }
+                    let isSwapped = _checkOfSwaped(_newStateIds,_oldStateIds)
+                    if(isSwapped){
+                        _rowChangesList = [..._rowChangesList,..._getSwapPairs(_newStateIds,_oldStateIds)]
+                        
+                    }
+                }
                 return _rowChangesList
             }
             _diffList = [..._getMainChanges(_stateNew,_stateOld),..._getRowChanges(_stateNew,_stateOld)]
@@ -120,7 +209,7 @@ const Page = (_winId)=>{
             _tool.setAttribute('alt',altText)
             _tool.classList.add('material-icons')
             _tool.innerHTML = icon
-            _tool.onclick = ()=>{
+            _tool.onclick = (e)=>{
                 let comunicator = Comunicator()
                 comunicator.send({
                     command:'dispachAction',
@@ -133,8 +222,80 @@ const Page = (_winId)=>{
             let _ret = document.createElement('list')
             return _ret
         }
-        let _createRowDOM = ({rowId,name,imageLink: imageLink,ipAddress,isBusy,isPaused,size,isSelected,history,updateTimeMS})=>{
-            let _rowDOM = document.createElement('row')
+        let _addEditEvents = ({domElement,name,className,rowId})=>{
+            domElement.onclick = (e)=>{
+                let eventElement = e.target as HTMLInputElement
+                if(eventElement.classList.contains(className)){
+                    eventElement.focus()
+                    eventElement.select()
+                    let comunicator = Comunicator()
+                    comunicator.send({
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'rowEditProperySet',
+                            payload:JSON.stringify({rowId:rowId,key:name})
+                        })
+                    })
+                }
+            }
+            domElement.onkeyup = (e)=>{
+                let eventElement = e.target as HTMLInputElement
+                let _name:string = name
+                let _value:any = e.target.value
+                if(name == 'updatetime'){
+                    _name = 'updateTimeMS'
+                    _value = Number(_value.replace(/[^0-9]/g,'')) * 1000;
+                    console.log(_value,e.target.value)  
+                }
+                if(name == 'address'){
+                    _name = 'ipAddress'
+                }
+                if(eventElement.validity){
+                    let comunicator = Comunicator()
+                    comunicator.send({
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'rowSetProp',
+                            payload:JSON.stringify({rowId:rowId,key:_name,value:_value})
+                        })
+                    })
+                }
+            }
+            domElement.onblur = (e)=>{
+                // let eventElement = e.target as HTMLElement
+                let comunicator = Comunicator()
+                comunicator.send({
+                    command:'dispachAction',
+                    payload:JSON.stringify({
+                        action:'rowEditProperyRemove',
+                        payload:JSON.stringify({rowId:rowId,key:name})
+                    })
+                })
+            }
+        }
+        let _getCol1Content = (imageLink,name,ipAddress,rowId)=>{
+            let _col1Content = document.createElement('col1')
+            //picture
+            let _picDOMElement = document.createElement('pic')
+            _picDOMElement.setAttribute('style',`background-image: url('assets/icons/${imageLink}')`)
+            _col1Content.append(_picDOMElement)
+            //name
+            let _nameDOMElement = document.createElement('input')
+            _nameDOMElement.classList.add('name')
+            _nameDOMElement.value = name
+            // _nameDOMElement.setAttribute('disabled','')
+            _addEditEvents({domElement:_nameDOMElement,name:'name',className:'name',rowId:rowId})
+            _col1Content.append(_nameDOMElement)
+            //address
+            let _addressDOMElement = document.createElement('input')
+            _addressDOMElement.classList.add('address')
+            _addressDOMElement.value = ipAddress
+            // _addressDOMElement.setAttribute('disabled','')
+            _addEditEvents({domElement:_addressDOMElement,name:'address',className:'address',rowId:rowId})
+            _col1Content.append(_addressDOMElement)
+            return _col1Content
+        }
+        let _getCol2Content = (history,updateTimeMS,rowId)=>{
             let _knownHistory = {status:'unknown',dellayMS:0}
             let _knownQuality = 0
             if(history.length>0){
@@ -144,6 +305,98 @@ const Page = (_winId)=>{
             let status = _knownHistory.status
             let dellayMS = _knownHistory.dellayMS
             let quality = _knownQuality
+            let _col2Content = document.createElement('col2')
+            //status
+            let _statusDOMElement = document.createElement('status')
+            _statusDOMElement.innerHTML = status
+            //trio
+            let _trioDOMElement = document.createElement('trio')
+                // dellay
+                let _dellayDOMElement = document.createElement('triodelay')
+                _dellayDOMElement.innerHTML = `${dellayMS}ms`
+                // update
+                let _updateDOMElement = document.createElement('input')
+                _updateDOMElement.value = `${updateTimeMS/1000}s`
+                _updateDOMElement.classList.add('trioupdate')
+                _addEditEvents({domElement:_updateDOMElement,name:'updatetime',className:'trioupdate',rowId:rowId})
+                // quality
+                let _qualityDOMElement = document.createElement('trioquality')
+                _qualityDOMElement.innerHTML = `${quality}%`
+                
+            _trioDOMElement.append(_dellayDOMElement)
+            _trioDOMElement.append(_updateDOMElement)
+            _trioDOMElement.append(_qualityDOMElement)
+
+            _col2Content.append(_statusDOMElement)
+            _col2Content.append(_trioDOMElement)
+            return _col2Content
+        }
+        const _getPath = ({dataArray})=>{
+            let _ret = '';
+            let _canvasWidth = 200;
+            let _canvasHeight = 100;
+            let _heightMargin = 5;
+            let _widthMargin = _heightMargin;
+            let dataLenghtLimit = 60000;//TODO get from config
+            let timeOfBegining = new Date().getTime() - dataLenghtLimit;//cut to last N min
+            let dataTrimmed = dataArray.filter(dot=>{return dot.timestamp >= timeOfBegining})
+            let widthKoof = (100-(_widthMargin*2));
+            if(dataTrimmed.length>1){
+              if(dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].timestamp > dataLenghtLimit){
+                 widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataTrimmed[dataTrimmed.length-1].timestamp - dataTrimmed[0].timestamp)
+              }else{
+                widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataLenghtLimit)
+              }
+            }
+            let maxDellay = Math.max(...dataTrimmed.map(dot=>{return dot.dellayMS}));
+            let _map = (val,start1,stop1,start2,stop2)=>{
+              let __a = (val-start1)/(stop1-start1)*(stop2-start2)+start2;
+              return start2 < stop2 ? Math.round(Math.max(Math.min(__a, stop2), start2)*10)/10 : Math.round(Math.max(Math.min(__a, start2), stop2)*10)/10;
+            }
+            if(dataTrimmed.length>0){
+              _ret += `M${_widthMargin} ${_map(dataTrimmed[0].dellayMS,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin)}`
+              let _firstTime = dataTrimmed[0].timestamp;
+              dataTrimmed.forEach((dot,i)=>{
+                if(i>0){
+                  let _x = Math.round((_widthMargin+(dot.timestamp - _firstTime)*widthKoof)*100)/100;
+                  let _y = _map(dot.dellayMS,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin);
+                  if(dot.status == 'offline' ||dot.status == 'timeout'||dot.status == 'error'){
+                    _ret += `M${_x} ${_y}`;
+                  }else{
+                    _ret += `L${_x} ${_y}`;
+                  }
+                }
+              })
+            }
+            return _ret;
+          }
+        let _getCol3Content = (history,rowId)=>{
+            let _col3Content = document.createElement('col3')
+            // let _col3PathDom = document.createElement('path')
+            // _col3PathDom.setAttribute('d',_getPath({dataArray:history}))
+            // let _col3SVGdom = document.createElement('svg')
+            // _col3SVGdom.setAttribute('width','100%')
+            // _col3SVGdom.setAttribute('height','100%')
+            // _col3SVGdom.setAttribute('viewBox','0 20 100 6')
+            // _col3SVGdom.innerHTML = '<path d=""></path>';
+            
+            // _col3SVGdom.append(_col3PathDom)
+            // _col3Content.append(_col3SVGdom)
+            _col3Content.innerHTML = '<svg width="100%" height="100%" viewBox="0 0 200 100"><path d=""/></svg>'
+            return _col3Content
+        }
+        let _getCol4Content = (history,rowId)=>{
+            let _col4Content = document.createElement('col4')
+            _col4Content.innerHTML = 'stats will go here'
+            return _col4Content
+        }
+        let _createRowDOM = ({rowId,name,imageLink,ipAddress,isBusy,isPaused,size,isSelected,history,updateTimeMS})=>{
+            let _rowDOM = document.createElement('row')
+            let _knownHistory = {status:'unknown',dellayMS:0}
+            if(history.length>0){
+                _knownHistory = history[history.length-1]
+            }
+            let status = _knownHistory.status
             _rowDOM.setAttribute('id',rowId)
             _rowDOM.setAttribute('busy',isBusy)
             _rowDOM.setAttribute('paused',isPaused)
@@ -151,52 +404,31 @@ const Page = (_winId)=>{
             _rowDOM.setAttribute('selected',isSelected)
             _rowDOM.setAttribute('status',status)
             
-            let _getCol1Content = (imageLink,name,ipAddress)=>{
-                let _col1Content = document.createElement('col1')
-                //picture
-                let _picDOMElement = document.createElement('pic')
-                _picDOMElement.setAttribute('style',`background-image: url('assets/icons/${imageLink}')`)
-                _col1Content.append(_picDOMElement)
-                //name
-                let _nameDOMElement = document.createElement('name')
-                _nameDOMElement.innerHTML = name
-                _col1Content.append(_nameDOMElement)
-                //address
-                let _addressDOMElement = document.createElement('address')
-                _addressDOMElement.innerHTML = ipAddress
-                _col1Content.append(_addressDOMElement)
-                return _col1Content
-            }
-            let _getCol2Content = (status,dellayMS,updateTimeMS,quality)=>{
-                let _col2Content = document.createElement('col2')
-                //status
-                let _statusDOMElement = document.createElement('status')
-                _statusDOMElement.innerHTML = status
-                //trio
-                let _trioDOMElement = document.createElement('trio')
-                    // dellay
-                    let _dellayDOMElement = document.createElement('triodelay')
-                    _dellayDOMElement.innerHTML = `${dellayMS}ms`
-                    // update
-                    let _updateDOMElement = document.createElement('trioupdate')
-                    _updateDOMElement.innerHTML = `${updateTimeMS/1000}s`
-                    // quality
-                    let _qualityDOMElement = document.createElement('trioquality')
-                    _qualityDOMElement.innerHTML = `${quality}%`
-                    
-                _trioDOMElement.append(_dellayDOMElement)
-                _trioDOMElement.append(_updateDOMElement)
-                _trioDOMElement.append(_qualityDOMElement)
-
-                _col2Content.append(_statusDOMElement)
-                _col2Content.append(_trioDOMElement)
-                return _col2Content
-            }
-
-            _rowDOM.append(_getCol1Content(imageLink,name,ipAddress))
+            _rowDOM.append(_getCol1Content(imageLink,name,ipAddress,rowId))
             if(size != '1Little'){
-                _rowDOM.append(_getCol2Content(status,dellayMS,updateTimeMS,quality))
+                _rowDOM.append(_getCol2Content(history,updateTimeMS,rowId))
             }
+            if(['4Middle','6Big'].includes(size)){
+                _rowDOM.append(_getCol3Content(history,rowId))
+            }
+            if(['6Big'].includes(size)){
+                _rowDOM.append(_getCol4Content(history,rowId))
+            }
+            //event handler
+            _rowDOM.onclick = (e)=>{
+                let eventElement = e.target as HTMLElement
+                if(['ROW','COL1','COL2'].includes(eventElement.tagName)){
+                    let comunicator = Comunicator()
+                    comunicator.send({
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'rowToggleProp',
+                            payload:JSON.stringify({rowId:rowId,key:'isSelected'})
+                        })
+                    })
+                }
+            }
+
             return _rowDOM
         }
         let _createToolsDOM = ()=>{
@@ -244,7 +476,7 @@ const Page = (_winId)=>{
                 altText:'unalarm all',
                 action:{
                     action:'winUnalarmAllRows',
-                    payload:JSON.stringify({winId:this.winId})
+                    payload:JSON.stringify({monitorId:Number(_state.subscriptionKey)})
                 }
             })
             _toolsDOM.append(toolMenu)
@@ -277,8 +509,6 @@ const Page = (_winId)=>{
                     domList.append(rowElement)
             }):0
         }else{ 
-            //render modal
-            let _localDiff = difference
             difference.forEach(_dif=>{
                 let _renderMainGroup = (diffUnit)=>{
                     switch(diffUnit.key){
@@ -320,17 +550,96 @@ const Page = (_winId)=>{
                 let _renderRowGroup = (diffUnit)=>{
                     //if size changed we beed to check what do we need to render more, of hide!
                     //check all parts and add or remove them if needed
-                    let targetRow = document.querySelector(`row[id="${diffUnit.id}"]`)
-                    if(diffUnit.key == 'size'){
-                        
+                    let targetRowDom = document.querySelector(`row[id="${diffUnit.id}"]`)
+                    let targetRowObj = JSON.parse(_state.monitor.rows.find(_r=>{return _r.indexOf(`"rowId":${diffUnit.id}`) >-1}))
+                    let _updateInputElement = ({_selector,_value})=>{
+                        let _newInputValue = _value
+                        let _inputTarget = document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`) as HTMLInputElement
+                        if(targetRowObj.fieldEditing !== 'updateTime' && _selector == '.trioupdate'){
+                            _newInputValue =(_newInputValue/1000)+'s';
+                        }
+                        _inputTarget.value = _newInputValue   
                     }
-                    if(diffUnit.key == 'history'){
-                        //status, dellay, quality, graph
-                        let _changeHtmlIfNedded = (selector,value)=>{
-                            if(document.querySelector(selector).innerHTML != value){
-                                document.querySelector(selector).innerHTML = value
+                    let _changeHtmlIfNedded = (selector,value)=>{
+                        if(document.querySelector(selector).innerHTML != value){
+                            document.querySelector(selector).innerHTML = value
+                        }
+                    }
+                    
+                    let _renderCol2 = ({diffUnit})=>{
+                        //check size
+                        let _col2DOM = document.querySelector(`row[id="${diffUnit.id}"] col2`)
+                        if(['2Small','4Middle','6Big'].includes(targetRowObj.size)){
+                            if(_col2DOM == null){
+                                //we need to create col2
+                                targetRowDom.append(_getCol2Content(targetRowObj.history,targetRowObj.updateTimeMS,diffUnit.id))
+                            }else{
+                                //we just need to rerender values
+
+                            }
+                        }else{
+                            //do we need to remove col
+                            if(!_col2DOM == null){
+                                _col2DOM.parentNode.removeChild(_col2DOM)
                             }
                         }
+                    }
+                    let _renderCol3 = ({diffUnit})=>{
+                        let _col3DOM = document.querySelector(`row[id="${diffUnit.id}"] col3`)
+                        if(['4Middle','6Big'].includes(targetRowObj.size)){
+                            if(_col3DOM == null){
+                                targetRowDom.append(_getCol3Content(targetRowObj.history,diffUnit.id))
+                            }
+                        }else{
+                            if(!_col3DOM == null){
+                                _col3DOM.parentNode.removeChild(_col3DOM)
+                            }
+                        }
+                    }
+                    let _renderCol4 = ({diffUnit})=>{
+                        let _col4DOM = document.querySelector(`row[id="${diffUnit.id}"] col4`)
+                        if(['6Big'].includes(targetRowObj.size)){
+                            if(_col4DOM == null){
+                                targetRowDom.append(_getCol4Content(targetRowObj.history,diffUnit.id))
+                            }
+                        }else{
+                            if(!_col4DOM == null){
+                                _col4DOM.parentNode.removeChild(_col4DOM)
+                            }
+                        }
+                    }
+                    //if we have isEditing we create input somewhere and we do not update its value later
+                    if(diffUnit.key == 'isEditing'){
+                        if(diffUnit.value){
+                            let _enableInput = (_selector,)=>{
+                                document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`).classList.remove('disabled')
+                            }
+                            switch(targetRowObj.fieldEditing){
+                                case 'name': _enableInput('.name');break;
+                                case 'address': _enableInput('.address');break;
+                                case 'updatetime': _enableInput('.trioupdate');break;
+                            }
+                        }else{
+                            let _removeInput = (_selector)=>{
+                                document.querySelector(_selector).classList.add('disabled')
+                            }
+                            ['.name','.address','.trioupdate'].forEach(_selector=>{
+                                _removeInput(_selector)
+                                if(_selector == '.trioupdate'){
+                                    _updateInputElement({_selector:_selector,_value:targetRowObj['updateTimeMS']})
+                                }
+                            })
+                        }
+                    }
+                    if(diffUnit.key == 'size'){
+                        //do we need to create it to remove it to update it
+                        _renderCol2({diffUnit:diffUnit})//status
+                        _renderCol3({diffUnit:diffUnit})//graph
+                        _renderCol4({diffUnit:diffUnit})//statistics
+                    }
+                    if(diffUnit.key == 'history'){
+                        //TODO check do we have row size 2 or bigger
+                        //status, dellay, quality, graph
                         let status = diffUnit.value.status
                         let dellayMS = diffUnit.value.dellayMS
                         let quality = diffUnit.value.quality
@@ -338,35 +647,41 @@ const Page = (_winId)=>{
                         document.querySelector(`row[id="${diffUnit.id}"]`).setAttribute('status',status)
                         _changeHtmlIfNedded(`row[id="${diffUnit.id}"] col2 trio triodelay`,`${dellayMS}ms`)
                         _changeHtmlIfNedded(`row[id="${diffUnit.id}"] col2 trio trioquality`,`${quality}%`)
-                        // document.querySelector(`row[id="${diffUnit.id}"]`)
+                        
+                        if(document.querySelector(`row[id="${diffUnit.id}"] path`) != null){
+                            document.querySelector(`row[id="${diffUnit.id}"] path`).setAttribute('d',_getPath({dataArray:targetRowObj.history}))
+                        }
                     }
                     switch(diffUnit.key){
                         case 'isBusy':
-                            targetRow.setAttribute('busy',diffUnit.value)
+                            targetRowDom.setAttribute('busy',diffUnit.value)
                             break;
                         case 'isPaused':
-                            targetRow.setAttribute('paused',diffUnit.value)
-                            console.log(targetRow.getAttribute('paused'),diffUnit.value)
+                            targetRowDom.setAttribute('paused',diffUnit.value)
                             break;
                         case 'isSelected':
-                            targetRow.setAttribute('selected',diffUnit.value)
+                            targetRowDom.setAttribute('selected',diffUnit.value)
                             break;
-                        case 'image':
+                        case 'isAlarmed':
+                            targetRowDom.setAttribute('alarmed',diffUnit.value)
+                            break;
+                        case 'imageLink':
+                            let _pictureTarget = document.querySelector(`row[id="${diffUnit.id}"] pic`) as HTMLElement
+                            _pictureTarget.style.backgroundImage = `url(${diffUnit.value})`
                             break;
                         case 'name':
+                            _updateInputElement({_selector:'.name',_value:diffUnit.value})
+                            // document.querySelector(`row[id="${diffUnit.id}"] col1 .name`).setAttribute('value',diffUnit.value)
                             break;
                         case 'ipAdress':
+                            _updateInputElement({_selector:'.address',_value:diffUnit.value})
                             break;
                         case 'updateTime':
+                            _updateInputElement({_selector:'.trioupdate',_value:diffUnit.value})
                             break;
-                        case 'isEditing?':
-                            break;
-                            
-                        
-                        
                     }
                     //change row property
-        // monitor>rows[]>JSON>rowId,position,size,adress,updateTime,name,image,history,pts,isBusy,isPaused,isMuted,isAlarmed,isEditing,fieldEditing,isSelected,isGraphSubscribed
+                    // monitor>rows[]>JSON>rowId,position,size,adress,updateTime,name,image,history,pts,isBusy,isPaused,isMuted,isAlarmed,isEditing,fieldEditing,isSelected,isGraphSubscribed
                 }
                 if(_dif.selector == 'main'){
                     _renderMainGroup(_dif)
@@ -374,6 +689,12 @@ const Page = (_winId)=>{
                     _renderListGroup(_dif)
                 }else if(_dif.selector == 'row'){
                     _renderRowGroup(_dif)
+                }
+                if(_state.monitor.rows.filter(_r=>_r.indexOf(`"isAlarmed":true`)>-1).length>0){
+                    //TODO filter out muted alarmed rows
+                    this.siren.start()
+                }else{
+                    this.siren.stop()
                 }
             })
             
