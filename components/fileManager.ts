@@ -153,5 +153,26 @@ fileManager.remove = async (message:fileManagerMessage)=>{
     }
   }
 }
-
+fileManager.getNames = async (message:fileManagerMessage)=>{
+  let reply:fileManagerReply
+  if(typeof message.path == 'undefined' ||typeof message.typeFilter == 'undefined'){
+    return reply = {
+    success:false,
+    errorMessage:'Path and typeFile parameters are required to list file'
+    }
+  }
+  let filePathArray = []
+  fs.readdirSync(message.path,{withFileTypes:true}).filter(item=>!item.isDirectory()).forEach(_file=>{
+    //TODO make it search for every typeFilter
+    if(typeof message.typeFilter[0].extensions.find(_ex=>_file.name.indexOf(_ex)) != 'undefined'){
+      filePathArray.push(_file.name)
+    }
+  })
+  return reply = {
+    success:true,
+    payload:{
+      content:JSON.stringify(filePathArray)
+    }
+  }
+}
 module.exports = fileManager

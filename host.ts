@@ -199,10 +199,10 @@ const pingMonitor = ()=>{
         return _strdiffret
       }
       let _ret:any = {}
+
       //we expect two objects to have the same scheme to minimize computation time
       Object.entries(_obj1).forEach(([_k,_v])=>{
         if(typeof _obj1[_k] != 'object'){
-          
           if(typeof _obj2[_k] != 'undefined'){
             let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
             if(strDiff.length>0){
@@ -220,6 +220,7 @@ const pingMonitor = ()=>{
     }
     if(typeof _coreState.monitors != 'undefined'){
       let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
+      
       Object.entries(differenceObject).forEach(async ([_monInd,_monVal])=>{
         let targetId = _coreState.monitors[_monInd].monitorId
         _coreState.windows.forEach(async _winStr=>{
@@ -247,68 +248,6 @@ const pingMonitor = ()=>{
         action:''
       }
     }
-    // if(new Date().getTime() - timeOfStart > 5000)
-    //   if(_coreState.monitors.length){
-    //     let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
-    //     let existingRowId = rowObj.rowId
-    //     let existingRowSize = rowObj.size
-    //     if(existingRowSize != '2Small')
-    //     _resolve = {
-    //       set:true,
-    //       action:actionTypes.ROW_SET_PROP,
-    //       payload:JSON.stringify({rowId:existingRowId,key:'size',value:'2Small'})
-    //     }
-    //   }
-    // if(!_resolve.set)
-    // if(new Date().getTime() - timeOfStart > 12000){
-    //   let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
-    //   let existingRowId = rowObj.rowId
-    //   let existingRowaddr = rowObj.ipAddress
-      
-    //   if(!_resolve.set && rowObj.isPaused != true){
-    //     _resolve = {
-    //       set:true,
-    //       action:actionTypes.ROW_SET_PROP,
-    //       payload:JSON.stringify({rowId:existingRowId,key:'isPaused',value:true})
-    //     }
-    //   }
-    // }
-    if(!_resolve.set)
-    // if(new Date().getTime() - timeOfStart > 10000){
-    //   let winObj = JSON.parse(_coreState.windows[0])
-    //   let existingWinId = winObj.winId;
-    //   if(winObj.isMenuOpen != true){
-    //     _resolve = {
-    //       set:true,
-    //       action:actionTypes.WIN_SET_PROP,
-    //       payload:JSON.stringify({winId:existingWinId,key:'isMenuOpen',value:true})
-    //     }
-    //   }
-    // }
-    if(!_resolve.set)
-    // if(new Date().getTime() - timeOfStart > 10000){
-    //   let winObj = JSON.parse(_coreState.windows[0])
-    //   let existingWinId = winObj.winId;
-    //   if(winObj.isSettingOpen != true){
-    //     _resolve = {
-    //       set:true,
-    //       action:actionTypes.WIN_SET_PROP,
-    //       payload:JSON.stringify({winId:existingWinId,key:'isSettingOpen',value:true})
-    //     }
-    //   }
-    // }
-    // if(!_resolve.set)
-    // if(new Date().getTime() - timeOfStart > 10000){
-    //   let winObj = JSON.parse(_coreState.windows[0])
-    //   let existingWinId = winObj.winId;
-    //   if(winObj.isImagePickerOpen != true){
-    //     _resolve = {
-    //       set:true,
-    //       action:actionTypes.WIN_SET_PROP,
-    //       payload:JSON.stringify({winId:existingWinId,key:'isImagePickerOpen',value:true})
-    //     }
-    //   }
-    // }
     if(!_resolve.set){
       _resolve = windowCheck(_coreState,_prevState,_resolve)
     }
@@ -319,16 +258,7 @@ const pingMonitor = ()=>{
       _resolve = monitorCheck(_coreState,_prevState,_resolve)
     }
     if(!_resolve.set){
-      if(new Date().getTime() - timeOfStart > 5000)
-      if(_coreState.monitors.length){
-        let existingRowId = JSON.parse(_coreState.monitors[0].rows[0]).rowId
-        
-        _resolve = {
-          set:true,
-          action:actionTypes.ROW_SET_PROP,
-          payload:{rowId:existingRowId,key:'size',value:'2Small'}
-        }
-      }
+
     }else{
       dev?console.log('Computed with action:',_resolve.action,_resolve.payload):0
       await store.dispach({action:_resolve.action,payload:_resolve.payload})

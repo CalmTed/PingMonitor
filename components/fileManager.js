@@ -184,4 +184,28 @@ fileManager.remove = function (message) { return __awaiter(_this, void 0, void 0
         return [2 /*return*/];
     });
 }); };
+fileManager.getNames = function (message) { return __awaiter(_this, void 0, void 0, function () {
+    var reply, filePathArray;
+    return __generator(this, function (_a) {
+        if (typeof message.path == 'undefined' || typeof message.typeFilter == 'undefined') {
+            return [2 /*return*/, reply = {
+                    success: false,
+                    errorMessage: 'Path and typeFile parameters are required to list file'
+                }];
+        }
+        filePathArray = [];
+        fs.readdirSync(message.path, { withFileTypes: true }).filter(function (item) { return !item.isDirectory(); }).forEach(function (_file) {
+            //TODO make it search for every typeFilter
+            if (typeof message.typeFilter[0].extensions.find(function (_ex) { return _file.name.indexOf(_ex); }) != 'undefined') {
+                filePathArray.push(_file.name);
+            }
+        });
+        return [2 /*return*/, reply = {
+                success: true,
+                payload: {
+                    content: JSON.stringify(filePathArray)
+                }
+            }];
+    });
+}); };
 module.exports = fileManager;

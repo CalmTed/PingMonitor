@@ -6,6 +6,7 @@ var actionTypes = {
     REMOVE_WINDOW_BY_ID: 'removeWindowById',
     WIN_SET_PROP: 'winSetProp',
     WIN_TOGGLE_PROP: 'winToggleProp',
+    WIN_SET_IMAGE_PICKER_OPEN: 'winSetImagePickerOpen',
     ADD_ROW: "addRow",
     REMOVE_ROW: "removeRow",
     ROW_SUBMIT_PING_PROBE: "rowSubmitPingProbe",
@@ -13,6 +14,7 @@ var actionTypes = {
     ROW_TOGGLE_PROP: 'rowToggleProp',
     ROW_PAUSE_ALL: 'rowPauseAllActive',
     ROW_UNALARM_ALL: 'winUnalarmAllRows',
+    ROW_UNSELECT_ALL: 'rowUnselectAllSelected',
     ROW_EDIT_PROP_SET: 'rowEditProperySet',
     ROW_EDIT_PROP_REMOVE: 'rowEditProperyRemove'
 };

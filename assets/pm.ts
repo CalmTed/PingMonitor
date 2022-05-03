@@ -8,36 +8,8 @@ interface comunicatorMessage {
     command:string,
     payload:string
 }
-const Siren = ()=>{
-    this.dom = document.querySelector('audio')
-    this.playState = false
-    this.start = ()=>{
-        if(!this.playState){
-            this.playState = true
-            this.dom.play()
-            this.dom.volume = 0
-            this.volumeUp()
-        }
-    }
-    this.stop = ()=>{
-        if(this.playState){
-            this.playState = false
-            this.dom.pause()
-        }
-    }
-    this.volumeUp = ()=>{
-        if(this.playState){
-            if(this.dom.volume+0.1 < 1){
-                this.dom.volume+=0.1
-                console.log(this.dom.volume)
-                setTimeout(()=>{
-                    this.volumeUp()
-                },1000)
-            }
-        }
-    }
-    return this
-  }
+
+var contextMenu
 const Page = (_winId)=>{
     this.winId = _winId
     this.state
@@ -185,8 +157,6 @@ const Page = (_winId)=>{
             initialRender = true
         }else{
             difference = this.optimize(_state,this.state)
-            console.log(`State`,_state)
-            console.log(`Difference`,difference)
         }
         let _createMenuModal = ({hidden})=>{
             let _menuModal = document.createElement('menumodal')
@@ -198,15 +168,41 @@ const Page = (_winId)=>{
             _settingsModal.setAttribute('hidden',hidden)
             return _settingsModal
         }
-        let _createImagePickerModal = ({hidden})=>{
+        let _getImagePickerImageDom = ({_imageLink})=>{
+            let _imagePickerContentDom = document.createElement('image') as HTMLElement
+            _imagePickerContentDom.setAttribute('style',`background-image: url('assets/icons/${_imageLink}')`)
+            _imagePickerContentDom.onclick = (_e)=>{
+                let _el = _e.target as HTMLElement
+                let _rowId = document.querySelector('imgpickermodal').getAttribute('targetRow')
+                if(!_el.classList.contains('selected') && _rowId!=null){
+                    let comunicator = Comunicator()
+                    comunicator.send({
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'rowSetProp',
+                            payload:JSON.stringify({rowId:_rowId,key:'imageLink',value:_imageLink})
+                        })
+                    })
+                }
+            }
+            return _imagePickerContentDom
+        }
+        let _createImagePickerModal = ({hidden,imageList})=>{
             let _imagePickerModal = document.createElement('imgpickermodal')
             _imagePickerModal.setAttribute('hidden',hidden)
+            console.log(imageList)
+            typeof imageList == 'string'?imageList = JSON.parse(imageList):0;
+            console.log(imageList)
+            imageList.forEach(_linkStr=>{
+                _imagePickerModal.append(_getImagePickerImageDom({_imageLink:_linkStr}))
+            })
             return _imagePickerModal
         }
-        let _createTool = ({tagName,icon,altText,action})=>{
+        let _createTool = ({tagName,icon,altText,action,hidden=false})=>{
             let _tool = document.createElement(tagName)
             _tool.classList.add('tool')
-            _tool.setAttribute('alt',altText)
+            _tool.setAttribute('title',altText)
+            _tool.setAttribute('hidden',hidden)
             _tool.classList.add('material-icons')
             _tool.innerHTML = icon
             _tool.onclick = (e)=>{
@@ -262,7 +258,6 @@ const Page = (_winId)=>{
                 }
             }
             domElement.onblur = (e)=>{
-                // let eventElement = e.target as HTMLElement
                 let comunicator = Comunicator()
                 comunicator.send({
                     command:'dispachAction',
@@ -331,13 +326,13 @@ const Page = (_winId)=>{
             _col2Content.append(_trioDOMElement)
             return _col2Content
         }
-        const _getPath = ({dataArray})=>{
+        const _getPath = ({dataArray,width,height})=>{
             let _ret = '';
-            let _canvasWidth = 200;
-            let _canvasHeight = 100;
-            let _heightMargin = 5;
+            let _canvasWidth = width;
+            let _canvasHeight = height;
+            let _heightMargin = 10;
             let _widthMargin = _heightMargin;
-            let dataLenghtLimit = 60000;//TODO get from config
+            let dataLenghtLimit = 360000;//TODO get from config
             let timeOfBegining = new Date().getTime() - dataLenghtLimit;//cut to last N min
             let dataTrimmed = dataArray.filter(dot=>{return dot.timestamp >= timeOfBegining})
             let widthKoof = (100-(_widthMargin*2));
@@ -369,20 +364,11 @@ const Page = (_winId)=>{
               })
             }
             return _ret;
-          }
+        }
         let _getCol3Content = (history,rowId)=>{
             let _col3Content = document.createElement('col3')
-            // let _col3PathDom = document.createElement('path')
-            // _col3PathDom.setAttribute('d',_getPath({dataArray:history}))
-            // let _col3SVGdom = document.createElement('svg')
-            // _col3SVGdom.setAttribute('width','100%')
-            // _col3SVGdom.setAttribute('height','100%')
-            // _col3SVGdom.setAttribute('viewBox','0 20 100 6')
-            // _col3SVGdom.innerHTML = '<path d=""></path>';
-            
-            // _col3SVGdom.append(_col3PathDom)
-            // _col3Content.append(_col3SVGdom)
-            _col3Content.innerHTML = '<svg width="100%" height="100%" viewBox="0 0 200 100"><path d=""/></svg>'
+            //somehow it is the only way to make svd work
+            _col3Content.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 200 100"><path d="${_getPath({dataArray:history,width:200,height:100})}"/></svg>`
             return _col3Content
         }
         let _getCol4Content = (history,rowId)=>{
@@ -428,6 +414,9 @@ const Page = (_winId)=>{
                     })
                 }
             }
+            _rowDOM.oncontextmenu = (e)=>{
+                contextMenu.show(e)
+            }
 
             return _rowDOM
         }
@@ -453,12 +442,13 @@ const Page = (_winId)=>{
             })
             let toolPauseAll = _createTool({
                 tagName:'toolpauseall',
-                icon:'pause',//MAKE IT DEPEND ON PAUSE STATE
+                icon:'pause',
                 altText:'pause all',
                 action:{
                     action:'rowPauseAllActive',
                     payload:JSON.stringify({monitorId:Number(_state.subscriptionKey)})
-                }
+                },
+                hidden:_state.monitor.rows.filter(_r=>{return _r.indexOf(`"isPaused":false`)>-1}).length>0?false:true
             })
             let toolFullScreen = _createTool({
                 tagName:'toolfullscreen',
@@ -472,12 +462,13 @@ const Page = (_winId)=>{
             //show when at least one row in alarmed
             let toolUnalarmAll = _createTool({
                 tagName:'toolunalarm',
-                icon:'volume_off',
+                icon:'notifications_off',
                 altText:'unalarm all',
                 action:{
                     action:'winUnalarmAllRows',
                     payload:JSON.stringify({monitorId:Number(_state.subscriptionKey)})
-                }
+                },
+                hidden:_state.monitor.rows.filter(_r=>{return _r.indexOf(`"isAlarmed":true`)>-1}).length>0?false:true
             })
             _toolsDOM.append(toolMenu)
             _toolsDOM.append(toolNewRow)
@@ -489,14 +480,16 @@ const Page = (_winId)=>{
 
 
         if(initialRender){
-            let domRoot = document.querySelector('.root')
+            //reder title
+            document.querySelector('title').innerHTML = _state.title
+            let domRoot = document.querySelector('.root') as HTMLElement
             domRoot.innerHTML = ''
             //render modal
             let menuModal = _createMenuModal({hidden:!Boolean(_state.isMenuOpen)})
             domRoot.append(menuModal)
             let settingsModal = _createSettingsModal({hidden:!Boolean(_state.isSettingOpen)})
             domRoot.append(settingsModal)
-            let imagePickerModal = _createImagePickerModal({hidden:!Boolean(_state.isImagePickerOpen)})
+            let imagePickerModal = _createImagePickerModal({hidden:!Boolean(_state.isImagePickerOpen),imageList:_state.imagesList})
             domRoot.append(imagePickerModal)
             let tools = _createToolsDOM()
             domRoot.append(tools)
@@ -508,181 +501,307 @@ const Page = (_winId)=>{
                     let rowElement = _createRowDOM(rowObj)
                     domList.append(rowElement)
             }):0
-        }else{ 
-            difference.forEach(_dif=>{
-                let _renderMainGroup = (diffUnit)=>{
-                    switch(diffUnit.key){
-                        case 'isMenuOpen':
-                            document.querySelector('menumodal').setAttribute('hidden',String(diffUnit.value == false));    
-                            break;
-                        case 'isSettingOpen':
-                            document.querySelector('settingsmodal').setAttribute('hidden',String(diffUnit.value == false));    
-                            break;
-                        case 'isImagePickerOpen':
-                            document.querySelector('imgpickermodal').setAttribute('hidden',String(diffUnit.value == false));    
-                            break;
-                        case 'isFullscreen':
-                            diffUnit.value?document.documentElement.requestFullscreen():document.exitFullscreen?document.fullscreenElement?document.exitFullscreen():0:0
-                            break;
-                        default:
-                            console.error('Unknown main group diffUnit:',diffUnit) 
-                    }
-                }
-                let _renderListGroup = (diffUnit)=>{
-                    switch(diffUnit.key){
-                        //add row
-                        case 'new_row':
-                            let list = document.querySelector('list')
-                            let _newRowObj = JSON.parse(diffUnit.value)
-                            list.append( _createRowDOM( _newRowObj ))
-                            break;
-                        //remove row
-                        case 'remove_row':
-                            let rowObj = JSON.parse(diffUnit.value)
-                            let neededDom = document.querySelector(`row[id="${rowObj.rowId}"]`)
-                            neededDom.parentNode.removeChild(neededDom)
-                            break;
-                        default:
-                            console.error('Unknown list group diffUnit',diffUnit)
-                    }
-                    
-                }
-                let _renderRowGroup = (diffUnit)=>{
-                    //if size changed we beed to check what do we need to render more, of hide!
-                    //check all parts and add or remove them if needed
-                    let targetRowDom = document.querySelector(`row[id="${diffUnit.id}"]`)
-                    let targetRowObj = JSON.parse(_state.monitor.rows.find(_r=>{return _r.indexOf(`"rowId":${diffUnit.id}`) >-1}))
-                    let _updateInputElement = ({_selector,_value})=>{
-                        let _newInputValue = _value
-                        let _inputTarget = document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`) as HTMLInputElement
-                        if(targetRowObj.fieldEditing !== 'updateTime' && _selector == '.trioupdate'){
-                            _newInputValue =(_newInputValue/1000)+'s';
-                        }
-                        _inputTarget.value = _newInputValue   
-                    }
-                    let _changeHtmlIfNedded = (selector,value)=>{
-                        if(document.querySelector(selector).innerHTML != value){
-                            document.querySelector(selector).innerHTML = value
-                        }
-                    }
-                    
-                    let _renderCol2 = ({diffUnit})=>{
-                        //check size
-                        let _col2DOM = document.querySelector(`row[id="${diffUnit.id}"] col2`)
-                        if(['2Small','4Middle','6Big'].includes(targetRowObj.size)){
-                            if(_col2DOM == null){
-                                //we need to create col2
-                                targetRowDom.append(_getCol2Content(targetRowObj.history,targetRowObj.updateTimeMS,diffUnit.id))
-                            }else{
-                                //we just need to rerender values
-
-                            }
-                        }else{
-                            //do we need to remove col
-                            if(!_col2DOM == null){
-                                _col2DOM.parentNode.removeChild(_col2DOM)
-                            }
-                        }
-                    }
-                    let _renderCol3 = ({diffUnit})=>{
-                        let _col3DOM = document.querySelector(`row[id="${diffUnit.id}"] col3`)
-                        if(['4Middle','6Big'].includes(targetRowObj.size)){
-                            if(_col3DOM == null){
-                                targetRowDom.append(_getCol3Content(targetRowObj.history,diffUnit.id))
-                            }
-                        }else{
-                            if(!_col3DOM == null){
-                                _col3DOM.parentNode.removeChild(_col3DOM)
-                            }
-                        }
-                    }
-                    let _renderCol4 = ({diffUnit})=>{
-                        let _col4DOM = document.querySelector(`row[id="${diffUnit.id}"] col4`)
-                        if(['6Big'].includes(targetRowObj.size)){
-                            if(_col4DOM == null){
-                                targetRowDom.append(_getCol4Content(targetRowObj.history,diffUnit.id))
-                            }
-                        }else{
-                            if(!_col4DOM == null){
-                                _col4DOM.parentNode.removeChild(_col4DOM)
-                            }
-                        }
-                    }
-                    //if we have isEditing we create input somewhere and we do not update its value later
-                    if(diffUnit.key == 'isEditing'){
-                        if(diffUnit.value){
-                            let _enableInput = (_selector,)=>{
-                                document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`).classList.remove('disabled')
-                            }
-                            switch(targetRowObj.fieldEditing){
-                                case 'name': _enableInput('.name');break;
-                                case 'address': _enableInput('.address');break;
-                                case 'updatetime': _enableInput('.trioupdate');break;
-                            }
-                        }else{
-                            let _removeInput = (_selector)=>{
-                                document.querySelector(_selector).classList.add('disabled')
-                            }
-                            ['.name','.address','.trioupdate'].forEach(_selector=>{
-                                _removeInput(_selector)
-                                if(_selector == '.trioupdate'){
-                                    _updateInputElement({_selector:_selector,_value:targetRowObj['updateTimeMS']})
-                                }
+            domRoot.onclick = (_e:any)=>{
+                if(_e.path.filter(_el=>{return _el.tagName == 'ROW'}).length == 0){
+                    contextMenu.hideContextMenu()
+                    let _selectedRows = this.state.monitor.rows.filter(_r=>_r.indexOf(`"isSelected":true`)>-1).map(_r=>JSON.parse(_r))
+                    if(_selectedRows.length>0){
+                        let comunicator = Comunicator()
+                        comunicator.send({
+                            command:'dispachAction',
+                            payload:JSON.stringify({
+                                action:'rowUnselectAllSelected',
+                                payload:JSON.stringify({monitorId:Number(_state.subscriptionKey)})
                             })
+                        })
+                    }
+                }
+                if(document.querySelector('imgpickermodal[hidden="false"]') != null){
+                    //hide image picker
+                    let comunicator = Comunicator()
+                    comunicator.send({
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'winSetImagePickerOpen',
+                            payload:JSON.stringify({rowId:this.targetRow.id,winId:this.winId,value:false})
+                        })
+                    })
+                }
+                if(document.querySelector('menumodal[hidden="false"]') != null){
+                    let comunicator = Comunicator()
+                    comunicator.send({
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'winSetProp',
+                            payload:JSON.stringify({winId:this.winId,key:'isMenuOpen',value:false})
+                        })
+                    })
+                }
+                if(document.querySelector('settingsmodal[hidden="false"]') != null){
+                    let comunicator = Comunicator()
+                    comunicator.send({
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'winSetProp',
+                            payload:JSON.stringify({winId:this.winId,key:'isSettingOpen',value:false})
+                        })
+                    })
+                }
+            }
+        }else{ 
+            let _changeHtmlIfNedded = (selector,value)=>{
+                if(document.querySelector(selector).innerHTML != value){
+                    document.querySelector(selector).innerHTML = value
+                }
+            }
+            let _chageAttrIfNeeded = ({selector,key,value})=>{
+                if(document.querySelector(selector) == null){
+                    console.warn('selector to chage attr not found')
+                    return 0;
+                }
+                if(document.querySelector(selector).getAttribute(key) != value){
+                    document.querySelector(selector).setAttribute(key,value)
+                }
+            }
+            let _checkToolButtons = (_focus = 'all')=>{
+                //hiding is paused
+                if(['all','pause'].includes(_focus)){
+                    let _unpausedRows = _state.monitor.rows.filter(_r=>{return _r.indexOf(`"isPaused":false`)>-1})
+                    if(typeof _unpausedRows == "undefined"){
+                        return 0;
+                    }
+                    if(_unpausedRows.length>0){
+                        _chageAttrIfNeeded({selector:'toolpauseall',key:'hidden',value:'false'})
+                    }else{
+                        _chageAttrIfNeeded({selector:'toolpauseall',key:'hidden',value:'true'})
+                    }
+                }
+                //hiding unalarm button
+                if(['all','alarm'].includes(_focus)){
+                    let _alarmedRows = _state.monitor.rows.filter(_r=>{return _r.indexOf(`"isAlarmed":true`)>-1})
+                    if(typeof _alarmedRows == "undefined"){
+                        return 0;
+                    }
+                    if(_alarmedRows.length>0){
+                        _chageAttrIfNeeded({selector:'toolunalarm',key:'hidden',value:'false'})
+                    }else{
+                        _chageAttrIfNeeded({selector:'toolunalarm',key:'hidden',value:'true'})
+                    }
+                }
+                //TODO change manu icon if menu is opened here
+            }
+            let _renderMainGroup = (diffUnit)=>{
+                switch(diffUnit.key){
+                    case 'isMenuOpen':
+                        document.querySelector('menumodal').setAttribute('hidden',String(diffUnit.value == false));    
+                        break;
+                    case 'isSettingOpen':
+                        document.querySelector('settingsmodal').setAttribute('hidden',String(diffUnit.value == false));    
+                        break;
+                    case 'isImagePickerOpen':
+                        document.querySelector('imgpickermodal').setAttribute('hidden',String(diffUnit.value == false));
+                        if(!diffUnit.value){
+                            break;
+                        }
+                        let _targetRowObj = _state.monitor.rows.find(_r=>_r.indexOf(`"fieldEditing":"image"`)>-1)
+                        if(typeof _targetRowObj != 'undefined'){
+                            let _targetRowId = JSON.parse(_targetRowObj).rowId
+                            document.querySelector('imgpickermodal').setAttribute('targetRow',_targetRowId)
+                        }
+                        break;
+                    case 'isFullscreen':
+                        diffUnit.value?document.documentElement.requestFullscreen():document.exitFullscreen?document.fullscreenElement?document.exitFullscreen():0:0
+                        break;
+                    case 'title':
+                        document.querySelector('title').innerHTML = diffUnit.value
+                    case 'imagesList':break;
+                    default:
+                        console.error('Unknown main group diffUnit:',diffUnit)
+                }
+                if(diffUnit.key == 'imagesList'){
+                    let _imagePickerModal = document.querySelector('imgpickermodal')
+                    _imagePickerModal.innerHTML = ''
+                    diffUnit.value.forEach(_linkStr=>{
+                        _imagePickerModal.append(_getImagePickerImageDom({_imageLink:_linkStr}))
+                    })
+                }
+            }
+            let _renderListGroup = (diffUnit)=>{
+                switch(diffUnit.key){
+                    //add row
+                    case 'new_row':
+                        let list = document.querySelector('list')
+                        let _newRowObj = JSON.parse(diffUnit.value)
+                        list.append( _createRowDOM( _newRowObj ))
+                        break;
+                    //remove row
+                    case 'remove_row':
+                        let rowObj = JSON.parse(diffUnit.value)
+                        let neededDom = document.querySelector(`row[id="${rowObj.rowId}"]`)
+                        neededDom.parentNode.removeChild(neededDom)
+                        break;
+                    default:
+                        console.error('Unknown list group diffUnit',diffUnit)
+                }
+                _checkToolButtons()
+            }
+            let _renderRowGroup = (diffUnit)=>{
+                //if size changed we beed to check what do we need to render more, of hide!
+                //check all parts and add or remove them if needed
+                let targetRowDom = document.querySelector(`row[id="${diffUnit.id}"]`)
+                let targetRowObj = JSON.parse(_state.monitor.rows.find(_r=>{return _r.indexOf(`"rowId":${diffUnit.id}`) >-1}))
+                let _updateInputElement = ({_selector,_value})=>{
+                    let _newInputValue = _value
+                    let _inputTarget = document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`) as HTMLInputElement
+                    console.log(_inputTarget,document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`))
+                    if(_inputTarget == null){
+                        console.warn(`Can't find row[id="${diffUnit.id}"] ${_selector}`)
+                        return 0;
+                    }
+                    if(targetRowObj.fieldEditing !== 'updateTime' && _selector == '.trioupdate'){
+                        _newInputValue =(_newInputValue/1000)+'s';
+                    }
+                    _inputTarget.value = _newInputValue
+                }
+                
+                let _renderCol2 = ({diffUnit})=>{
+                    //check size
+                    let _col2DOM = document.querySelector(`row[id="${diffUnit.id}"] col2`)
+                    if(['2Small','4Middle','6Big'].includes(targetRowObj.size)){
+                        if(_col2DOM == null){
+                            //we need to create col2
+                            targetRowDom.append(_getCol2Content(targetRowObj.history,targetRowObj.updateTimeMS,diffUnit.id))
+                        }else{
+                            //we just need to rerender values
+
+                        }
+                    }else{
+                        //do we need to remove col
+                        if(_col2DOM != null){
+                            _col2DOM.parentNode.removeChild(_col2DOM)
                         }
                     }
-                    if(diffUnit.key == 'size'){
-                        //do we need to create it to remove it to update it
-                        _renderCol2({diffUnit:diffUnit})//status
-                        _renderCol3({diffUnit:diffUnit})//graph
-                        _renderCol4({diffUnit:diffUnit})//statistics
+                }
+                let _renderCol3 = ({diffUnit})=>{
+                    let _col3DOM = document.querySelector(`row[id="${diffUnit.id}"] col3`)
+                    if(['4Middle','6Big'].includes(targetRowObj.size)){
+                        if(_col3DOM == null){
+                            targetRowDom.append(_getCol3Content(targetRowObj.history,diffUnit.id))
+                        }
+                        _checkGraph(diffUnit)
+                    }else{
+                        if(_col3DOM != null){
+                            _col3DOM.parentNode.removeChild(_col3DOM)
+                        }
                     }
-                    if(diffUnit.key == 'history'){
-                        //TODO check do we have row size 2 or bigger
-                        //status, dellay, quality, graph
-                        let status = diffUnit.value.status
+                }
+                let _renderCol4 = ({diffUnit})=>{
+                    let _col4DOM = document.querySelector(`row[id="${diffUnit.id}"] col4`)
+                    if(['6Big'].includes(targetRowObj.size)){
+                        if(_col4DOM == null){
+                            targetRowDom.append(_getCol4Content(targetRowObj.history,diffUnit.id))
+                        }
+                    }else{
+                        if(_col4DOM != null){
+                            _col4DOM.parentNode.removeChild(_col4DOM)
+                        }
+                    }
+                }
+                let _checkGraph = (_diffUnit)=>{
+                    if(document.querySelector(`row[id="${_diffUnit.id}"] path`) != null){
+                        let _svgDom = document.querySelector(`row[id="${_diffUnit.id}"] svg`)
+                        let _svgWidth = _svgDom.clientWidth
+                        let _svgHeight = _svgDom.clientHeight
+                        if(_svgDom.getAttribute('viewBox') != `0 0 ${_svgWidth} ${_svgHeight}`){
+                            _svgDom.setAttribute('viewBox',`0 0 ${_svgWidth} ${_svgHeight}`)
+                        }
+                        document.querySelector(`row[id="${_diffUnit.id}"] path`).setAttribute('d',_getPath({dataArray:targetRowObj.history,width:_svgWidth,height:_svgHeight}))
+                    }
+                }
+                //if we have isEditing we create input somewhere and we do not update its value later
+                if(diffUnit.key == 'isEditing'){
+                    if(diffUnit.value){
+                        let _enableInput = (_selector,)=>{
+                            document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`).classList.remove('disabled')
+                        }
+                        switch(targetRowObj.fieldEditing){
+                            case 'name': _enableInput('.name');break;
+                            case 'address': _enableInput('.address');break;
+                            case 'updatetime': _enableInput('.trioupdate');break;
+                        }
+                    }else{
+                        let _removeInput = (_selector)=>{
+                            if(document.querySelector(_selector) != null)
+                            document.querySelector(_selector).classList.add('disabled')
+                        }
+                        ['.name','.address','.trioupdate'].forEach(_selector=>{
+                            _removeInput(_selector)
+                            if(_selector == '.trioupdate' && targetRowObj.size != '1Little'){
+                                _updateInputElement({_selector:_selector,_value:targetRowObj['updateTimeMS']})
+                            }
+                        })
+                    }
+                }
+               
+                if(diffUnit.key == 'size'){
+                    targetRowDom.setAttribute('size',diffUnit.value)
+                    //do we need to create it to remove it to update it
+                    _renderCol2({diffUnit:diffUnit})//status
+                    _renderCol3({diffUnit:diffUnit})//graph
+                    _renderCol4({diffUnit:diffUnit})//statistics
+                }
+                if(diffUnit.key == 'history'){
+                    //status, dellay, quality, graph
+                    let status = diffUnit.value.status
+                    document.querySelector(`row[id="${diffUnit.id}"]`).setAttribute('status',status)
+                    if(targetRowObj.size != '1Little'){
                         let dellayMS = diffUnit.value.dellayMS
                         let quality = diffUnit.value.quality
                         _changeHtmlIfNedded(`row[id="${diffUnit.id}"] col2 status`,status)
-                        document.querySelector(`row[id="${diffUnit.id}"]`).setAttribute('status',status)
                         _changeHtmlIfNedded(`row[id="${diffUnit.id}"] col2 trio triodelay`,`${dellayMS}ms`)
                         _changeHtmlIfNedded(`row[id="${diffUnit.id}"] col2 trio trioquality`,`${quality}%`)
+                    }
+                    if(['4Middle','6Big'].includes(targetRowObj.size)){
+                        _checkGraph(diffUnit)
                         
-                        if(document.querySelector(`row[id="${diffUnit.id}"] path`) != null){
-                            document.querySelector(`row[id="${diffUnit.id}"] path`).setAttribute('d',_getPath({dataArray:targetRowObj.history}))
-                        }
                     }
-                    switch(diffUnit.key){
-                        case 'isBusy':
-                            targetRowDom.setAttribute('busy',diffUnit.value)
-                            break;
-                        case 'isPaused':
-                            targetRowDom.setAttribute('paused',diffUnit.value)
-                            break;
-                        case 'isSelected':
-                            targetRowDom.setAttribute('selected',diffUnit.value)
-                            break;
-                        case 'isAlarmed':
-                            targetRowDom.setAttribute('alarmed',diffUnit.value)
-                            break;
-                        case 'imageLink':
-                            let _pictureTarget = document.querySelector(`row[id="${diffUnit.id}"] pic`) as HTMLElement
-                            _pictureTarget.style.backgroundImage = `url(${diffUnit.value})`
-                            break;
-                        case 'name':
-                            _updateInputElement({_selector:'.name',_value:diffUnit.value})
-                            // document.querySelector(`row[id="${diffUnit.id}"] col1 .name`).setAttribute('value',diffUnit.value)
-                            break;
-                        case 'ipAdress':
-                            _updateInputElement({_selector:'.address',_value:diffUnit.value})
-                            break;
-                        case 'updateTime':
-                            _updateInputElement({_selector:'.trioupdate',_value:diffUnit.value})
-                            break;
-                    }
-                    //change row property
-                    // monitor>rows[]>JSON>rowId,position,size,adress,updateTime,name,image,history,pts,isBusy,isPaused,isMuted,isAlarmed,isEditing,fieldEditing,isSelected,isGraphSubscribed
                 }
+                switch(diffUnit.key){
+                    case 'isBusy':
+                        targetRowDom.setAttribute('busy',diffUnit.value)
+                        break;
+                    case 'isPaused':
+                        targetRowDom.setAttribute('paused',diffUnit.value)
+                        _checkToolButtons('pause')
+                        break;
+                    case 'isSelected':
+                        targetRowDom.setAttribute('selected',diffUnit.value)
+                        break;
+                    case 'isAlarmed':
+                        targetRowDom.setAttribute('alarmed',diffUnit.value)
+                        _checkToolButtons('alarm')
+                        break;
+                    case 'isMuted':
+                        targetRowDom.setAttribute('muted',diffUnit.value)
+                        break;
+                    case 'imageLink':
+                        let _pictureTarget = document.querySelector(`row[id="${diffUnit.id}"] pic`) as HTMLElement
+                        _pictureTarget.setAttribute('style', `background-image: url('assets/icons/${diffUnit.value}')`)
+                        break;
+                    case 'name':
+                        _updateInputElement({_selector:'.name',_value:diffUnit.value})
+                        // document.querySelector(`row[id="${diffUnit.id}"] col1 .name`).setAttribute('value',diffUnit.value)
+                        break;
+                    case 'ipAdress':
+                        _updateInputElement({_selector:'.address',_value:diffUnit.value})
+                        break;
+                    case 'updateTime':
+                        _updateInputElement({_selector:'.trioupdate',_value:diffUnit.value})
+                        break;
+                }
+            }
+           
+            difference.forEach(_dif=>{
                 if(_dif.selector == 'main'){
                     _renderMainGroup(_dif)
                 }else if(_dif.selector == 'list'){
@@ -691,7 +810,6 @@ const Page = (_winId)=>{
                     _renderRowGroup(_dif)
                 }
                 if(_state.monitor.rows.filter(_r=>_r.indexOf(`"isAlarmed":true`)>-1).length>0){
-                    //TODO filter out muted alarmed rows
                     this.siren.start()
                 }else{
                     this.siren.stop()
@@ -715,9 +833,235 @@ const Comunicator = ()=>{
     }
     return this
 }
+const Siren = ()=>{
+    this.dom = document.querySelector('audio')
+    this.playState = false
+    this.start = ()=>{
+        if(!this.playState){
+            this.playState = true
+            this.dom.play()
+            this.dom.volume = 0
+            this.volumeUp()
+        }
+    }
+    this.stop = ()=>{
+        if(this.playState){
+            this.playState = false
+            this.dom.pause()
+        }
+    }
+    this.volumeUp = ()=>{
+        if(this.playState){
+            if(this.dom.volume+0.1 < 1){
+                this.dom.volume+=0.1
+                setTimeout(()=>{
+                    this.volumeUp()
+                },1000)
+            }
+        }
+    }
+    return this
+}
+const ContextMenu = ()=>{
+    this.isShown = false
+    this.targetRow = ''
+    this.x = 0
+    this.y = 0
+    this.setContextMenuParam = (_key,_value)=>{
+        if(typeof this[_key] != 'undefined'){
+            if(_key == 'targetRow'){
+                if(_value.id != this[_key].id){
+                    this[_key] = _value
+                    this.renderContextMenu(_key)
+                }
+            }else if(this[_key] != _value){
+                this[_key] = _value
+                this.renderContextMenu(_key)
+            }
+        }
+    }
+    this.renderContextMenu = (_param)=>{
+        //create dom element if not existed
+        if(document.querySelector('contextmenu') == null){
+            let rootDom = document.querySelector('.root')
+            let newContextDom = document.createElement('contextmenu')
+            newContextDom.setAttribute('shown',this.isShown)
+            rootDom.appendChild(newContextDom)
+        }
+        let contextDom = document.querySelector('contextmenu') as HTMLElement
+        let _renderOptions = ()=>{
+            let _setEventListener = (_domEl,_action)=>{
+                _domEl.onclick = ()=>{
+                    let comunicator = Comunicator()
+                    let _selectedRows = this.state.monitor.rows.filter(_r=>_r.indexOf(`"isSelected":true`)>-1).map(_r=>JSON.parse(_r))
+                    if(_selectedRows.length>0){
+                        _selectedRows.forEach(_sr=>{
+                            if(typeof _action.rowId != undefined){
+                                let _newAction = JSON.parse(JSON.stringify(_action).replace(/\\{0,5}"rowId\\{0,5}":\\{0,5}"[\d]{4}.[\d]{6}\\{0,5}"/,`\\\\\\"rowId\\\\\\":\\\\\\"${_sr.rowId}\\\\\\"`))
+                                comunicator.send(_newAction)
+                            }
+                        })
+                    }else{
+                        comunicator.send(_action)
+                    }
+                    contextMenu.hideContextMenu()
+                }
+                return _domEl
+            }
+            if(this.targetRow){
+                let _isPausedFlag:boolean = this.targetRow.getAttribute('paused') == 'true'?true:false
+                let _isMutedFlag:boolean = this.targetRow.getAttribute('muted') == 'true'?true:false
+                let _isAlarmedFlag:boolean = this.targetRow.getAttribute('alarmed') == 'true'?true:false
+                let _targetRowSize:string = this.targetRow.getAttribute('size')
+                let options:{name:string,icon:string,width:string,action:any}[] = []
+                if(_isAlarmedFlag){
+                    options.push({
+                        name:'Unalarm',
+                        icon:'notifications_off',
+                        width:'100%',
+                        action:{
+                            command:'dispachAction',
+                            payload:JSON.stringify({
+                                action:'rowSetProp',
+                                payload:JSON.stringify({rowId:this.targetRow.id,key:'isAlarmed',value:false})
+                            })
+                        }
+                    })
+                }
+                options = [...options,...[
+                    {
+                        name:_isPausedFlag?'Start':'Pause',
+                        icon:_isPausedFlag?'play_arrow':'pause',
+                        width:'100%',//for part size options
+                        action:{
+                            command:'dispachAction',
+                            payload:JSON.stringify({
+                                action:'rowToggleProp',
+                                payload:JSON.stringify({rowId:this.targetRow.id,key:'isPaused'})
+                            })
+                        }
+                    },
+                    {
+                        name:'Remove',
+                        icon:'delete',
+                        width:'100%',
+                        action:{
+                            command:'dispachAction',
+                            payload:JSON.stringify({
+                                action:'removeRow',
+                                payload:JSON.stringify({rowId:this.targetRow.id})
+                            })
+                        }
+                    },
+                    {
+                        name:_isMutedFlag?'Unmute':'Mute',
+                        icon:_isMutedFlag?'volume_up':'volume_off',
+                        width:'100%',
+                        action:{
+                            command:'dispachAction',
+                            payload:JSON.stringify({
+                                action:'rowToggleProp',
+                                payload:JSON.stringify({rowId:this.targetRow.id,key:'isMuted'})
+                            })
+                        }
+                    },
+                    {
+                        name:'Change picture',
+                        icon:'wallpaper',
+                        width:'100%',
+                        action:{
+                            command:'dispachAction',
+                            payload:JSON.stringify({
+                                action:'winSetImagePickerOpen',
+                                payload:JSON.stringify({rowId:this.targetRow.id,winId:this.winId,value:true})
+                            })
+                        }
+                    }
+                ]];
+                ['1Little','2Small','4Middle','6Big'].forEach(_sz=>{
+                    if(_targetRowSize != _sz){
+                        options.push({
+                            name:'',//`${_sz.substring(0,1)}x`,
+                            icon:`filter_${_sz.substring(0,1)}`,
+                            width:'33%',
+                            action:{
+                                command:'dispachAction',
+                                payload:JSON.stringify({
+                                    action:'rowSetProp',
+                                    payload:JSON.stringify({rowId:this.targetRow.id,key:'size',value:_sz})
+                                })
+                            }
+                        })
+                    }
+                })
+                let _contextMenuDom = document.querySelector('contextmenu')
+                _contextMenuDom.innerHTML = '';
+                let _numberOfSelected = document.querySelectorAll('row[selected="true"]').length
+                if(_numberOfSelected>0){
+                    let _contextTitleDom = document.createElement('contexttitle')
+                    let _titleOfSelected = (_num:number)=>{
+                        let _ret:string = 'row'
+                        if(_num>1){
+                            _ret = 'rows'
+                        }else if(_num>4){
+                            _ret = 'rows'
+                        }
+                        return _ret
+                    }
+                    _contextTitleDom.innerHTML = `${_numberOfSelected} ${_titleOfSelected(_numberOfSelected)}`
+                    _contextMenuDom.append(_contextTitleDom)
+                }
+                options.forEach(_opt=>{
+                    let _contextOptionDom = document.createElement('option')
+                    _contextOptionDom.innerHTML = `${_opt.name}`
+                    _contextOptionDom.style.setProperty('--icon-name',`'${_opt.icon}'`)
+                    _contextOptionDom.style.setProperty('--option-width',_opt.width)
+                    _contextOptionDom = _setEventListener(_contextOptionDom,_opt.action)
+                    _contextMenuDom.append(_contextOptionDom)
+                })
+            }
+            //TODO GET CONTEXT SIZE maybe we need to chage x or y to fit to screen
+        }
+        switch(_param){
+            case 'isShown':
+                contextDom.setAttribute('shown',this.isShown)
+                _renderOptions()
+            break;
+            case 'x': 
+                contextDom.style.setProperty('--c-x', this.x)
+                break;
+            case 'y': 
+                contextDom.style.setProperty('--c-y', this.y)
+            case 'targetRow':
+                _renderOptions()
+            break;
+        }
+    }
+    this.show = (_e)=>{
+        if(this.isShown){
+            this.hideContextMenu()
+        }
+        let targetRow = _e.path.find(_el=>{return _el.tagName == 'ROW'})
+        let targetX = _e.clientX+window.scrollX
+        let targetY = _e.clientY+window.scrollY
+        Object.entries({
+            'x':targetX,
+            'y':targetY,
+            'targetRow':targetRow,
+            'isShown':true
+        }).forEach(([_k,_v])=>{
+            this.setContextMenuParam(_k,_v)
+        })
+    }
+    this.hideContextMenu = ()=>{
+        this.setContextMenuParam('isShown',false)
+    }
+    return this
+}
 const pageStart = ()=>{
     var page:any
     var comunicator = Comunicator()
+    contextMenu = ContextMenu()
     comunicator.subscribe((_message:comunicatorMessage)=>{
         if(_message.command == 'sendWinId'){
             page = Page(_message.payload)
@@ -728,13 +1072,13 @@ const pageStart = ()=>{
                 try{
                     _resivedStateObj = JSON.parse(_message.payload)
                 }catch(e){
-                    console.error('Error: unable to render')
+                    console.error('Error: unable to parse resived state')
                 }
                 page.render(_resivedStateObj)
-                this.state = _resivedStateObj//saving new state
+                //saving new state
+                this.state = _resivedStateObj
             }
         }
     })
-
 }
 pageStart()

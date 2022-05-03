@@ -39,6 +39,7 @@ interface winState {
     readonly version: string
     langCode: string
     langWords: Object[]
+    imagesList: string[]
     winId: number
     subscriptionKey: number//monitor id
     title: string
@@ -70,9 +71,8 @@ class stateManager {
     __state:coreState
     __subscribers = []
     __history = []
-    constructor(data:any){
+    constructor (data:any){
         this.__appVersion = data.version
-        this.__state = {...this.__stateNow()}
     }
     __genId(target:'monitor'|'window'|'row'){
         let _ret = -1;
@@ -88,11 +88,22 @@ class stateManager {
         return this.__appVersion
     }
     __getLangCode = ()=>{
+        //TODO make it async
         if(typeof this.__langCode == 'undefined'){
             let config = require('./config')
             this.__langCode = config.getParam('langCode').value
         }
         return this.__langCode
+    }
+    __getImagesList = async ()=>{
+        let _imgNames:any
+        let fileManager = require('./fileManager')
+        _imgNames = await fileManager.getNames({path:'assets/icons',typeFilter:[{name:'*',extensions:['.png']}]})
+        if(_imgNames.success){
+            return _imgNames.payload.content
+        }else{
+            return []
+        }
     }
     __getInitialPingTimeStrategy = ()=>{
         let _ret = [
@@ -100,7 +111,7 @@ class stateManager {
                 conditions:{
                     status:'online'
                 },
-                updateTimeMS:2000
+                updateTimeMS:20000
             },
             {
                 conditions:{
@@ -115,7 +126,7 @@ class stateManager {
         let _ret:rowState = {
             rowId: Number(`${_monitorId}.${this.__genId('row')}`),//generate random
             position: _position,
-            size: '4Middle',//default size
+            size: '2Small',//default size
             ipAddress: '1.1.1.1',//default address
             updateTimeMS: 5000,//defaul time
             name: 'name',//defaultname
@@ -133,15 +144,17 @@ class stateManager {
             isSelected:false
         }
         return JSON.stringify(_ret)
+    
     }
-    __getInitialWindow = (_appVersion:string,_appLangCode:string,_parameters:object={})=>{
+    __getInitialWindow =  async (_appVersion:string,_appLangCode:string,_parameters:object={})=>{
         let _winData = {
             version: _appVersion,
             langCode: _appLangCode,
             langWords: [{}],
+            imagesList: await this.__getImagesList(),
             winId: this.__genId('window'),
             subscriptionKey: -1,
-            title: 'Default window',
+            title: `Ping monitor ${_appVersion}`,
             isGraph: false,
             isHidden: false,
             isFullscreen: false,
@@ -154,10 +167,11 @@ class stateManager {
             Object.entries(_parameters).forEach(([_key,_value])=>{
                 _winData[_key] = _value
             })
+        
         }
         return JSON.stringify(_winData)
     }
-    __getInitialCoreState = ()=>{
+    __getInitialCoreState = async ()=>{
         let _appVersion = this.__getAppVersion()
         let _appLangCode = this.__getLangCode()
 
@@ -183,14 +197,15 @@ class stateManager {
                 //     ]
                 // }
             ],
-            windows: [
-                this.__getInitialWindow(_appVersion,_appLangCode,{subscriptionKey:'1232'})
+            windows: 
+            [
+                await this.__getInitialWindow(_appVersion,_appLangCode,{subscriptionKey:'1232'})
             ],
             propertyForTesting:0
         }
     }
-    __stateNow = ()=>{
-        let _reply = JSON.stringify(this.__getInitialCoreState())
+    __stateNow = async ()=>{
+        let _reply = JSON.stringify(await this.__getInitialCoreState())
         if(typeof this.__state !== 'undefined'){
             _reply = JSON.stringify({...this.__state})
         }
@@ -223,11 +238,22 @@ class stateManager {
         let __getRow = (_payloadStrJson:string,_monitors:monitState[])=>{
             let _plObj:{rowId:number,key:string,value:string} = JSON.parse(_payloadStrJson)
             let _selMon:monitState = _monitors.find(_mon=>_mon.monitorId == Number(_plObj.rowId.toString().split('.')[0]))
+            if(typeof _selMon == 'undefined'){
+                return {
+                    success:false
+                }
+            }
             let _monInd:number = _monitors.indexOf(_selMon)
             let _rwStr = _selMon.rows.find(_row=>_row.indexOf(`"rowId":${_plObj.rowId}`) >-1)
+            if(typeof _rwStr == 'undefined'){
+                return {
+                    success:false
+                }
+            }
             let _rwInd = _selMon.rows.indexOf(_rwStr)
             let _rwObj = JSON.parse(_rwStr)
             return {
+                success:true,
                 payloadObj:_plObj,
                 monitorObj:_selMon,
                 monitorIndex:_monInd,
@@ -262,7 +288,9 @@ class stateManager {
                     loger.out(`Reducer error:${action.action} expected to recive subscriptionKey:string`)
                     break;
                 }
-                _newWindowsStr = [..._state.windows,this.__getInitialWindow(this.__getAppVersion(),this.__getLangCode(),{subscriptionKey:action.payload})]
+                let _oneNewWindowStr = await this.__getInitialWindow(this.__getAppVersion(),this.__getLangCode(),{subscriptionKey:action.payload})
+                _newWindowsStr = [..._state.windows,_oneNewWindowStr]
+                
                 _state = {..._state,windows:_newWindowsStr}
                 break;
             case actionTypes.REMOVE_WINDOW_BY_ID:
@@ -289,7 +317,9 @@ class stateManager {
                     break;
                 }
                 _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex])
-                _newWindowsObj[_payloadObj.key] = _payloadObj.value;
+                if(_newWindowsObj[_payloadObj.key] != _payloadObj.value){// limits at least some duplicates
+                    _newWindowsObj[_payloadObj.key] = _payloadObj.value;
+                }
                 _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
                 _state = {..._state,windows:_newWindowsStr}
                 break;
@@ -308,6 +338,33 @@ class stateManager {
                 _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
                 _state = {..._state,windows:_newWindowsStr}
                 break;
+            case actionTypes.WIN_SET_IMAGE_PICKER_OPEN:
+                if(!__validateInputs(action.payload,['rowId','winId','value'])){
+                    loger.out(`WIN_SET_IMAGE_PICKER_OPEN Error: expected to recive rowId,winId,value`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                //get window
+                _newWindowsStr = [..._state.windows]
+                _neededWindowIndex = _newWindowsStr.map((_w)=>{
+                    return _w.indexOf(`"winId":${_payloadObj.winId}`) >-1
+                }).indexOf(true)
+                _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex])
+                //get row
+                _newMonitors = [..._state.monitors]
+                _rowInfo = __getRow(action.payload,_newMonitors)
+                //set win.isIPOpen
+                _newWindowsObj.isImagePickerOpen = _payloadObj.value
+                //set row.isEditing
+                //set row.editing field
+                _rowInfo.rowObj['isEditing'] = _rowInfo.payloadObj.value
+                _rowInfo.rowObj['fieldEditing'] = _payloadObj.value?'image':'none'
+                //save new state
+                _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj)
+                _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
+                _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
+                _state = {..._state,monitors:_newMonitors,windows:_newWindowsStr}
+                break;
             /*ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW*/
             case actionTypes.ADD_ROW:
                 if(!__validateInputs(action.payload,['monitorId'])){
@@ -324,7 +381,18 @@ class stateManager {
                 _state = {..._state,monitors:_newMonitors}
                 break;
             case actionTypes.REMOVE_ROW:
-                console.log('TODO add remove row reducer')
+                if(!__validateInputs(action.payload,['rowId'])){
+                    loger.out(`REMOVE_ROW Error: expected to recive rowId`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                _newMonitors = [..._state.monitors]
+                _neededMonitorIndex = _newMonitors.map((_m)=>{
+                    return _m.monitorId == _payloadObj.rowId.split('.')[0]
+                }).indexOf(true)
+
+                _newMonitors[_neededMonitorIndex].rows = _newMonitors[_neededMonitorIndex].rows.filter(_rwStr=>{return _rwStr.indexOf(`"rowId":${_payloadObj.rowId}`) == -1})
+                _state = {..._state,monitors:_newMonitors}
                 break;
             case actionTypes.ROW_SUBMIT_PING_PROBE:
                 if(!__validateInputs(action.payload,['rowId','status','dellay','packetLoss','ttl','fullResponce'])){
@@ -333,9 +401,13 @@ class stateManager {
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
+                if(!_rowInfo.success){
+                    loger.out(`ROW_SET_PROP Error: row was not found`)
+                    break;
+                }
                 _rowInfo.rowObj.isBusy = false
                 _payloadObj = JSON.parse(action.payload)
-                //TODO: limit history size
+                console.log('TODO: limit history size')
                 _rowInfo.rowObj.history.push({
                     timestamp: new Date().getTime(),
                     time: new Date(),
@@ -344,17 +416,17 @@ class stateManager {
                     ttl:_payloadObj.ttl,
                     fullResponce:_payloadObj.fillResponce
                 })
-                //TODO make it work for different conditions
+                console.log('TODO: make PTS work for different conditions')
                 try{
                     if(_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status).updateTimeMS != _rowInfo.rowObj.updateTimeMS){
                         _rowInfo.rowObj.updateTimeMS = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status).updateTimeMS
                     }
                 }catch(e){
                     console.log('PTS ERROR',_rowInfo.rowObj.pingTimeStrategy,_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status),_payloadObj.status)
-                    //loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
+                    // loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
                 }
                 //do we need to turn on alarm
-                if(action.payload.status != 'online'){
+                if(action.payload.status != 'online' && _rowInfo.rowObj.isMuted == false && _rowInfo.rowObj.isPaused == false){
                     let lastNotOnlineProbeTime:number
                     let i = _rowInfo.rowObj.history.length-1;
                     while(_rowInfo.rowObj.history[i] && i>-1){
@@ -535,6 +607,25 @@ class stateManager {
                 })
                 _state = {..._state,monitors:_newMonitors}
                 break;
+            case actionTypes.ROW_UNSELECT_ALL:
+                if(!__validateInputs(action.payload,['monitorId'])){
+                    loger.out(`ROW_UNSELECT_ALL Error: expected to recive monitorId`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                _newMonitors = [..._state.monitors]
+                _neededMonitorIndex = _newMonitors.map((_m)=>{
+                    return _m.monitorId == _payloadObj.monitorId
+                }).indexOf(true)
+                _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
+                    let _rowObj = JSON.parse(_rowStr)
+                    if(_rowObj.isSelected == true){
+                        _rowObj.isSelected = false
+                        _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj)
+                    }
+                })
+                _state = {..._state,monitors:_newMonitors}
+                break;
             default:
                 loger.out(`Reducer error: Unknown action type: ${action.action}`)
                 console.error(`Reducer error: Unknown action type: ${action.action}`)
@@ -543,10 +634,10 @@ class stateManager {
 
         return _state
     }
-    __setState = (_state:coreState)=>{
+    __setState = async(_state:coreState)=>{
         
         _state = {..._state}
-        let _prevState = {...this.__state}
+        let _prevState = {...await this.__stateNow()}
         this.__state = {..._state}
 
         let checkFullDifference = (_obj1:object,_obj2:object)=>{
@@ -606,22 +697,20 @@ class stateManager {
     }
 
     //PUBLIC METHODS
-    undo = ()=>{
+    undo = async ()=>{
         let _ret = false
         if(this.__history.length>0){
             this.__history.pop()//removes current
-            if(this.__setState(this.__history.pop())){//setts second instnce from the end
+            if( await this.__setState(this.__history.pop())){//setts second instnce from the end
                 _ret = true;
             }
         }
         return _ret;
     }
     dispach = async (action:actionType)=>{
-        // let _oldState = {...this.__stateNow()}
-        // let _oldState = JSON.stringify({...this.__stateNow()})
-        let _newState = await this.__reduce(this.__stateNow(),action)
+        let _newState = await this.__reduce( await this.__stateNow(),action)
 
-        return this.__setState(_newState) ? true : false;
+        return await this.__setState(_newState) ? true : false;
     }
     subscribe = (_callback:any)=>{
         this.__subscribers.push(_callback)

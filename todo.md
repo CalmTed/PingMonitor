@@ -338,26 +338,32 @@ TODO
         - [+] +size,+graph
     ---- before 29.04
     - [] Row action dispatches 1 day
-      - [] remove,pause
-      - [] name,address,updateTime(change PTS too)
-      - [] in context menu: change row size,open image picker, mute(unalarm)
-      - [] if alarmed show "unalarm" instead of "pause" in row
+      - [+] remove,pause 2022-05-02 16:50
+      - [+] name,address,updateTime(change PTS too) 2022-04-30
+      - [+] in context menu: change row size,open image picker, mute(unalarm) 2022-05-03 15:30
+      - [+] include scroll in contect menu position 2022-05-03 15:44
+      - [+] check if paused before turning on alarm 2022-05-03 16:00
+      - [+] make context action work for a list of selected rows not only for one 2022-05-03 17:54
+      - [?] if alarmed show "unalarm" instead of "pause" in row
     ---- before 30.04
     - [] Menu action dispaches 1 day
       - [] new window, duplicate window
       - [] export&import PM config <- WITH OR WITHOUT HISTORY
       - [] scale screen
-      - [] hide tools buttons if unneded
-    ---- before 01.04
-    ---- 01.04 not for work!
+      - [+] hide tools buttons if unneded (pause all, unalarm all) 2022-05-03 18:54
+      
+    ---- before 01.05
+    ---- 01.05 not for work!
     - [] Settings 2 days
       - [] Sync config data
         - [] colorMode, timeToAlarm, unmuteOnGettingOnline, pingHistLimitMINS, minigraphLimitMINS, savePingHistToExportConfig
         - [] initial rows
         - [] default new row (newRowRule fromLast|default)
+        - [] log settings
       - [] Dispach config change <-SET DEFAULTS BUTTON
+    - [] hot keys 2 hours
     - [] Language settings 2 days
-    ---- before 03.04
+    ---- before 03.05
 
     //create window process
     //init vars

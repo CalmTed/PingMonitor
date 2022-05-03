@@ -315,7 +315,7 @@ var pingMonitor = function () {
         return _resolve;
     };
     var compute = function (_coreState, _prevState) { return __awaiter(void 0, void 0, void 0, function () {
-        var _resolve, existingRowId;
+        var _resolve;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -325,70 +325,9 @@ var pingMonitor = function () {
                             action: ''
                         }
                     };
-                    // if(new Date().getTime() - timeOfStart > 5000)
-                    //   if(_coreState.monitors.length){
-                    //     let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
-                    //     let existingRowId = rowObj.rowId
-                    //     let existingRowSize = rowObj.size
-                    //     if(existingRowSize != '2Small')
-                    //     _resolve = {
-                    //       set:true,
-                    //       action:actionTypes.ROW_SET_PROP,
-                    //       payload:JSON.stringify({rowId:existingRowId,key:'size',value:'2Small'})
-                    //     }
-                    //   }
-                    // if(!_resolve.set)
-                    // if(new Date().getTime() - timeOfStart > 12000){
-                    //   let rowObj = JSON.parse(_coreState.monitors[0].rows[0])
-                    //   let existingRowId = rowObj.rowId
-                    //   let existingRowaddr = rowObj.ipAddress
-                    //   if(!_resolve.set && rowObj.isPaused != true){
-                    //     _resolve = {
-                    //       set:true,
-                    //       action:actionTypes.ROW_SET_PROP,
-                    //       payload:JSON.stringify({rowId:existingRowId,key:'isPaused',value:true})
-                    //     }
-                    //   }
-                    // }
-                    if (!_resolve.set)
-                        // if(new Date().getTime() - timeOfStart > 10000){
-                        //   let winObj = JSON.parse(_coreState.windows[0])
-                        //   let existingWinId = winObj.winId;
-                        //   if(winObj.isMenuOpen != true){
-                        //     _resolve = {
-                        //       set:true,
-                        //       action:actionTypes.WIN_SET_PROP,
-                        //       payload:JSON.stringify({winId:existingWinId,key:'isMenuOpen',value:true})
-                        //     }
-                        //   }
-                        // }
-                        if (!_resolve.set)
-                            // if(new Date().getTime() - timeOfStart > 10000){
-                            //   let winObj = JSON.parse(_coreState.windows[0])
-                            //   let existingWinId = winObj.winId;
-                            //   if(winObj.isSettingOpen != true){
-                            //     _resolve = {
-                            //       set:true,
-                            //       action:actionTypes.WIN_SET_PROP,
-                            //       payload:JSON.stringify({winId:existingWinId,key:'isSettingOpen',value:true})
-                            //     }
-                            //   }
-                            // }
-                            // if(!_resolve.set)
-                            // if(new Date().getTime() - timeOfStart > 10000){
-                            //   let winObj = JSON.parse(_coreState.windows[0])
-                            //   let existingWinId = winObj.winId;
-                            //   if(winObj.isImagePickerOpen != true){
-                            //     _resolve = {
-                            //       set:true,
-                            //       action:actionTypes.WIN_SET_PROP,
-                            //       payload:JSON.stringify({winId:existingWinId,key:'isImagePickerOpen',value:true})
-                            //     }
-                            //   }
-                            // }
-                            if (!_resolve.set) {
-                                _resolve = windowCheck(_coreState, _prevState, _resolve);
-                            }
+                    if (!_resolve.set) {
+                        _resolve = windowCheck(_coreState, _prevState, _resolve);
+                    }
                     if (!_resolve.set) {
                         _resolve = pingCheck(_coreState, _resolve);
                     }
@@ -396,15 +335,6 @@ var pingMonitor = function () {
                         _resolve = monitorCheck(_coreState, _prevState, _resolve);
                     }
                     if (!!_resolve.set) return [3 /*break*/, 1];
-                    if (new Date().getTime() - timeOfStart > 5000)
-                        if (_coreState.monitors.length) {
-                            existingRowId = JSON.parse(_coreState.monitors[0].rows[0]).rowId;
-                            _resolve = {
-                                set: true,
-                                action: actionTypes.ROW_SET_PROP,
-                                payload: { rowId: existingRowId, key: 'size', value: '2Small' }
-                            };
-                        }
                     return [3 /*break*/, 3];
                 case 1:
                     dev ? console.log('Computed with action:', _resolve.action, _resolve.payload) : 0;
