@@ -160,6 +160,95 @@ const Page = (_winId)=>{
         }
         let _createMenuModal = ({hidden})=>{
             let _menuModal = document.createElement('menumodal')
+            let _createMenuOption = ({name,alt,_class,action,icon})=>{
+                let _menuOptionDom = document.createElement('menuoption')
+                _menuOptionDom.innerHTML = name
+                _menuOptionDom.setAttribute('title',alt)
+                _menuOptionDom.classList.add(_class)
+                _menuOptionDom.style.setProperty('--icon-name',`'${icon}'`)
+                _menuOptionDom.onclick = (_e)=>{
+                    let comunicator = Comunicator()
+                    comunicator.send(action)
+                }
+                return _menuOptionDom
+            }
+            let _menuOption = [
+                {
+                    name:'New window',
+                    alt:'Open new window',
+                    _class:'newwin',
+                    icon:'add_to_queue',
+                    action:{
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'addMonitor',
+                            payload:JSON.stringify({})
+                        })
+                    }
+                },
+                {
+                    name:'Duplicate window',
+                    alt:'Duplicate window',
+                    _class:'dupwin',
+                    icon:'add_to_photos',
+                    action:{
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'addNewWindowBySubKey',
+                            payload:_state.subscriptionKey
+                        })
+                    }
+                },
+                {
+                    name:'Settings',
+                    alt:'Open settings',
+                    _class:'winsettngs',
+                    icon:'settings',
+                    action:{
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'winSetProp',
+                            payload:JSON.stringify({winId:_state.winId,key:'isSettingOpen',value:true})
+                        })
+                    }
+                },
+                {
+                    name:'Save config',
+                    alt:'Export config',
+                    _class:'configexport',
+                    icon:'get_app',
+                    action:{
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'monitorExportConfig',
+                            payload:''
+                        })
+                    }
+                },
+                {
+                    name:'Open config',
+                    alt:'Import config',
+                    _class:'configimport',
+                    icon:'file_open',
+                    action:{
+                        command:'dispachAction',
+                        payload:JSON.stringify({
+                            action:'monitorImportConfig',
+                            payload:''
+                        })
+                    }
+                },
+            ]
+            _menuOption.forEach(_mo=>{
+                _menuModal.append(_createMenuOption({
+                    name:_mo.name,
+                    _class:_mo._class,
+                    icon:_mo.icon,
+                    alt:_mo.alt,
+                    action:_mo.action
+                }))
+
+            })
             _menuModal.setAttribute('hidden',hidden)
             return _menuModal
         }
@@ -548,7 +637,7 @@ const Page = (_winId)=>{
                     })
                 }
             }
-        }else{ 
+        }else{
             let _changeHtmlIfNedded = (selector,value)=>{
                 if(document.querySelector(selector).innerHTML != value){
                     document.querySelector(selector).innerHTML = value
@@ -653,7 +742,6 @@ const Page = (_winId)=>{
                 let _updateInputElement = ({_selector,_value})=>{
                     let _newInputValue = _value
                     let _inputTarget = document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`) as HTMLInputElement
-                    console.log(_inputTarget,document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`))
                     if(_inputTarget == null){
                         console.warn(`Can't find row[id="${diffUnit.id}"] ${_selector}`)
                         return 0;
@@ -766,6 +854,7 @@ const Page = (_winId)=>{
                         
                     }
                 }
+                console.log(diffUnit)
                 switch(diffUnit.key){
                     case 'isBusy':
                         targetRowDom.setAttribute('busy',diffUnit.value)
@@ -790,9 +879,8 @@ const Page = (_winId)=>{
                         break;
                     case 'name':
                         _updateInputElement({_selector:'.name',_value:diffUnit.value})
-                        // document.querySelector(`row[id="${diffUnit.id}"] col1 .name`).setAttribute('value',diffUnit.value)
                         break;
-                    case 'ipAdress':
+                    case 'ipAddress':
                         _updateInputElement({_selector:'.address',_value:diffUnit.value})
                         break;
                     case 'updateTime':
@@ -1065,6 +1153,13 @@ const pageStart = ()=>{
     comunicator.subscribe((_message:comunicatorMessage)=>{
         if(_message.command == 'sendWinId'){
             page = Page(_message.payload)
+            comunicator.send({
+                command:'dispachAction',
+                payload:JSON.stringify({
+                    action:'winSetProp',
+                    payload:JSON.stringify({winId:page.winId,key:'requestedUpdate',value:true})
+                })
+            })
         }
         if(_message.command == 'sendWinState'){
             if(page){
@@ -1080,5 +1175,6 @@ const pageStart = ()=>{
             }
         }
     })
+    
 }
 pageStart()

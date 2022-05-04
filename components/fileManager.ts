@@ -60,14 +60,14 @@ fileManager.read = async (message:fileManagerMessage)=>{
         success:false,
         errorMessage:'Unable to read file at ' + filepathArray[0]
       }
-      loger.out(reply.errorMessage)
+      // loger.out(reply.errorMessage)
     }
   }else{
     reply = {
       success:false,
       errorMessage:'No file paths were entered to read'
     }
-    loger.out(reply.errorMessage)
+    // loger.out(reply.errorMessage)
   }
   return reply;
 }
@@ -103,14 +103,14 @@ fileManager.write = async (message:fileManagerMessage)=>{
         success:false,
         errorMessage:'Unable to write file at ' + filepathArray[0]
       }
-      loger.out(reply.errorMessage)
+      // loger.out(reply.errorMessage)
     }
   }else{
     reply = {
       success:false,
       errorMessage:'No file paths were entered to write'
     }
-    loger.out(reply.errorMessage)
+    // loger.out(reply.errorMessage)
   }
   return reply;
 }

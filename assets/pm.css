@@ -8,16 +8,31 @@ root{
     --status-white:#888;
 
     --background: #222;
+    --scroll-tumb:#555;
     --text-main: #eee;
 
     background-color: var(--background);
     color:var(--text-main);
     transition: all .5s ease;
 }
+*::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+*::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+    background-color: transparent;
+}
+*::-webkit-scrollbar-thumb {
+    border-radius: 1px;
+    background-color: var(--scroll-tumb);
+    border: 1px solid transparent;
+}
 menumodal{
     position: fixed;
     min-height: 4em;
     min-width: 10em;
+    max-height: calc(100vh - 1.4em);
     top: 0px;
     left: 0;
     z-index: 600;
@@ -28,25 +43,51 @@ menumodal{
     border-radius: 4px;
     margin-left: 5em;
     margin-top: 0.7em;
+    flex-wrap: wrap;
+    max-width: 8em;
+    overflow: auto;
 }
 menumodal[hidden="true"]{
     opacity: 0;
     visibility: hidden;
+}
+menumodal menuoption{
+    display: flex;
+    padding: 0.6em;
+    justify-content: flex-start;
+    width: 100%;
+}
+menumodal menuoption:hover{
+    cursor: pointer;
+    background: #bfbfbf17;
+}
+menumodal menuoption:before{
+    content: var(--icon-name);
+    font-family: "Material Icons";
+    font-size: 1.3em;
+    line-height: 0.9em;
+    letter-spacing: 0.5em;
 }
 settingsmodal{
     transition: all .2s ease;
     position: fixed;
     width: 40em;
     background: #aaa;
-    height: 90vh;
+    height: calc(100vh - 45px);
     display: flex;
     z-index: 500;
-    top: 5vh;
     border-radius: 4px;
     margin-left: calc(calc(100% - 40em) / 2);
     backdrop-filter: blur(17px);
     background-color: #33333300;
     border: 2px solid var(--status-white);
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    align-content: flex-start;
+    overflow: auto;
+    top: 0;
+    margin-top: 20px;
+    height: calc(100vh - 45px);
 }
 settingsmodal[hidden="true"]{
     transform: scale(0);
@@ -61,10 +102,10 @@ imgpickermodal{
     overflow: auto;
     top: 20px;
     border-radius: 4px;
-    /* backdrop-filter: blur(17px); */
-    background-color: #333333f7;
+    background-color: #33333300;
     border: 2px solid var(--status-white);
     margin-left: calc(calc(100% - 40em) / 2);
+    backdrop-filter: blur(17px);
     width: 40em;
     display: flex;
     flex-wrap: wrap;
@@ -98,6 +139,10 @@ imgpickermodal image.selected,imgpickermodal image.selected:hover{
 @media only screen and (max-width : 40em)
 {
     imgpickermodal{
+        margin-left: 10px;
+        width: calc(100vw - 25px);
+    }
+    settingsmodal{
         margin-left: 10px;
         width: calc(100vw - 25px);
     }

@@ -1,6 +1,3 @@
-
-
-
 interface rowState {
     rowId: number //monitorId.rowId
     position: number
@@ -50,6 +47,7 @@ interface winState {
     isSettingOpen:boolean
     isImagePickerOpen:boolean
     monitor:monitState//only one here just a copy from the list for Comunicator
+    requestedUpdate:boolean
 }
 interface coreState {
     readonly version: string
@@ -161,6 +159,7 @@ class stateManager {
             isMenuOpen:false,
             isSettingOpen:false,
             isImagePickerOpen:false,
+            requestedUpdate:false,
             monitor:{} 
         }
         if(Object.entries(_parameters).length>0){
@@ -212,9 +211,10 @@ class stateManager {
         return JSON.parse(_reply)
     }
     __reduce = async (_state:coreState, action:actionType)=>{
-        const actionTypes = require('./actionTypes')
-        const config = require('./config')
-        const loger = require('./loger')
+        let actionTypes = require('./actionTypes')
+        let fileManager = require('./fileManager')
+        let loger = require('./loger')
+        let config = require('./config')
         let __newRow = ({_monitorId,_position=0}/* MAY BE THERE SHOULD BE CUSTOM VALUES*/)=>{
             return this.__getInitialRowState({_monitorId:_monitorId,_position:_position})
         }
@@ -282,6 +282,42 @@ class stateManager {
                 _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
                 _state = {..._state,monitors:_newMonitors}
                 break
+            case actionTypes.MONITOR_EXPORT_CONFIG:
+                _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
+                let _dateNow = new Date();
+                let _exportTimeStamp = `${_dateNow.getFullYear()}-${_dateNow.getMonth()+1}-${_dateNow.getDate()} ${_dateNow.getHours()+1}-${_dateNow.getMinutes()}-${_dateNow.getSeconds()}`;
+                let _modifiedState = {..._state}
+                let _exportContent = JSON.stringify(_modifiedState);
+                let _exportResult = await fileManager.write({
+                    openDialog:true,
+                    path:`PM Config ${_exportTimeStamp}.pm`,
+                    dialogTile:`Save config`,
+                    content:_exportContent
+                })
+                if(_exportResult.success){
+                    //do nothing or show little message
+                }else{
+                    loger.out(`Reducer error:MONITOR_EXPORT_CONFIG unable to write config ${_exportResult}`)
+                }
+                break;
+            case actionTypes.MONITOR_IMPORT_CONFIG:
+                _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
+                let _importContent = ``;
+                let _importResult = await fileManager.read({
+                    openDialog:true,
+                    dialogTile:`Save config`,
+                    content:_importContent
+                })
+                if(_importResult.success){
+                    let _openedStateStr = _importResult.payload.content
+                    let _openedStateObj = JSON.parse(_openedStateStr)
+                    if(_openedStateObj.version == _state.version){
+                        _state = {..._openedStateObj}
+                    }
+                }else{
+                    loger.out(`Reducer error:MONITOR_IMPORT_CONFIG unable to read config ${_importResult}`)
+                }
+                break;
             /*WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW*/
             case actionTypes.ADD_NEW_WINDOW_BY_SUBKEY:
                 if(typeof action.payload != 'string'){
@@ -364,6 +400,13 @@ class stateManager {
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
                 _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
                 _state = {..._state,monitors:_newMonitors,windows:_newWindowsStr}
+                break;
+            case actionTypes.WIN_REQUEST_STATE:
+                if(!__validateInputs(action.payload,['winId'])){
+                    loger.out(`WIN_SET_IMAGE_PICKER_OPEN Error: expected to recive winId`)
+                    break;
+                }
+                
                 break;
             /*ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW*/
             case actionTypes.ADD_ROW:

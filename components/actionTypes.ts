@@ -2,6 +2,8 @@ const actionTypes = {
         SET_PROPERTY_FOR_TESTING:"setPropertyForTesting",
         ADD_NEW_MONITOR:"addMonitor",
         REMOVE_MONITOR_BY_ID:"removeMonitorById",
+        MONITOR_EXPORT_CONFIG:"monitorExportConfig",
+        MONITOR_IMPORT_CONFIG:"monitorImportConfig",
 
         ADD_NEW_WINDOW_BY_SUBKEY:'addNewWindowBySubKey',
         REMOVE_WINDOW_BY_ID:'removeWindowById',

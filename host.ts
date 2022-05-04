@@ -203,6 +203,7 @@ const pingMonitor = ()=>{
       //we expect two objects to have the same scheme to minimize computation time
       Object.entries(_obj1).forEach(([_k,_v])=>{
         if(typeof _obj1[_k] != 'object'){
+          if(typeof _obj2 != 'undefined')
           if(typeof _obj2[_k] != 'undefined'){
             let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
             if(strDiff.length>0){
@@ -218,9 +219,26 @@ const pingMonitor = ()=>{
       })
       return _ret
     }
+    let getRequestedWindows = (_windows) => {
+      let _windowsList = []
+      _windows.forEach(_w=>{
+        if(_w.indexOf(`"requestedUpdate":true`)>-1){
+          _windowsList.push(_w)
+        }
+      })
+      return _windowsList
+    }
     if(typeof _coreState.monitors != 'undefined'){
       let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
-      
+      // let _requestedWindows = getRequestedWindows(_coreState.windows)
+      // if(_requestedWindows.length>0){
+      //   if(typeof differenceObject.windows == 'undefined'){
+      //     // differenceObject.windows = [...getRequestedWindows(_coreState.windows)]
+      //   }else{
+      //     // differenceObject.windows = [...differenceObject.windows,...getRequestedWindows(_coreState.windows)]
+      //   }
+      // }
+      // console.log(differenceObject)
       Object.entries(differenceObject).forEach(async ([_monInd,_monVal])=>{
         let targetId = _coreState.monitors[_monInd].monitorId
         _coreState.windows.forEach(async _winStr=>{

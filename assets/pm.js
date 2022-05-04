@@ -153,6 +153,95 @@ var Page = function (_winId) {
         var _createMenuModal = function (_a) {
             var hidden = _a.hidden;
             var _menuModal = document.createElement('menumodal');
+            var _createMenuOption = function (_a) {
+                var name = _a.name, alt = _a.alt, _class = _a._class, action = _a.action, icon = _a.icon;
+                var _menuOptionDom = document.createElement('menuoption');
+                _menuOptionDom.innerHTML = name;
+                _menuOptionDom.setAttribute('title', alt);
+                _menuOptionDom.classList.add(_class);
+                _menuOptionDom.style.setProperty('--icon-name', "'".concat(icon, "'"));
+                _menuOptionDom.onclick = function (_e) {
+                    var comunicator = Comunicator();
+                    comunicator.send(action);
+                };
+                return _menuOptionDom;
+            };
+            var _menuOption = [
+                {
+                    name: 'New window',
+                    alt: 'Open new window',
+                    _class: 'newwin',
+                    icon: 'add_to_queue',
+                    action: {
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'addMonitor',
+                            payload: JSON.stringify({})
+                        })
+                    }
+                },
+                {
+                    name: 'Duplicate window',
+                    alt: 'Duplicate window',
+                    _class: 'dupwin',
+                    icon: 'add_to_photos',
+                    action: {
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'addNewWindowBySubKey',
+                            payload: _state.subscriptionKey
+                        })
+                    }
+                },
+                {
+                    name: 'Settings',
+                    alt: 'Open settings',
+                    _class: 'winsettngs',
+                    icon: 'settings',
+                    action: {
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'winSetProp',
+                            payload: JSON.stringify({ winId: _state.winId, key: 'isSettingOpen', value: true })
+                        })
+                    }
+                },
+                {
+                    name: 'Save config',
+                    alt: 'Export config',
+                    _class: 'configexport',
+                    icon: 'get_app',
+                    action: {
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'monitorExportConfig',
+                            payload: ''
+                        })
+                    }
+                },
+                {
+                    name: 'Open config',
+                    alt: 'Import config',
+                    _class: 'configimport',
+                    icon: 'file_open',
+                    action: {
+                        command: 'dispachAction',
+                        payload: JSON.stringify({
+                            action: 'monitorImportConfig',
+                            payload: ''
+                        })
+                    }
+                },
+            ];
+            _menuOption.forEach(function (_mo) {
+                _menuModal.append(_createMenuOption({
+                    name: _mo.name,
+                    _class: _mo._class,
+                    icon: _mo.icon,
+                    alt: _mo.alt,
+                    action: _mo.action
+                }));
+            });
             _menuModal.setAttribute('hidden', hidden);
             return _menuModal;
         };
@@ -562,6 +651,7 @@ var Page = function (_winId) {
             };
             var _checkToolButtons_1 = function (_focus) {
                 if (_focus === void 0) { _focus = 'all'; }
+                //hiding is paused
                 if (['all', 'pause'].includes(_focus)) {
                     var _unpausedRows = _state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isPaused\":false") > -1; });
                     if (typeof _unpausedRows == "undefined") {
@@ -574,6 +664,7 @@ var Page = function (_winId) {
                         _chageAttrIfNeeded_1({ selector: 'toolpauseall', key: 'hidden', value: 'true' });
                     }
                 }
+                //hiding unalarm button
                 if (['all', 'alarm'].includes(_focus)) {
                     var _alarmedRows = _state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isAlarmed\":true") > -1; });
                     if (typeof _alarmedRows == "undefined") {
@@ -586,6 +677,7 @@ var Page = function (_winId) {
                         _chageAttrIfNeeded_1({ selector: 'toolunalarm', key: 'hidden', value: 'true' });
                     }
                 }
+                //TODO change manu icon if menu is opened here
             };
             var _renderMainGroup_1 = function (diffUnit) {
                 switch (diffUnit.key) {
@@ -651,7 +743,6 @@ var Page = function (_winId) {
                     var _selector = _a._selector, _value = _a._value;
                     var _newInputValue = _value;
                     var _inputTarget = document.querySelector("row[id=\"".concat(diffUnit.id, "\"] ").concat(_selector));
-                    console.log(_inputTarget, document.querySelector("row[id=\"".concat(diffUnit.id, "\"] ").concat(_selector)));
                     if (_inputTarget == null) {
                         console.warn("Can't find row[id=\"".concat(diffUnit.id, "\"] ").concat(_selector));
                         return 0;
@@ -760,7 +851,6 @@ var Page = function (_winId) {
                     _renderCol4({ diffUnit: diffUnit }); //statistics
                 }
                 if (diffUnit.key == 'history') {
-                    //TODO check do we have row size 2 or bigger
                     //status, dellay, quality, graph
                     var status_1 = diffUnit.value.status;
                     document.querySelector("row[id=\"".concat(diffUnit.id, "\"]")).setAttribute('status', status_1);
@@ -775,6 +865,7 @@ var Page = function (_winId) {
                         _checkGraph(diffUnit);
                     }
                 }
+                console.log(diffUnit);
                 switch (diffUnit.key) {
                     case 'isBusy':
                         targetRowDom.setAttribute('busy', diffUnit.value);
@@ -799,9 +890,8 @@ var Page = function (_winId) {
                         break;
                     case 'name':
                         _updateInputElement({ _selector: '.name', _value: diffUnit.value });
-                        // document.querySelector(`row[id="${diffUnit.id}"] col1 .name`).setAttribute('value',diffUnit.value)
                         break;
-                    case 'ipAdress':
+                    case 'ipAddress':
                         _updateInputElement({ _selector: '.address', _value: diffUnit.value });
                         break;
                     case 'updateTime':
@@ -820,7 +910,6 @@ var Page = function (_winId) {
                     _renderRowGroup_1(_dif);
                 }
                 if (_state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isAlarmed\":true") > -1; }).length > 0) {
-                    //TODO filter out muted alarmed rows
                     _this.siren.start();
                 }
                 else {
@@ -1082,6 +1171,13 @@ var pageStart = function () {
     comunicator.subscribe(function (_message) {
         if (_message.command == 'sendWinId') {
             page = Page(_message.payload);
+            comunicator.send({
+                command: 'dispachAction',
+                payload: JSON.stringify({
+                    action: 'winSetProp',
+                    payload: JSON.stringify({ winId: page.winId, key: 'requestedUpdate', value: true })
+                })
+            });
         }
         if (_message.command == 'sendWinState') {
             if (page) {

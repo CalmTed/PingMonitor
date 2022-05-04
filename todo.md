@@ -347,11 +347,10 @@ TODO
       - [?] if alarmed show "unalarm" instead of "pause" in row
     ---- before 30.04
     - [] Menu action dispaches 1 day
-      - [] new window, duplicate window
-      - [] export&import PM config <- WITH OR WITHOUT HISTORY
+      - [+] new window, duplicate window 2022-05-04 16:02
+      - [+] export&import PM config <- WITH OR WITHOUT HISTORY 2022-05-04 21:30
       - [] scale screen
       - [+] hide tools buttons if unneded (pause all, unalarm all) 2022-05-03 18:54
-      
     ---- before 01.05
     ---- 01.05 not for work!
     - [] Settings 2 days

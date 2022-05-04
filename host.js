@@ -260,15 +260,16 @@ var pingMonitor = function () {
             Object.entries(_obj1).forEach(function (_a) {
                 var _k = _a[0], _v = _a[1];
                 if (typeof _obj1[_k] != 'object') {
-                    if (typeof _obj2[_k] != 'undefined') {
-                        var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
-                        if (strDiff.length > 0) {
-                            _ret[_k] = _obj1[_k];
+                    if (typeof _obj2 != 'undefined')
+                        if (typeof _obj2[_k] != 'undefined') {
+                            var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
+                            if (strDiff.length > 0) {
+                                _ret[_k] = _obj1[_k];
+                            }
                         }
-                    }
-                    else {
-                        _ret[_k] = _obj1[_k]; //added new element
-                    }
+                        else {
+                            _ret[_k] = _obj1[_k]; //added new element
+                        }
                 }
                 else {
                     _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
@@ -276,8 +277,26 @@ var pingMonitor = function () {
             });
             return _ret;
         };
+        var getRequestedWindows = function (_windows) {
+            var _windowsList = [];
+            _windows.forEach(function (_w) {
+                if (_w.indexOf("\"requestedUpdate\":true") > -1) {
+                    _windowsList.push(_w);
+                }
+            });
+            return _windowsList;
+        };
         if (typeof _coreState.monitors != 'undefined') {
             var differenceObject = checkFullDifference(_coreState.monitors, _prevState.monitors);
+            // let _requestedWindows = getRequestedWindows(_coreState.windows)
+            // if(_requestedWindows.length>0){
+            //   if(typeof differenceObject.windows == 'undefined'){
+            //     // differenceObject.windows = [...getRequestedWindows(_coreState.windows)]
+            //   }else{
+            //     // differenceObject.windows = [...differenceObject.windows,...getRequestedWindows(_coreState.windows)]
+            //   }
+            // }
+            // console.log(differenceObject)
             Object.entries(differenceObject).forEach(function (_a) {
                 var _monInd = _a[0], _monVal = _a[1];
                 return __awaiter(void 0, void 0, void 0, function () {
