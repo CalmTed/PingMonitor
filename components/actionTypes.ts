@@ -1,4 +1,5 @@
 const actionTypes = {
+        
         SET_PROPERTY_FOR_TESTING:"setPropertyForTesting",
         ADD_NEW_MONITOR:"addMonitor",
         REMOVE_MONITOR_BY_ID:"removeMonitorById",
@@ -10,12 +11,14 @@ const actionTypes = {
         WIN_SET_PROP:'winSetProp',
         WIN_TOGGLE_PROP:'winToggleProp',
         WIN_SET_IMAGE_PICKER_OPEN:'winSetImagePickerOpen',
+        WIN_WRITE_NEW_LANG_WORDS:'writeNewLangWords',
 
         ADD_ROW:"addRow",
         REMOVE_ROW:"removeRow",
         ROW_SUBMIT_PING_PROBE:"rowSubmitPingProbe",
         ROW_SET_PROP:'rowSetProp',
         ROW_TOGGLE_PROP:'rowToggleProp',
+        ROW_CLEAR_ALL_HISTORY:"rowClearAllHistory",
         ROW_PAUSE_ALL:'rowPauseAllActive',
         ROW_UNALARM_ALL:'winUnalarmAllRows',
         ROW_UNSELECT_ALL:'rowUnselectAllSelected',

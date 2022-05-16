@@ -10,10 +10,10 @@ interface rowState {
         timestamp:number
         time:Date
         status:string
-        dellayMS:number
+        dellayMS:number 
         ttl:number
         fullResponce:string
-    }[]
+    }[] 
     pingTimeStrategy: {
         updateTimeMS:number
         conditions:object
@@ -85,11 +85,12 @@ class stateManager {
     __getAppVersion = ()=>{
         return this.__appVersion
     }
-    __getLangCode = ()=>{
+    __getLangCode = async ()=>{
         //TODO make it async
         if(typeof this.__langCode == 'undefined'){
             let config = require('./config')
-            this.__langCode = config.getParam('langCode').value
+            let _LCRequest = await config.getParam('langCode')
+            this.__langCode = _LCRequest.value
         }
         return this.__langCode
     }
@@ -103,38 +104,38 @@ class stateManager {
             return []
         }
     }
-    __getInitialPingTimeStrategy = ()=>{
-        let _ret = [
-            {
-                conditions:{
-                    status:'online'
-                },
-                updateTimeMS:20000
-            },
-            {
-                conditions:{
-                    status:'timeout'
-                },
-                updateTimeMS:10000
-            }
-        ]
+    __getInitialPingTimeStrategy = async ()=>{
+        let _ret = []
+        let config = require('./config')
+        let _defaultPTS = await config.getParam('defaultPingTimeStrategy')
+        if(_defaultPTS.success){
+            Object.entries(_defaultPTS.value).forEach(([_k,_v])=>{
+                _ret.push({
+                    conditions:{
+                        status:_k
+                    },
+                    updateTimeMS:_v
+                })
+            })
+        }
+
         return _ret;
     }
-    __getInitialRowState = ({_monitorId,_position=0})=>{
+    __getInitialRowState = async ({_monitorId,_position=0,_name,_updateTimeMS,_ipAddress,_size,_imageLink,_isPaused,_isMuted})=>{
         let _ret:rowState = {
             rowId: Number(`${_monitorId}.${this.__genId('row')}`),//generate random
             position: _position,
-            size: '2Small',//default size
-            ipAddress: '1.1.1.1',//default address
-            updateTimeMS: 5000,//defaul time
-            name: 'name',//defaultname
-            imageLink: '0 PingMonitor.png',
+            size: _size,
+            ipAddress: _ipAddress,
+            updateTimeMS: _updateTimeMS,
+            name: _name,
+            imageLink: _imageLink,
             history: [],
-            pingTimeStrategy: this.__getInitialPingTimeStrategy(),
+            pingTimeStrategy: await this.__getInitialPingTimeStrategy(),
             isBusy:false,
-            isPaused:false,//initialPause
+            isPaused: _isPaused,
             isPausedGrouped:false,
-            isMuted:false,
+            isMuted: _isMuted,
             isAlarmed:false,
             isEditing:false,
             fieldEditing:'none',
@@ -144,11 +145,22 @@ class stateManager {
         return JSON.stringify(_ret)
     
     }
+    __getAllWords = async (_code)=>{
+        let fileManager = require('./fileManager')
+        let _wordsList:any
+        _wordsList = await fileManager.read({path:`assets/local/${_code}.json`,openDialog:false})
+        if(_wordsList.success){
+            try{
+                return JSON.parse(_wordsList.payload.content)
+            }catch(er){}
+        }
+        return {}
+    }
     __getInitialWindow =  async (_appVersion:string,_appLangCode:string,_parameters:object={})=>{
         let _winData = {
             version: _appVersion,
             langCode: _appLangCode,
-            langWords: [{}],
+            langWords: await this.__getAllWords(_appLangCode),
             imagesList: await this.__getImagesList(),
             winId: this.__genId('window'),
             subscriptionKey: -1,
@@ -171,35 +183,45 @@ class stateManager {
         return JSON.stringify(_winData)
     }
     __getInitialCoreState = async ()=>{
+        let config = require('./config')
         let _appVersion = this.__getAppVersion()
-        let _appLangCode = this.__getLangCode()
+        let _appLangCode = await this.__getLangCode()
 
         let _initialMonitorId1 = this.__genId('monitor')
-        // let _initialMonitorId2 = this.__genId('monitor')
-
+        
+        let _initValues:any = {
+            _monitorId:_initialMonitorId1
+        }
+        let _initialColorMode = 'dark'
+        let _initialColorModeRequest = await config.getParam('colorMode')
+        _initialColorModeRequest.success?_initialColorMode = _initialColorModeRequest.value:0;
+        let _initialValuesRequest = await config.getParam('initialRows')
+        if(_initialValuesRequest.success){
+            _initValues = {
+                _monitorId:_initialMonitorId1,
+                _name:_initialValuesRequest.value[0].name,
+                _updateTimeMS:_initialValuesRequest.value[0].updateTimeMS,
+                _ipAddress:_initialValuesRequest.value[0].address,
+                _size:_initialValuesRequest.value[0].size,
+                _imageLink:_initialValuesRequest.value[0].pictureLink,
+                _isPaused:_initialValuesRequest.value[0].isPaused,
+                _isMuted:_initialValuesRequest.value[0].isMuted
+            }
+        }
         return {
-            version: _appVersion,//SHOULD BE SET AUTOMATICALY
+            version: _appVersion,
             langCode: _appLangCode,
             langWords: [{}],
-            colorMode: 'dark',
+            colorMode: _initialColorMode,
             monitors: [
                 {
                     monitorId:_initialMonitorId1,
                     rows:[
-                        this.__getInitialRowState({_monitorId:_initialMonitorId1}),
+                        await this.__getInitialRowState(_initValues),
                     ]
                 },
-                // {
-                //     monitorId:_initialMonitorId2,
-                //     rows:[
-                //         this.__getInitialRowState({_monitorId:_initialMonitorId2}),
-                //     ]
-                // }
             ],
-            windows: 
-            [
-                await this.__getInitialWindow(_appVersion,_appLangCode,{subscriptionKey:'1232'})
-            ],
+            windows: [],
             propertyForTesting:0
         }
     }
@@ -210,22 +232,85 @@ class stateManager {
         }
         return JSON.parse(_reply)
     }
+    __userLogger = async ({name,text,indent})=>{
+        let _indent = (_len = 0)=>{
+            let _ret = '                '
+            let _ind = ''
+            let _step = ' '
+            for(let _j=0;_j<40;_j++){
+                _ind+=_step
+            }
+            for(let _k=0;_k<_len;_k++){
+                _ret+=_ind
+            }
+            return _ret
+        }
+        let _addZero = (_num)=>{
+            return Number(parseInt(_num))<10?`0${_num}`:`${_num}`
+        }
+        let _dateNow = new Date()
+        let fileManager = require('./fileManager')
+        let _exportResult = await fileManager.write({
+            openDialog:false,
+            path:`${name}.txt`,
+            content:`${_dateNow.getFullYear()}-${_addZero(_dateNow.getMonth()+1)}-${_addZero(_dateNow.getDate())} ${_addZero(_dateNow.getHours())}-${_addZero(_dateNow.getMinutes())}-${_addZero(_dateNow.getSeconds())}${_indent(indent)}${text}\n`,
+            append:true
+        })
+    }
     __reduce = async (_state:coreState, action:actionType)=>{
         let actionTypes = require('./actionTypes')
         let fileManager = require('./fileManager')
         let loger = require('./loger')
         let config = require('./config')
-        let __newRow = ({_monitorId,_position=0}/* MAY BE THERE SHOULD BE CUSTOM VALUES*/)=>{
-            return this.__getInitialRowState({_monitorId:_monitorId,_position:_position})
+        let __newRow = async ({_state,_monitorId,_position=0}/* MAY BE THERE SHOULD BE CUSTOM VALUES*/)=>{
+            let _newRowRuleRequest = await config.getParam('newRowRule')
+            let _name,_updateTimeMS,_ipAddress,_size,_imageLink,_isPaused,_isMuted
+            switch(_newRowRuleRequest.value){
+                case 'copyPrev':
+                    let _lastRowDataArr = _state.monitors.find(_m=>{return _m.monitorId = _monitorId}).rows.filter((_r,_i,_a)=>{return _i==_a.length-1})
+                    if( _lastRowDataArr.length > 0){
+                        let _lastRowDataObj = JSON.parse(_lastRowDataArr)
+                        _name = _lastRowDataObj.name
+                        _updateTimeMS = _lastRowDataObj.updateTimeMS
+                        _ipAddress = _lastRowDataObj.ipAddress
+                        _size = _lastRowDataObj.size
+                        _imageLink = _lastRowDataObj.imageLink
+                        _isPaused = _lastRowDataObj.isPaused
+                        _isMuted = _lastRowDataObj.isMuted
+                        break;
+                    }
+                default:
+                    //getting from config
+                    let _defaultRowDataRwquest = await config.getParam('defaultNewRow')
+                    _name = _defaultRowDataRwquest.value.name
+                    _updateTimeMS = _defaultRowDataRwquest.value.updateTimeMS
+                    _ipAddress = _defaultRowDataRwquest.value.address
+                    _size = _defaultRowDataRwquest.value.size
+                    _imageLink = _defaultRowDataRwquest.value.pictureLink
+                    _isPaused = _defaultRowDataRwquest.value.isPaused
+                    _isMuted = _defaultRowDataRwquest.value.isMuted
+                    break;
+            }
+            return this.__getInitialRowState({
+                _monitorId:_monitorId,
+                _position:_position,
+                _name:_name,
+                _updateTimeMS:_updateTimeMS,
+                _ipAddress:_ipAddress,
+                _size:_size,
+                _imageLink:_imageLink,
+                _isMuted:_isMuted,
+                _isPaused:_isPaused
+            })
         }
-        let __newMonitor = ()=>{
+        let __newMonitor =  async ()=>{
             let _monitorId = this.__genId('monitor')
-            return {monitorId:_monitorId,rows:[__newRow({_monitorId:_monitorId})]}
+            return {monitorId:_monitorId,rows:[await __newRow({_state:_state,_monitorId:_monitorId})]}
         }
         let __validateInputs = (_payload:string,_targetInputsArray:string[]):boolean=>{
             let _ret = true
             if(typeof action.payload != 'string'){
-                console.log('Payload should be a JSON string')
+                console.error('Payload should be a JSON string')
                 _ret = false
             }
             _targetInputsArray.forEach(_in=>{
@@ -275,7 +360,7 @@ class stateManager {
                break
             /*MONITOR      MONITOR      MONITOR      MONITOR      MONITOR      MONITOR      MONITOR*/
             case actionTypes.ADD_NEW_MONITOR:
-                _newMonitors = [..._state.monitors,__newMonitor()]
+                _newMonitors = [..._state.monitors,await __newMonitor()]
                 _state = {..._state,monitors:_newMonitors}
                 break
             case actionTypes.REMOVE_MONITOR_BY_ID:
@@ -283,11 +368,28 @@ class stateManager {
                 _state = {..._state,monitors:_newMonitors}
                 break
             case actionTypes.MONITOR_EXPORT_CONFIG:
-                _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
                 let _dateNow = new Date();
                 let _exportTimeStamp = `${_dateNow.getFullYear()}-${_dateNow.getMonth()+1}-${_dateNow.getDate()} ${_dateNow.getHours()+1}-${_dateNow.getMinutes()}-${_dateNow.getSeconds()}`;
-                let _modifiedState = {..._state}
-                let _exportContent = JSON.stringify(_modifiedState);
+                let _initialState = {..._state}
+                let _modifiedState = JSON.parse(JSON.stringify(_initialState))
+                let _savePingHistory = false
+                let _savePingHistoryRequest = await config.getParam('savePingHistoryToConfig')
+                _savePingHistoryRequest.success?_savePingHistory = _savePingHistoryRequest.value:0;
+                _initialState.monitors.forEach((_monit,_monitIndex)=>{
+                    _monit.rows.forEach((_rowStr,_rowIndex)=>{
+                        let _rowObg = JSON.parse(_rowStr)
+                        let _modRowObg = {}
+                        Object.entries(_rowObg).forEach(([_rok,_rov])=>{
+                            if(!_savePingHistory && _rok=='history'){
+                                _modRowObg[_rok] = []
+                            }else{
+                                _modRowObg[_rok] = _rov
+                            }
+                        })
+                        _modifiedState.monitors[_monitIndex].rows[_rowIndex] = JSON.stringify(_modRowObg)
+                    })
+                })
+                let _exportContent = JSON.stringify(_modifiedState,undefined,4);
                 let _exportResult = await fileManager.write({
                     openDialog:true,
                     path:`PM Config ${_exportTimeStamp}.pm`,
@@ -324,7 +426,8 @@ class stateManager {
                     loger.out(`Reducer error:${action.action} expected to recive subscriptionKey:string`)
                     break;
                 }
-                let _oneNewWindowStr = await this.__getInitialWindow(this.__getAppVersion(),this.__getLangCode(),{subscriptionKey:action.payload})
+                let _langCode = await this.__getLangCode()
+                let _oneNewWindowStr = await this.__getInitialWindow(this.__getAppVersion(), _langCode,{subscriptionKey:action.payload})
                 _newWindowsStr = [..._state.windows,_oneNewWindowStr]
                 
                 _state = {..._state,windows:_newWindowsStr}
@@ -406,8 +509,22 @@ class stateManager {
                     loger.out(`WIN_SET_IMAGE_PICKER_OPEN Error: expected to recive winId`)
                     break;
                 }
-                
                 break;
+            case actionTypes.WIN_WRITE_NEW_LANG_WORDS:
+                // let _newLangCodeRequest = await config.getParam('langCode')
+                // if(!_newLangCodeRequest.success){
+                //     break;
+                // }
+                let _newWords = await this.__getAllWords(action.payload)
+                let _newWindows = [..._state.windows]
+                _newWindows.forEach((_w,_wi)=>{
+                    let _wObj = JSON.parse(_w)
+                    _wObj.langCode = action.payload
+                    _wObj.langWords = _newWords
+                    _newWindows[_wi] = JSON.stringify( _wObj )
+                })
+                _state = {..._state,windows:_newWindows}
+                break;    
             /*ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW*/
             case actionTypes.ADD_ROW:
                 if(!__validateInputs(action.payload,['monitorId'])){
@@ -419,7 +536,7 @@ class stateManager {
                 _neededMonitorIndex = _newMonitors.map((_m)=>{
                     return _m.monitorId == _payloadObj.monitorId
                 }).indexOf(true)
-                let _newRowElement = __newRow({_monitorId:_payloadObj.monitorId,_position:_newMonitors[_neededMonitorIndex].rows.length})
+                let _newRowElement = await __newRow({_state:_state,_monitorId:_payloadObj.monitorId,_position:_newMonitors[_neededMonitorIndex].rows.length})
                 _newMonitors[_neededMonitorIndex].rows.push(_newRowElement)
                 _state = {..._state,monitors:_newMonitors}
                 break;
@@ -450,7 +567,6 @@ class stateManager {
                 }
                 _rowInfo.rowObj.isBusy = false
                 _payloadObj = JSON.parse(action.payload)
-                console.log('TODO: limit history size')
                 _rowInfo.rowObj.history.push({
                     timestamp: new Date().getTime(),
                     time: new Date(),
@@ -459,23 +575,28 @@ class stateManager {
                     ttl:_payloadObj.ttl,
                     fullResponce:_payloadObj.fillResponce
                 })
-                console.log('TODO: make PTS work for different conditions')
+                let pingHistoryTimeLimitMINS = await config.getParam('pingHistoryTimeLimitMINS')
+                if((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp)>pingHistoryTimeLimitMINS.value*60*1000){
+                    _rowInfo.rowObj.history.shift()
+                }
                 try{
-                    if(_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status).updateTimeMS != _rowInfo.rowObj.updateTimeMS){
-                        _rowInfo.rowObj.updateTimeMS = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status).updateTimeMS
+                    let _ptsNeededStatus = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status)
+                    if(_ptsNeededStatus != null){
+                        if(_ptsNeededStatus.updateTimeMS != _rowInfo.rowObj.updateTimeMS){
+                            _rowInfo.rowObj.updateTimeMS = _ptsNeededStatus.updateTimeMS
+                        }
+                    }else{
+                        //TODO add new PTS
                     }
                 }catch(e){
-                    console.log('PTS ERROR',_rowInfo.rowObj.pingTimeStrategy,_rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status),_payloadObj.status)
-                    // loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
+                    loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
                 }
                 //do we need to turn on alarm
-                if(action.payload.status != 'online' && _rowInfo.rowObj.isMuted == false && _rowInfo.rowObj.isPaused == false){
+                if(_payloadObj.status != 'online' && _rowInfo.rowObj.isMuted == false && _rowInfo.rowObj.isPaused == false){
                     let lastNotOnlineProbeTime:number
                     let i = _rowInfo.rowObj.history.length-1;
-                    while(_rowInfo.rowObj.history[i] && i>-1){
-                        if(_rowInfo.rowObj.history[i].status != 'online'){
+                    while(_rowInfo.rowObj.history[i].status != 'online' && i>0){
                             lastNotOnlineProbeTime = _rowInfo.rowObj.history[i].timestamp
-                        }
                         i--
                     }
                     let timeToAlarmMS = await config.getParam('timeToAlarmMS')
@@ -483,11 +604,54 @@ class stateManager {
                         _rowInfo.rowObj.isAlarmed = true
                     }
                 }
+                //do we need ot write change to log
+                if(_rowInfo.rowObj.history.length>1){
+                    let _userLoggerRequest = await config.getParam('logSettings')
+                    if(_userLoggerRequest.success){
+                        //do we need to check for log
+                        if(_userLoggerRequest.value.logChanges){
+                            let _getTimeOfLastChange = (_hist:any[])=>{
+                                let _ret:any = {}
+                                let _i:number=_hist.length-1
+                                let _statusNow:string = _hist[_i].status
+                                while(_statusNow == _hist[_i].status && _i>0){
+                                    _i--
+                                }
+                                if(_i!=0){
+                                    _ret.time = new Date().getTime() - _hist[_i].timestamp
+                                    _ret.from = _hist[_i]
+                                    _ret.to = _hist[_i+1]
+                                }
+                                return _ret
+                            }
+                            //do we need to check for change -> get time from last change
+                            let _lastChangeData = _getTimeOfLastChange(_rowInfo.rowObj.history)
+                            if(Object.keys(_lastChangeData).length!=0){
+                                let _prevUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.from.status).updateTimeMS
+                                let _currUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.to.status).updateTimeMS
+                                let _upperLimit = _prevUpdateTime>_currUpdateTime?_prevUpdateTime+1000:_currUpdateTime+1000
+                                //does this time greather then time from config
+                               if(_lastChangeData.time > _userLoggerRequest.value.timeToLogStatusChangeMS && 
+                                    _lastChangeData.time < _userLoggerRequest.value.timeToLogStatusChangeMS + _upperLimit){//to not to emit twise
+                                    //save to userLog with name from config
+                                    let _dateNow = new Date()
+                                    let _logNameDate = _userLoggerRequest.value.newLogNameEveryday?`${_dateNow.getFullYear()}-${_dateNow.getMonth()+1}-${_dateNow.getDate()}`:` `
+                                    let _logName = `${_userLoggerRequest.value.defaultLogName} ${_logNameDate}`
+                                    let _logText = `${_rowInfo.rowObj.name} ${_lastChangeData.from.status}>${_lastChangeData.to.status}`
+                                    let _logIndent = _rowInfo.rowObj.position
+                                    await this.__userLogger({name:_logName,text:_logText,indent:_logIndent})
+                                }
+                            }
+                        }
+                    }
+                }
                 //do we need to unmute
-                if(action.payload.status == 'online' && action.payload.history[action.payload.history.length-2].status != 'online'){
-                    let unmuteOnGettingOnline = await config.getParam('unmuteOnGettingOnline')
-                    if(unmuteOnGettingOnline.value){
-                        _rowInfo.rowObj.isMuted = false
+                if(_rowInfo.rowObj.history.length>1){
+                    if(_payloadObj.status == 'online' && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-2].status != 'online'){
+                        let unmuteOnGettingOnline = await config.getParam('unmuteOnGettingOnline')
+                        if(unmuteOnGettingOnline.value){
+                            _rowInfo.rowObj.isMuted = false
+                        }
                     }
                 }
                 //save to state
@@ -552,6 +716,25 @@ class stateManager {
                 _rowInfo.rowObj[_rowInfo.payloadObj.key] = !_rowInfo.rowObj[_rowInfo.payloadObj.key]
                 _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj)
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
+                _state = {..._state,monitors:_newMonitors}
+            break;
+            case actionTypes.ROW_CLEAR_ALL_HISTORY:
+                if(!__validateInputs(action.payload,['monitorId'])){
+                    loger.out(`ROW_CLEAR_ALL_HISTORY Error: expected to recive monitorId`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                _newMonitors = [..._state.monitors]
+                _neededMonitorIndex = _newMonitors.map((_m)=>{
+                    return _m.monitorId == _payloadObj.monitorId
+                }).indexOf(true)
+                _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
+                    let _rowObj = JSON.parse(_rowStr)
+                    if(_rowObj.history.length > 0){
+                        _rowObj.history = []
+                        _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj)
+                    }
+                })
                 _state = {..._state,monitors:_newMonitors}
             break;
             case actionTypes.ROW_EDIT_PROP_SET:

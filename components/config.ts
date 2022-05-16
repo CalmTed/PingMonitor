@@ -6,73 +6,98 @@ interface configSetParamMessage {
 interface configStateType {
     langCode: String,
     colorMode: String,
+    alwaysShowOnTop: boolean,
+    hideTitleBar: boolean,
     initialRows: {
-        rowId:number,
-        position:number,
         address:string,
-        updateTime:number,
+        updateTimeMS:number,
+        size:string,
         name:string,
-        pictureBase64:string,
-        isPaused:boolean
+        pictureLink:string,
+        isPaused:boolean,
+        isMuted:boolean
     }[],
     defaultNewRow: {
         address:string,
-        updateTime:number,
+        updateTimeMS:number,
+        size:string,
         name:string,
-        pictureBase64:string,
-        isPaused:boolean
+        pictureLink:string,
+        isPaused:boolean,
+        isMuted:boolean
     },
+    defaultPingTimeStrategy:any,
     newRowRule: 'copyPrev'|'default',
     timeToAlarmMS: number,//default: 10sec
     unmuteOnGettingOnline: boolean,// default true
     pingHistoryTimeLimitMINS: number,//default: 360>60*6
-    miniGraphShowLimitMIMS: number,// default: 5,
+    miniGraphShowLimitMINS: number,// default: 5,
     savePingHistoryToConfig:boolean,//default: false
+    logSettings:{
+        logChanges: boolean,
+        defaultLogName: string,
+        newLogNameEveryday: boolean,
+        timeToLogStatusChangeMS: number,
+    }
     __keyForTesting?:number
 }
 
 const config:any = {}
 const initConfig = ()=>{
     let state:configStateType = {
-        langCode: 'ua',
-        colorMode: 'dark',
-        initialRows: [{
-            rowId: 11111111,
-            position: 0,
-            address:'0.0.0.0',
-            updateTime:10000,
-            name:'New row',
-            pictureBase64:'default',
-            isPaused:true
-        }],
+        langCode: "ua",
+        colorMode: "dark",
+        alwaysShowOnTop: false,
+        hideTitleBar: false,
+        initialRows: [
+            {
+                address: "localhost",
+                updateTimeMS: 10000,
+                size:'2Small',
+                name: "Initial row 1",
+                pictureLink: "0 PingMonitor.png",
+                isPaused: true,
+                isMuted:false
+            }
+        ],
         defaultNewRow: {
-            address:'0.0.0.0',
-            updateTime:10000,
-            name:'New row',
-            pictureBase64:'default',
-            isPaused:true
+            address: "localhost",
+            size:'2Small',
+            updateTimeMS: 10000,
+            name: "Default row",
+            pictureLink: "0 PingMonitor.png",
+            isPaused: true,
+            isMuted:false
         },
-        newRowRule: 'copyPrev',
+        defaultPingTimeStrategy:{
+            online:10000,
+            error:2000,
+            timeout:2000
+        },
+        newRowRule: "copyPrev",
         timeToAlarmMS: 10000,
         unmuteOnGettingOnline: true,
         pingHistoryTimeLimitMINS: 360,
-        miniGraphShowLimitMIMS: 5,
-        savePingHistoryToConfig:false,
-        __keyForTesting:0,
+        miniGraphShowLimitMINS: 5,
+        savePingHistoryToConfig: false,
+        logSettings: {
+            logChanges: false,
+            defaultLogName: "",
+            newLogNameEveryday: true,
+            timeToLogStatusChangeMS: 10000
+        },
+        "__keyForTesting": 169346
     }
     return state;
 }
-const updateState = async (message:configSetParamMessage)=>{
-    let configState = await getState()
+const updateState = async ({newState})=>{
+    let configState = await config.getState()
     let configFilePath = 'assets/config.json'
     let fileManager = require('./fileManager')
     try{
-        configState = {...configState}
-        configState[message.key] = message.value
         //triyng to save to the file
-        const configSavingToFile = await fileManager.write({openDialog:false,path:configFilePath,content:JSON.stringify(configState)})
+        const configSavingToFile = await fileManager.write({openDialog:false,path:configFilePath,content:JSON.stringify(newState,undefined,4)})
         if(!configSavingToFile.success){
-            //console.log('Unable to save initial config to the file. Error:'+configSavingToFile.errorMessage)
             return false
         }else{
             return true;
@@ -83,7 +108,8 @@ const updateState = async (message:configSetParamMessage)=>{
         return false;
     }
 }
-const getState = async ()=>{
+
+config.getState = async ()=>{
     let configFilePath = 'assets/config.json'
     let fileManager = require('./fileManager')
     let state = initConfig()
@@ -96,13 +122,12 @@ const getState = async ()=>{
     }catch(e){
         //console.error('Cant load config from file, so using initial')
         try{
-            const configSavingToFile = await fileManager.write({openDialog:false,path:configFilePath,content:JSON.stringify(state)})
+            const configSavingToFile = await fileManager.write({openDialog:false,path:configFilePath,content:JSON.stringify(state,undefined,4)})
             if(configSavingToFile.success){
                 //console.log('Saved to file successfuly')
             }else{
                 //console.log('Unable to save initial config to file. Error:'+configSavingToFile.errorMessage)
             }
-            
         }catch(e){
             //console.log('Unable to save initial config to file. Error:'+e)
         }
@@ -110,67 +135,143 @@ const getState = async ()=>{
     return state;
 }
 config.getParam = async (key:string)=>{
-    let configState = await getState()
+    let configState = await config.getState()
     if(typeof key == 'undefined'){
-        loger.out('Expected to recive key:string')
+        // loger.out('Expected to recive key:string')
         return {
             success:false,
             errorMessage:'Expected to recive key:string'
         }
     }
+    let keyPath = []
+    let neededValue
+    keyPath = key.split('_')
+    if(keyPath.length>1){
+        try{
+            switch(keyPath.length){
+                case 2:neededValue = configState[keyPath[0]][keyPath[1]];break;
+                case 3:neededValue = configState[keyPath[0]][keyPath[1]][keyPath[2]];break;
+                case 4:neededValue = configState[keyPath[0]][keyPath[1]][keyPath[2]][keyPath[3]];break;
+            }
+        }catch(err){
+            return {
+                success:false,
+                errorMessage:'Key does not exist: '+keyPath.join('_')
+            }
+        }
+    }else{
+        try{
+            neededValue = configState[keyPath[0]]
+        }catch(err){
+            return {
+                success:false,
+                errorMessage:'Key does not exist: '+keyPath.join('_')
+            }
+        }
+    }
     //return undefined key
-    if(typeof configState[key] == 'undefined'){
-        loger.out(`Key does not exist: ${key}`)
+    if(typeof neededValue == 'undefined'){
+        // loger.out(`Key does not exist: ${key}`)
         return {
             success:false,
             errorMessage:`Key does not exist: ${key}`
         }
     }
-    //return from file
-    //return from cash
+    
     return {
         success:true,
         key:key,
-        value:configState[key]
+        value:neededValue
     }
 }
 config.setParam = async (message:configSetParamMessage)=>{
-    let stateExmple:configStateType = initConfig()
+    let stateExample:configStateType = await config.getState()
     //lack of key or value
     if(typeof message.key == 'undefined' || typeof message.value == 'undefined'){
-        loger.out('Expected to recive key and value')
+        // loger.out('Expected to recive key and value')
         return {
             success:false,
             errorMessage:'Expected to recive key and value'
         }
     }
-    //undefined key
-    if(typeof stateExmple[message.key] == 'undefined'){
-        loger.out('Key does not exist: '+message.key)
-        return {
-            success:false,
-            errorMessage:'Key does not exist: '+message.key
+    let keyPath = []
+    let neededValue
+    keyPath = message.key.split('_')
+    if(keyPath.length>1){
+        try{
+            switch(keyPath.length){
+                case 2:neededValue = stateExample[keyPath[0]][keyPath[1]];break;
+                case 3:neededValue = stateExample[keyPath[0]][keyPath[1]][keyPath[2]];break;
+                case 4:neededValue = stateExample[keyPath[0]][keyPath[1]][keyPath[2]][keyPath[3]];break;
+            }
+        }catch(err){
+            return {
+                success:false,
+                errorMessage:'Key does not exist: '+keyPath.join('_')
+            }
+        }
+    }else{
+        try{
+            neededValue = stateExample[keyPath[0]]
+        }catch(err){
+            return {
+                success:false,
+                errorMessage:'Key does not exist: '+keyPath.join('_')
+            }
         }
     }
-    //return unvalid value format\type
-    if(typeof stateExmple[message.key] !== typeof message.value){
-        loger.out(`Wrong type of the value. Recived:${typeof message.value}. Expected:${typeof stateExmple[message.key]}`)
+    
+    if(typeof neededValue == 'number'){
+        message.value = Number(parseInt(message.value.toString()))
+        message.value == null||isNaN(message.value)?message.value = 0:0
+    }
+    if(typeof neededValue !== typeof message.value && ![''].includes(typeof neededValue)){
+        console.log(`Wrong type of the value. Recived:${typeof message.value}. Expected:${typeof neededValue}`)
         return {
             success:false,
-            errorMessage:`Wrong type of the value. Recived:${typeof message.value}. Expected:${typeof stateExmple[message.key]}`
+            errorMessage:`Wrong type of the value. Recived:${typeof message.value}. Expected:${typeof neededValue}`
         }
     }
-    if(await updateState({key:message.key,value:message.value})){
+    if(neededValue === message.value){
+        return {
+            success:false,
+            errorMessage:`No need to change config. Recived:${typeof message.value}. Expected:${typeof neededValue}`
+        }
+    }
+    if(keyPath.length<2){
+        stateExample[keyPath[0]] = message.value
+    }else{
+        switch(keyPath.length){
+            case 2:stateExample[keyPath[0]][keyPath[1]] = message.value;break;
+            case 3:stateExample[keyPath[0]][keyPath[1]][keyPath[2]] = message.value;break;
+            case 4:stateExample[keyPath[0]][keyPath[1]][keyPath[2]][keyPath[3]] = message.value;break;
+        }
+    }
+    if(await updateState({newState:stateExample})){
         return {
             success:true
         }
     }else{
-        loger.out(`Unable to set parameter for unknown reason.`)
+        console.log(`Unable to set parameter for unknown reason.`)
         return {
             success:false,
             errorMessage:`Unable to set parameter for unknown reason.`
         }
     }
     //set to cash > try to save to file
+}
+config.restoreDefault = async ()=>{
+    let newState:configStateType = initConfig()
+    if(await updateState({newState:newState})){
+        return {
+            success:true
+        }
+    }else{
+        console.log(`Unable to set parameter for unknown reason.`)
+        return {
+            success:false,
+            errorMessage:`Unable to set parameter for unknown reason.`
+        }
+    }
 }
 module.exports = config

@@ -38,16 +38,19 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 var electron_1 = require("electron");
 var pingMonitor = function () {
-    var version = '1.4';
-    var dev = true;
-    var actionTypes = require('./components/actionTypes');
-    var fileManager = require('./components/fileManager');
-    var config = require('./components/config');
-    var loger = require('./components/loger');
-    var pinger = require('./components/pinger');
-    var stateManager = require('./components/stateManager');
+    var version = process.env.npm_package_version ? process.env.npm_package_version : '1.4.0';
+    console.log(process.env);
+    var lang = process.env.LANG;
+    var dev = false;
+    var prefix = process.env.npm_lifecycle_event !== 'tstart' ? '../../' : './';
+    var actionTypes = require(prefix + 'components/actionTypes');
+    var fileManager = require(prefix + 'components/fileManager');
+    var config = require(prefix + 'components/config');
+    var loger = require(prefix + 'components/loger');
+    var pinger = require(prefix + 'components/pinger');
+    var stateManager = require(prefix + 'components/stateManager');
     var store = new stateManager({ version: version });
-    var comunicatorCore = require('./components/comunicatorCore');
+    var comunicatorCore = require(prefix + 'components/comunicatorCore');
     var comunicator = new comunicatorCore();
     var app = require('electron').app;
     var windows = {};
@@ -169,170 +172,192 @@ var pingMonitor = function () {
         }
         return _resolve;
     };
-    var windowCheck = function (_coreState, _prevState, _resolve) {
-        var getNormalWindow = function (winData) {
-            if (winData === void 0) { winData = { w: 700, h: 400, show: false }; }
-            var _ret = new electron_1.BrowserWindow({
-                width: winData.w,
-                height: winData.h,
-                icon: __dirname + '/assets/PM.ico',
-                autoHideMenuBar: true,
-                webPreferences: {
-                    nodeIntegration: true,
-                    contextIsolation: false
-                },
-                // devTools:true,
-                show: winData.show
-            });
-            return _ret;
-        };
-        // do we need to add new browser window
-        var uncreatedBrowserWIndowsF = function (_state) {
-            var _ret = [];
-            _state.windows.forEach(function (_wStr) {
-                var _wObj = JSON.parse(_wStr);
-                if (windows[_wObj.winId] == undefined) {
-                    _ret.push(_wObj.winId);
-                }
-            });
-            return _ret;
-        };
-        // do we need to remove some browser windows
-        var undelitedBrowserWindowsF = function (_state) {
-            var _ret = [];
-            Object.keys(windows).forEach(function (_wId) {
-                if (_state.windows.filter(function (_wStr) { return _wStr.indexOf("\"winId\":".concat(_wId)) > -1; }).length == 0) {
-                    _ret.push(_wId);
-                }
-            });
-            return _ret;
-        };
-        var uncreatedBrowserWIndows = uncreatedBrowserWIndowsF(_coreState);
-        var undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState);
-        // console.log('Uncreated windows',uncreatedBrowserWIndows)
-        // console.log('Undeleted windows',undelitedBrowserWindows)
-        if (uncreatedBrowserWIndows.length) {
-            uncreatedBrowserWIndows.forEach(function (_winId) { return __awaiter(void 0, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    windows[_winId] = getNormalWindow();
-                    windows[_winId].loadFile('pm.html');
-                    windows[_winId].on('ready-to-show', function () { return __awaiter(void 0, void 0, void 0, function () {
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0: return [4 /*yield*/, comunicator.send({
-                                        window: windows[_winId],
-                                        command: 'sendWinId',
-                                        payload: _winId
-                                    })];
+    var windowCheck = function (_coreState, _prevState, _resolve) { return __awaiter(void 0, void 0, void 0, function () {
+        var getNormalWindow, uncreatedBrowserWIndowsF, undelitedBrowserWindowsF, uncreatedBrowserWIndows, undelitedBrowserWindows, _configData_1, checkFullDifference, differenceObject;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    getNormalWindow = function (winData) {
+                        if (winData === void 0) { winData = { w: 700, h: 400, show: false }; }
+                        return __awaiter(void 0, void 0, void 0, function () {
+                            var _aot, _aotC, _htb, _htbC, _ret;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        _aot = false;
+                                        return [4 /*yield*/, config.getParam('alwaysShowOnTop')];
+                                    case 1:
+                                        _aotC = _a.sent();
+                                        _aotC.success ? _aot = _aotC.value : 0;
+                                        _htb = true;
+                                        return [4 /*yield*/, config.getParam('hideTitleBar')];
+                                    case 2:
+                                        _htbC = _a.sent();
+                                        _aotC.success ? _htb = !_htbC.value : 0;
+                                        _ret = new electron_1.BrowserWindow({
+                                            width: winData.w,
+                                            height: winData.h,
+                                            icon: __dirname + '/assets/PM.ico',
+                                            autoHideMenuBar: true,
+                                            webPreferences: {
+                                                nodeIntegration: true,
+                                                contextIsolation: false
+                                            },
+                                            alwaysOnTop: _aot,
+                                            frame: _htb,
+                                            // titleBarStyle:_htb?'default':'hidden',
+                                            transparent: !_htb,
+                                            // resizable:true,
+                                            // devTools:true,
+                                            show: winData.show
+                                        });
+                                        return [2 /*return*/, _ret];
+                                }
+                            });
+                        });
+                    };
+                    uncreatedBrowserWIndowsF = function (_state) {
+                        var _ret = [];
+                        _state.windows.forEach(function (_wStr) {
+                            var _wObj = JSON.parse(_wStr);
+                            if (windows[_wObj.winId] == undefined) {
+                                _ret.push(_wObj.winId);
+                            }
+                        });
+                        return _ret;
+                    };
+                    undelitedBrowserWindowsF = function (_state) {
+                        var _ret = [];
+                        Object.keys(windows).forEach(function (_wId) {
+                            if (_state.windows.filter(function (_wStr) { return _wStr.indexOf("\"winId\":".concat(_wId)) > -1; }).length == 0) {
+                                _ret.push(_wId);
+                            }
+                        });
+                        return _ret;
+                    };
+                    uncreatedBrowserWIndows = uncreatedBrowserWIndowsF(_coreState);
+                    undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState);
+                    if (!uncreatedBrowserWIndows.length) return [3 /*break*/, 2];
+                    return [4 /*yield*/, config.getState()];
+                case 1:
+                    _configData_1 = _a.sent();
+                    uncreatedBrowserWIndows.forEach(function (_winId) { return __awaiter(void 0, void 0, void 0, function () {
+                        var _a, _b;
+                        return __generator(this, function (_c) {
+                            switch (_c.label) {
+                                case 0:
+                                    _a = windows;
+                                    _b = _winId;
+                                    return [4 /*yield*/, getNormalWindow()];
                                 case 1:
-                                    _a.sent();
-                                    windows[_winId].show();
+                                    _a[_b] = _c.sent();
+                                    windows[_winId].loadFile('pm.html');
+                                    // windows[_winId].removeMenu();
+                                    // windows[_winId].setTitleBarOverlay({color:'#222222',height:0});
+                                    windows[_winId].setBackgroundColor('#222222');
+                                    windows[_winId].on('ready-to-show', function () { return __awaiter(void 0, void 0, void 0, function () {
+                                        return __generator(this, function (_a) {
+                                            switch (_a.label) {
+                                                case 0: return [4 /*yield*/, comunicator.send({
+                                                        window: windows[_winId],
+                                                        command: 'sendInitData',
+                                                        payload: JSON.stringify({ winId: _winId, configData: _configData_1, isProduction: process.env.npm_lifecycle_event !== 'tstart' })
+                                                    })];
+                                                case 1:
+                                                    _a.sent();
+                                                    windows[_winId].show();
+                                                    return [2 /*return*/];
+                                            }
+                                        });
+                                    }); });
                                     return [2 /*return*/];
                             }
                         });
                     }); });
-                    return [2 /*return*/];
-                });
-            }); });
-        }
-        if (undelitedBrowserWindows.length) {
-            undelitedBrowserWindows.forEach(function (_winId) {
-                windows[_winId].destroy();
-            });
-        }
-        if (_resolve.set) {
-            return _resolve;
-        }
-        var checkFullDifference = function (_obj1, _obj2) {
-            var checkDiffStr = function (_one, _two) {
-                var _strdiffret = '';
-                var aArr = _one.split('');
-                var bArr = _two.split('');
-                aArr.forEach(function (letter, i) {
-                    if (aArr[i] != bArr[i]) {
-                        _strdiffret += aArr[i];
+                    _a.label = 2;
+                case 2:
+                    if (undelitedBrowserWindows.length) {
+                        undelitedBrowserWindows.forEach(function (_winId) {
+                            windows[_winId].destroy();
+                        });
                     }
-                });
-                return _strdiffret;
-            };
-            var _ret = {};
-            //we expect two objects to have the same scheme to minimize computation time
-            Object.entries(_obj1).forEach(function (_a) {
-                var _k = _a[0], _v = _a[1];
-                if (typeof _obj1[_k] != 'object') {
-                    if (typeof _obj2 != 'undefined')
-                        if (typeof _obj2[_k] != 'undefined') {
-                            var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
-                            if (strDiff.length > 0) {
-                                _ret[_k] = _obj1[_k];
-                            }
-                        }
-                        else {
-                            _ret[_k] = _obj1[_k]; //added new element
-                        }
-                }
-                else {
-                    _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
-                }
-            });
-            return _ret;
-        };
-        var getRequestedWindows = function (_windows) {
-            var _windowsList = [];
-            _windows.forEach(function (_w) {
-                if (_w.indexOf("\"requestedUpdate\":true") > -1) {
-                    _windowsList.push(_w);
-                }
-            });
-            return _windowsList;
-        };
-        if (typeof _coreState.monitors != 'undefined') {
-            var differenceObject = checkFullDifference(_coreState.monitors, _prevState.monitors);
-            // let _requestedWindows = getRequestedWindows(_coreState.windows)
-            // if(_requestedWindows.length>0){
-            //   if(typeof differenceObject.windows == 'undefined'){
-            //     // differenceObject.windows = [...getRequestedWindows(_coreState.windows)]
-            //   }else{
-            //     // differenceObject.windows = [...differenceObject.windows,...getRequestedWindows(_coreState.windows)]
-            //   }
-            // }
-            // console.log(differenceObject)
-            Object.entries(differenceObject).forEach(function (_a) {
-                var _monInd = _a[0], _monVal = _a[1];
-                return __awaiter(void 0, void 0, void 0, function () {
-                    var targetId;
-                    return __generator(this, function (_b) {
-                        targetId = _coreState.monitors[_monInd].monitorId;
-                        _coreState.windows.forEach(function (_winStr) { return __awaiter(void 0, void 0, void 0, function () {
-                            var _winObj;
-                            return __generator(this, function (_a) {
-                                switch (_a.label) {
-                                    case 0:
-                                        if (!(_winStr.indexOf("\"subscriptionKey\":\"".concat(targetId, "\"")) > -1)) return [3 /*break*/, 2];
-                                        _winObj = JSON.parse(_winStr);
-                                        //copying monitor state to send row data to the window
-                                        _winObj.monitor = _coreState.monitors[_monInd];
-                                        // update window with communicatorCore
-                                        return [4 /*yield*/, comunicator.send({
-                                                window: windows[_winObj.winId],
-                                                command: 'sendWinState',
-                                                payload: JSON.stringify(_winObj)
-                                            })];
-                                    case 1:
-                                        // update window with communicatorCore
-                                        _a.sent();
-                                        _a.label = 2;
-                                    case 2: return [2 /*return*/];
+                    if (_resolve.set) {
+                        return [2 /*return*/, _resolve];
+                    }
+                    checkFullDifference = function (_obj1, _obj2) {
+                        var checkDiffStr = function (_one, _two) {
+                            var _strdiffret = '';
+                            var aArr = _one.split('');
+                            var bArr = _two.split('');
+                            aArr.forEach(function (letter, i) {
+                                if (aArr[i] != bArr[i]) {
+                                    _strdiffret += aArr[i];
                                 }
                             });
-                        }); });
-                        return [2 /*return*/];
-                    });
-                });
-            });
-        }
-        return _resolve;
-    };
+                            return _strdiffret;
+                        };
+                        var _ret = {};
+                        //we expect two objects to have the same scheme to minimize computation time
+                        Object.entries(_obj1).forEach(function (_a) {
+                            var _k = _a[0], _v = _a[1];
+                            if (typeof _obj1[_k] != 'object') {
+                                if (typeof _obj2 != 'undefined')
+                                    if (typeof _obj2[_k] != 'undefined') {
+                                        var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
+                                        if (strDiff.length > 0) {
+                                            _ret[_k] = _obj1[_k];
+                                        }
+                                    }
+                                    else {
+                                        _ret[_k] = _obj1[_k]; //added new element
+                                    }
+                            }
+                            else {
+                                _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
+                            }
+                        });
+                        return _ret;
+                    };
+                    if (typeof _coreState.monitors != 'undefined') {
+                        differenceObject = checkFullDifference(_coreState.monitors, _prevState.monitors);
+                        Object.entries(differenceObject).forEach(function (_a) {
+                            var _monInd = _a[0], _monVal = _a[1];
+                            return __awaiter(void 0, void 0, void 0, function () {
+                                var targetId;
+                                return __generator(this, function (_b) {
+                                    targetId = _coreState.monitors[_monInd].monitorId;
+                                    _coreState.windows.forEach(function (_winStr) { return __awaiter(void 0, void 0, void 0, function () {
+                                        var _winObj;
+                                        return __generator(this, function (_a) {
+                                            switch (_a.label) {
+                                                case 0:
+                                                    if (!(_winStr.indexOf("\"subscriptionKey\":\"".concat(targetId, "\"")) > -1)) return [3 /*break*/, 2];
+                                                    _winObj = JSON.parse(_winStr);
+                                                    //copying monitor state to send row data to the window
+                                                    _winObj.monitor = _coreState.monitors[_monInd];
+                                                    // update window with communicatorCore
+                                                    return [4 /*yield*/, comunicator.send({
+                                                            window: windows[_winObj.winId],
+                                                            command: 'sendWinState',
+                                                            payload: JSON.stringify(_winObj)
+                                                        })];
+                                                case 1:
+                                                    // update window with communicatorCore
+                                                    _a.sent();
+                                                    _a.label = 2;
+                                                case 2: return [2 /*return*/];
+                                            }
+                                        });
+                                    }); });
+                                    return [2 /*return*/];
+                                });
+                            });
+                        });
+                    }
+                    return [2 /*return*/, _resolve];
+            }
+        });
+    }); };
     var compute = function (_coreState, _prevState) { return __awaiter(void 0, void 0, void 0, function () {
         var _resolve;
         return __generator(this, function (_a) {
@@ -344,27 +369,41 @@ var pingMonitor = function () {
                             action: ''
                         }
                     };
-                    if (!_resolve.set) {
-                        _resolve = windowCheck(_coreState, _prevState, _resolve);
-                    }
+                    if (!!_resolve.set) return [3 /*break*/, 2];
+                    return [4 /*yield*/, windowCheck(_coreState, _prevState, _resolve)];
+                case 1:
+                    _resolve = _a.sent();
+                    _a.label = 2;
+                case 2:
                     if (!_resolve.set) {
                         _resolve = pingCheck(_coreState, _resolve);
                     }
                     if (!_resolve.set) {
                         _resolve = monitorCheck(_coreState, _prevState, _resolve);
                     }
-                    if (!!_resolve.set) return [3 /*break*/, 1];
-                    return [3 /*break*/, 3];
-                case 1:
+                    if (!!_resolve.set) return [3 /*break*/, 3];
+                    return [3 /*break*/, 5];
+                case 3:
                     dev ? console.log('Computed with action:', _resolve.action, _resolve.payload) : 0;
                     return [4 /*yield*/, store.dispach({ action: _resolve.action, payload: _resolve.payload })];
-                case 2:
+                case 4:
                     _a.sent();
-                    _a.label = 3;
-                case 3: return [2 /*return*/];
+                    _a.label = 5;
+                case 5: return [2 /*return*/];
             }
         });
     }); };
+    var renderConfig = function (_newConfigObj, _windows) {
+        //render always on top for all windows
+        var _needToChangeAOT = _newConfigObj.alwaysShowOnTop != Object.entries(windows)[0][1].isAlwaysOnTop();
+        if (_needToChangeAOT) {
+            Object.entries(windows).forEach(function (_a) {
+                var _wk = _a[0], _wv = _a[1];
+                _wv.setAlwaysOnTop(_newConfigObj.alwaysShowOnTop, 'screen-saver');
+                _wv.setOpacity(_newConfigObj.alwaysShowOnTop ? 0.9 : 1);
+            });
+        }
+    };
     store.subscribe(compute); //execute compute on any state change
     comunicator.subscribe({
         channel: 'window',
@@ -379,6 +418,121 @@ var pingMonitor = function () {
                         return [4 /*yield*/, store.dispach({ action: _plObj.action, payload: _plObj.payload })];
                     case 1:
                         _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        }); }
+    });
+    comunicator.subscribe({
+        channel: 'window',
+        commandListString: 'getConfigData',
+        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
+            var _plObj, _configData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        dev ? console.log('resived request for config', _pl) : 0;
+                        _plObj = JSON.parse(_pl.payload);
+                        return [4 /*yield*/, config.getState()];
+                    case 1:
+                        _configData = _a.sent();
+                        return [4 /*yield*/, comunicator.send({
+                                window: windows[_plObj],
+                                command: 'sendConfig',
+                                payload: _configData
+                            })];
+                    case 2:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        }); }
+    });
+    comunicator.subscribe({
+        channel: 'window',
+        commandListString: 'configSetProp',
+        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
+            var _plObj, _configSetResult, _configData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        dev ? console.log('resived request to change config', _pl) : 0;
+                        _plObj = JSON.parse(_pl.payload);
+                        return [4 /*yield*/, config.setParam({ key: _plObj.key, value: _plObj.value })];
+                    case 1:
+                        _configSetResult = _a.sent();
+                        if (_configSetResult.success == false) {
+                            return [2 /*return*/, 0];
+                        }
+                        return [4 /*yield*/, config.getState()];
+                    case 2:
+                        _configData = _a.sent();
+                        renderConfig(_configData, windows); //updating window visibility
+                        //sending new config
+                        Object.entries(windows).forEach(function (_a) {
+                            var _winId = _a[0], _winObj = _a[1];
+                            return __awaiter(void 0, void 0, void 0, function () {
+                                return __generator(this, function (_b) {
+                                    switch (_b.label) {
+                                        case 0: return [4 /*yield*/, comunicator.send({
+                                                window: _winObj,
+                                                command: 'sendConfig',
+                                                payload: _configData
+                                            })];
+                                        case 1:
+                                            _b.sent();
+                                            return [2 /*return*/];
+                                    }
+                                });
+                            });
+                        });
+                        if (!(_plObj.key == 'langCode')) return [3 /*break*/, 4];
+                        console.log('dispach for', _plObj.value);
+                        return [4 /*yield*/, store.dispach({ action: 'writeNewLangWords', payload: _plObj.value })];
+                    case 3:
+                        _a.sent();
+                        _a.label = 4;
+                    case 4: return [2 /*return*/];
+                }
+            });
+        }); }
+    });
+    comunicator.subscribe({
+        channel: 'window',
+        commandListString: 'configRestoreDefaults',
+        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
+            var _configSetResult, _configData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        dev ? console.log('resived request to restore defaults of config', _pl) : 0;
+                        return [4 /*yield*/, config.restoreDefault()];
+                    case 1:
+                        _configSetResult = _a.sent();
+                        if (_configSetResult.success == false) {
+                            return [2 /*return*/, 0];
+                        }
+                        return [4 /*yield*/, config.getState()];
+                    case 2:
+                        _configData = _a.sent();
+                        renderConfig(_configData, windows);
+                        Object.entries(windows).forEach(function (_a) {
+                            var _winId = _a[0], _winObj = _a[1];
+                            return __awaiter(void 0, void 0, void 0, function () {
+                                return __generator(this, function (_b) {
+                                    switch (_b.label) {
+                                        case 0: return [4 /*yield*/, comunicator.send({
+                                                window: _winObj,
+                                                command: 'sendConfig',
+                                                payload: _configData
+                                            })];
+                                        case 1:
+                                            _b.sent();
+                                            return [2 /*return*/];
+                                    }
+                                });
+                            });
+                        });
                         return [2 /*return*/];
                 }
             });
@@ -404,7 +558,12 @@ var pingMonitor = function () {
         });
     });
 };
-pingMonitor();
+try {
+    pingMonitor();
+}
+catch (err) {
+    electron_1.dialog.showErrorBox('Error', "cant start an app\n".concat(err));
+}
 var testComponents = function (fileManager, config, loger, pinger, store) { return __awaiter(void 0, void 0, void 0, function () {
     var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, undo, recivedValue;
     return __generator(this, function (_a) {

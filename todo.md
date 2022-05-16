@@ -329,15 +329,15 @@ TODO
     ---- before 28.04
     - [+] Add dispatches for tools for state change 0.3 day 2022-04-28 11:00
       - [+] openMenu, fullScreenToggle, addRow, pauseAllActive <- SAVE PAUSED ROWS AS A LIST
-    - [] Render rows optimaly 0.6 day
+    - [+] Render rows optimaly 0.6 day
       - [+] add/remove row 2022-04-28 19:00
-      - [] swaping rows
+      - [+] swaping rows 2022-05-05
       - [+] selector,property,value for 2022-04-30 18:00 
         - [+] isPaused,status,isBusy 2022-04-28 22:00
         - [+] +isSelected,+isAlarmed,+isEditing,+updateTime,+name,+address,+imageLink 2022-04-30 10:00
         - [+] +size,+graph
     ---- before 29.04
-    - [] Row action dispatches 1 day
+    - [+] Row action dispatches 1 day
       - [+] remove,pause 2022-05-02 16:50
       - [+] name,address,updateTime(change PTS too) 2022-04-30
       - [+] in context menu: change row size,open image picker, mute(unalarm) 2022-05-03 15:30
@@ -349,90 +349,45 @@ TODO
     - [] Menu action dispaches 1 day
       - [+] new window, duplicate window 2022-05-04 16:02
       - [+] export&import PM config <- WITH OR WITHOUT HISTORY 2022-05-04 21:30
-      - [] scale screen
+      - [+] scale screen 2022-05-05 10:08
       - [+] hide tools buttons if unneded (pause all, unalarm all) 2022-05-03 18:54
+      - [] other TODOs
+        - [+] menu btn icon chage 2022-05-05 10:50
+        - [+-] col4 stats 2022-05-06 15:50
+          - [ ] sum does not counts first change
+          - [+] last change always wrong
+          - [+] stats does not render on history change
+        - [+] context position 2022-05-06 16:20
+        - [+] limit ping history & get info about graph max duration 2022-05-06 19:41
+        - [-] make PTS work with different conditions 2022-05-06 20:03 not for MVP
     ---- before 01.05
     ---- 01.05 not for work!
-    - [] Settings 2 days
-      - [] Sync config data
-        - [] colorMode, timeToAlarm, unmuteOnGettingOnline, pingHistLimitMINS, minigraphLimitMINS, savePingHistToExportConfig
-        - [] initial rows
-        - [] default new row (newRowRule fromLast|default)
-        - [] log settings
-      - [] Dispach config change <-SET DEFAULTS BUTTON
-    - [] hot keys 2 hours
-    - [] Language settings 2 days
-    ---- before 03.05
+    - [+] Settings 2 days 2022-05-13
+      - [+] Sync config data 2022-05-09 17:20
+        - [+] fetch data for settings 2022-05-06 20:17
+        - [+] colorMode, timeToAlarm, unmuteOnGettingOnline, pingHistLimitMINS, minigraphLimitMINS, savePingHistToExportConfig 2022-05-09 14:40
+        - [+] initial rows //for one now for MVP 2022-05-09 17:18
+        - [+] default new row (newRowRule fromLast|default) 2022-05-09 15:56
+        - [+] log settings 2022-05-09 16:00
+      - [+] Dispach config change <-SET DEFAULTS BUTTON 2022-05-11 17:00
+      - [+] Make all settings parameters work(+always on top, +initial rows,+new row rule,+time to alarm, +save hist to config 2022-05-12) 14:48
+      - [+] UserLogger (log changes, log everyday, time to log change) 2022-05-13
+    - [+] hot keys 2 hours 2022-05-14 00:01
+      - [+] set tab index for important staff(like open context for focused row options)
+    - [+] clear all history button & save config without history 2022-05-14 01:41
+    - [+] Language settings 2 days 2022-05-14
+      - [+] so on config change it can rerender only text with 't' tag
+      - [+] title all icons, especialy col2 trio
+2022-05-16 Bugs to remove:
+- [] sometimes cant create new monitor(window)
+- [] dispatching action on arrow keys on row input events
+- [] does not show first status in row stats when there are two or more changes
 
-    //create window process
-    //init vars
-    //get data from the core
-    //render data
-    //create event listeners
-    
-//on resive data
-    //check difference
-    //render needed parts, rows, fields
-
-//PARTS TO RENDER
-//modal: menu,setting,imgPicker
-//tools: add, full screen, pause all, clear history, scale, new window
-//row list order
-//rows:
-    //full rerender (lang,size)
-    //image, name, address, updateTime,graph
-    //mute, alarm
-    //isPaused
-    //isEditing
-    //isSelected
-    //menu
-        //pause,mute(alarm)(show on ringing),size,remove
-
-//ROW SIZES
-//1(1x1) image,name,ip,status border
-//2(1x2) image,name,ip,status text,icons(dellay,update,quality)
-//4x(2x2) image,name,ip,status text,icons(dellay,update,quality),graph
-//8x(4x2) image,name,ip,status text,icons(dellay,update,quality),graph,offline(last,total),online(last,total)
-
-//GRID TO SCREEN SIZE:
-//480x720 (3x5)
-//720x1080 
-//1080x1920
-//2160x3840
-//4320x7680 (30x50)
-//different(largest possible):
-    //480:3
-    //...
-    //7680:50
-//if row is larger then screen width: try to wrap: otherwise overflow
-    //remove extra places of height in case of  wraping
-
-//EVENTS
-//window
-    //add row(ctrl+N)
-    //full screen(ctrl+F)
-    //pause all(ctrl+P)
-    //mute all(ctrl+M)
-    //open menu/close menu
-        //new window (ctrl+shift+N)
-        //duplicate window (ctrl+shift+D)
-        //export config (ctrl+shift+E) (with history or without)
-        //import config (ctrl+shift+I)
-        //settings (ctrl+shift+S)
-        //scale screen (ctrl+=/ctrl+-)
-        //change language
-    //img picker select img for the row
-    //open settings/close settings
-        //change settings value
-    //row
-        //open image picker
-        //change
-            //name
-            //ip
-            //updateTime
-        //remove
-        //pause
-        //mute
-        //unalarm
-        //change row size
-        //long-press: select, change order
+For Future:
+- better error managing
+- more effitient stateManager
+  - less calls to fileManager
+  - less loop operations
+  - more scalable settigs parameters adding
+  - swap rows with drag&drop
+  - 

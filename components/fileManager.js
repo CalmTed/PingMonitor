@@ -117,6 +117,7 @@ fileManager.write = function (message) { return __awaiter(_this, void 0, void 0,
                 if (typeof message.append != 'undefined') {
                     flag['flag'] = message.append ? 'a' : 'w';
                 }
+                // dialog.showErrorBox('Not an error',`${filepathArray[0]}`)
                 fs.writeFileSync(filepathArray[0], message.content, flag);
                 reply = {
                     success: true

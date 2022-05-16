@@ -70,7 +70,7 @@ class Row {
     if(this.isPaused){
       this.render()
     };//for initial pausing
-    this.pinging();
+    this.pinging(); 
     //sorting drag and drop
     sortable = new Sortable($('.table')[0], {
       //sorting rows after list update
@@ -619,7 +619,6 @@ class Row {
         // let _sd = _statusDuration(_this.pingHist,_this.status)
         // let _lowerEdge = config.timeToLogStatusChangeMS - (_this.pingUpdateTime*500);
         // let _upperEdge = _lowerEdge + _this.pingUpdateTime*1000
-        // console.log(_sd,_lowerEdge,_upperEdge)
         // let _paddingTime = (
         //     Math.ceil(
         //       config.timeToLogStatusChangeMS/_this.pingUpdateTime
@@ -661,7 +660,6 @@ class Row {
           let _logLine = `${_getIndent(_this)}${_this.name}(${winId}), ${_formatDurationString(_psduration)}, ${translate(_ps).toUpperCase()}, ${formatExactTime(new Date().getTime()-(_psduration*1000))}-$time, ${_paddr}`
           loger(_logLine)
           //send query to save data to log
-          //with rowName(winId(if>1)), duration(5min), status, timestamp, ip (new status) 
         }
         _this.timeout = setTimeout(()=>{_this.pinging()},Number(_this.pingUpdateTime)*1000);
       })
@@ -743,7 +741,7 @@ $(document).ready(function(){
   $('body')[0].onresize = (e)=>{
     checkRowsNumber();
   }
-  webFrame.setZoomFactor(1);
+  webFrame.setZoomFactor(1);  
 })
 function translate(a){
   let trans = a;

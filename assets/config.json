@@ -1,1 +1,44 @@
-{"langCode":"ua","colorMode":"dark","initialRows":[{"rowId":11111111,"position":0,"address":"0.0.0.0","updateTime":10000,"name":"New row","pictureBase64":"default","isPaused":true}],"defaultNewRow":{"address":"0.0.0.0","updateTime":10000,"name":"New row","pictureBase64":"default","isPaused":true},"newRowRule":"copyPrev","timeToAlarmMS":10000,"timeToLogStatusChangeMS":10000,"unmuteOnGettingOnline":true,"pingHistoryTimeLimitMINS":360,"miniGraphShowLimitMIMS":5,"savePingHistoryToConfig":false,"__keyForTesting":169346}
+{
+    "langCode": "ua",
+    "colorMode": "system",
+    "alwaysShowOnTop": false,
+    "hideTitleBar": false,
+    "initialRows": [
+        {
+            "address": "localhost",
+            "updateTimeMS": 10000,
+            "size": "2Small",
+            "name": "Initial row 1",
+            "pictureLink": "0 PingMonitor.png",
+            "isPaused": true,
+            "isMuted": false
+        }
+    ],
+    "defaultNewRow": {
+        "address": "localhost",
+        "size": "2Small",
+        "updateTimeMS": 10000,
+        "name": "Default row",
+        "pictureLink": "0 PingMonitor.png",
+        "isPaused": true,
+        "isMuted": false
+    },
+    "defaultPingTimeStrategy": {
+        "online": 5000,
+        "error": 2000,
+        "timeout": 2000
+    },
+    "newRowRule": "copyPrev",
+    "timeToAlarmMS": 10000,
+    "unmuteOnGettingOnline": true,
+    "pingHistoryTimeLimitMINS": 360,
+    "miniGraphShowLimitMINS": 5,
+    "savePingHistoryToConfig": false,
+    "logSettings": {
+        "logChanges": false,
+        "defaultLogName": "",
+        "newLogNameEveryday": true,
+        "timeToLogStatusChangeMS": 10000
+    },
+    "__keyForTesting": 169346
+}

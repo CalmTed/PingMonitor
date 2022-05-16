@@ -49,68 +49,85 @@ var _this = this;
 var config = {};
 var initConfig = function () {
     var state = {
-        langCode: 'ua',
-        colorMode: 'dark',
-        initialRows: [{
-                rowId: 11111111,
-                position: 0,
-                address: '0.0.0.0',
-                updateTime: 10000,
-                name: 'New row',
-                pictureBase64: 'default',
-                isPaused: true
-            }],
+        langCode: "ua",
+        colorMode: "dark",
+        alwaysShowOnTop: false,
+        hideTitleBar: false,
+        initialRows: [
+            {
+                address: "localhost",
+                updateTimeMS: 10000,
+                size: '2Small',
+                name: "Initial row 1",
+                pictureLink: "0 PingMonitor.png",
+                isPaused: true,
+                isMuted: false
+            }
+        ],
         defaultNewRow: {
-            address: '0.0.0.0',
-            updateTime: 10000,
-            name: 'New row',
-            pictureBase64: 'default',
-            isPaused: true
+            address: "localhost",
+            size: '2Small',
+            updateTimeMS: 10000,
+            name: "Default row",
+            pictureLink: "0 PingMonitor.png",
+            isPaused: true,
+            isMuted: false
         },
-        newRowRule: 'copyPrev',
+        defaultPingTimeStrategy: {
+            online: 10000,
+            error: 2000,
+            timeout: 2000
+        },
+        newRowRule: "copyPrev",
         timeToAlarmMS: 10000,
         unmuteOnGettingOnline: true,
         pingHistoryTimeLimitMINS: 360,
-        miniGraphShowLimitMIMS: 5,
+        miniGraphShowLimitMINS: 5,
         savePingHistoryToConfig: false,
-        __keyForTesting: 0
+        logSettings: {
+            logChanges: false,
+            defaultLogName: "",
+            newLogNameEveryday: true,
+            timeToLogStatusChangeMS: 10000
+        },
+        "__keyForTesting": 169346
     };
     return state;
 };
-var updateState = function (message) { return __awaiter(_this, void 0, void 0, function () {
-    var configState, configFilePath, fileManager, configSavingToFile, e_1;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, getState()];
-            case 1:
-                configState = _a.sent();
-                configFilePath = 'assets/config.json';
-                fileManager = require('./fileManager');
-                _a.label = 2;
-            case 2:
-                _a.trys.push([2, 4, , 5]);
-                configState = __assign({}, configState);
-                configState[message.key] = message.value;
-                return [4 /*yield*/, fileManager.write({ openDialog: false, path: configFilePath, content: JSON.stringify(configState) })];
-            case 3:
-                configSavingToFile = _a.sent();
-                if (!configSavingToFile.success) {
-                    //console.log('Unable to save initial config to the file. Error:'+configSavingToFile.errorMessage)
+var updateState = function (_a) {
+    var newState = _a.newState;
+    return __awaiter(_this, void 0, void 0, function () {
+        var configState, configFilePath, fileManager, configSavingToFile, e_1;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0: return [4 /*yield*/, config.getState()];
+                case 1:
+                    configState = _b.sent();
+                    configFilePath = 'assets/config.json';
+                    fileManager = require('./fileManager');
+                    _b.label = 2;
+                case 2:
+                    _b.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, fileManager.write({ openDialog: false, path: configFilePath, content: JSON.stringify(newState, undefined, 4) })];
+                case 3:
+                    configSavingToFile = _b.sent();
+                    if (!configSavingToFile.success) {
+                        return [2 /*return*/, false];
+                    }
+                    else {
+                        return [2 /*return*/, true];
+                    }
+                    return [3 /*break*/, 5];
+                case 4:
+                    e_1 = _b.sent();
+                    //console.log(e)
                     return [2 /*return*/, false];
-                }
-                else {
-                    return [2 /*return*/, true];
-                }
-                return [3 /*break*/, 5];
-            case 4:
-                e_1 = _a.sent();
-                //console.log(e)
-                return [2 /*return*/, false];
-            case 5: return [2 /*return*/];
-        }
+                case 5: return [2 /*return*/];
+            }
+        });
     });
-}); };
-var getState = function () { return __awaiter(_this, void 0, void 0, function () {
+};
+config.getState = function () { return __awaiter(_this, void 0, void 0, function () {
     var configFilePath, fileManager, state, configFromFile, configFromFileStr, configFromFileObj, e_2, configSavingToFile, e_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -133,7 +150,7 @@ var getState = function () { return __awaiter(_this, void 0, void 0, function ()
                 _a.label = 4;
             case 4:
                 _a.trys.push([4, 6, , 7]);
-                return [4 /*yield*/, fileManager.write({ openDialog: false, path: configFilePath, content: JSON.stringify(state) })];
+                return [4 /*yield*/, fileManager.write({ openDialog: false, path: configFilePath, content: JSON.stringify(state, undefined, 4) })];
             case 5:
                 configSavingToFile = _a.sent();
                 if (configSavingToFile.success) {
@@ -152,68 +169,178 @@ var getState = function () { return __awaiter(_this, void 0, void 0, function ()
     });
 }); };
 config.getParam = function (key) { return __awaiter(_this, void 0, void 0, function () {
-    var configState;
+    var configState, keyPath, neededValue;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, getState()];
+            case 0: return [4 /*yield*/, config.getState()];
             case 1:
                 configState = _a.sent();
                 if (typeof key == 'undefined') {
-                    loger.out('Expected to recive key:string');
+                    // loger.out('Expected to recive key:string')
                     return [2 /*return*/, {
                             success: false,
                             errorMessage: 'Expected to recive key:string'
                         }];
                 }
+                keyPath = [];
+                keyPath = key.split('_');
+                if (keyPath.length > 1) {
+                    try {
+                        switch (keyPath.length) {
+                            case 2:
+                                neededValue = configState[keyPath[0]][keyPath[1]];
+                                break;
+                            case 3:
+                                neededValue = configState[keyPath[0]][keyPath[1]][keyPath[2]];
+                                break;
+                            case 4:
+                                neededValue = configState[keyPath[0]][keyPath[1]][keyPath[2]][keyPath[3]];
+                                break;
+                        }
+                    }
+                    catch (err) {
+                        return [2 /*return*/, {
+                                success: false,
+                                errorMessage: 'Key does not exist: ' + keyPath.join('_')
+                            }];
+                    }
+                }
+                else {
+                    try {
+                        neededValue = configState[keyPath[0]];
+                    }
+                    catch (err) {
+                        return [2 /*return*/, {
+                                success: false,
+                                errorMessage: 'Key does not exist: ' + keyPath.join('_')
+                            }];
+                    }
+                }
                 //return undefined key
-                if (typeof configState[key] == 'undefined') {
-                    loger.out("Key does not exist: ".concat(key));
+                if (typeof neededValue == 'undefined') {
+                    // loger.out(`Key does not exist: ${key}`)
                     return [2 /*return*/, {
                             success: false,
                             errorMessage: "Key does not exist: ".concat(key)
                         }];
                 }
-                //return from file
-                //return from cash
                 return [2 /*return*/, {
                         success: true,
                         key: key,
-                        value: configState[key]
+                        value: neededValue
                     }];
         }
     });
 }); };
 config.setParam = function (message) { return __awaiter(_this, void 0, void 0, function () {
-    var stateExmple;
+    var stateExample, keyPath, neededValue;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0:
-                stateExmple = initConfig();
+            case 0: return [4 /*yield*/, config.getState()
+                //lack of key or value
+            ];
+            case 1:
+                stateExample = _a.sent();
                 //lack of key or value
                 if (typeof message.key == 'undefined' || typeof message.value == 'undefined') {
-                    loger.out('Expected to recive key and value');
+                    // loger.out('Expected to recive key and value')
                     return [2 /*return*/, {
                             success: false,
                             errorMessage: 'Expected to recive key and value'
                         }];
                 }
-                //undefined key
-                if (typeof stateExmple[message.key] == 'undefined') {
-                    loger.out('Key does not exist: ' + message.key);
+                keyPath = [];
+                keyPath = message.key.split('_');
+                if (keyPath.length > 1) {
+                    try {
+                        switch (keyPath.length) {
+                            case 2:
+                                neededValue = stateExample[keyPath[0]][keyPath[1]];
+                                break;
+                            case 3:
+                                neededValue = stateExample[keyPath[0]][keyPath[1]][keyPath[2]];
+                                break;
+                            case 4:
+                                neededValue = stateExample[keyPath[0]][keyPath[1]][keyPath[2]][keyPath[3]];
+                                break;
+                        }
+                    }
+                    catch (err) {
+                        return [2 /*return*/, {
+                                success: false,
+                                errorMessage: 'Key does not exist: ' + keyPath.join('_')
+                            }];
+                    }
+                }
+                else {
+                    try {
+                        neededValue = stateExample[keyPath[0]];
+                    }
+                    catch (err) {
+                        return [2 /*return*/, {
+                                success: false,
+                                errorMessage: 'Key does not exist: ' + keyPath.join('_')
+                            }];
+                    }
+                }
+                if (typeof neededValue == 'number') {
+                    message.value = Number(parseInt(message.value.toString()));
+                    message.value == null || isNaN(message.value) ? message.value = 0 : 0;
+                }
+                if (typeof neededValue !== typeof message.value && ![''].includes(typeof neededValue)) {
+                    console.log("Wrong type of the value. Recived:".concat(typeof message.value, ". Expected:").concat(typeof neededValue));
                     return [2 /*return*/, {
                             success: false,
-                            errorMessage: 'Key does not exist: ' + message.key
+                            errorMessage: "Wrong type of the value. Recived:".concat(typeof message.value, ". Expected:").concat(typeof neededValue)
                         }];
                 }
-                //return unvalid value format\type
-                if (typeof stateExmple[message.key] !== typeof message.value) {
-                    loger.out("Wrong type of the value. Recived:".concat(typeof message.value, ". Expected:").concat(typeof stateExmple[message.key]));
+                if (neededValue === message.value) {
                     return [2 /*return*/, {
                             success: false,
-                            errorMessage: "Wrong type of the value. Recived:".concat(typeof message.value, ". Expected:").concat(typeof stateExmple[message.key])
+                            errorMessage: "No need to change config. Recived:".concat(typeof message.value, ". Expected:").concat(typeof neededValue)
                         }];
                 }
-                return [4 /*yield*/, updateState({ key: message.key, value: message.value })];
+                if (keyPath.length < 2) {
+                    stateExample[keyPath[0]] = message.value;
+                }
+                else {
+                    switch (keyPath.length) {
+                        case 2:
+                            stateExample[keyPath[0]][keyPath[1]] = message.value;
+                            break;
+                        case 3:
+                            stateExample[keyPath[0]][keyPath[1]][keyPath[2]] = message.value;
+                            break;
+                        case 4:
+                            stateExample[keyPath[0]][keyPath[1]][keyPath[2]][keyPath[3]] = message.value;
+                            break;
+                    }
+                }
+                return [4 /*yield*/, updateState({ newState: stateExample })];
+            case 2:
+                if (_a.sent()) {
+                    return [2 /*return*/, {
+                            success: true
+                        }];
+                }
+                else {
+                    console.log("Unable to set parameter for unknown reason.");
+                    return [2 /*return*/, {
+                            success: false,
+                            errorMessage: "Unable to set parameter for unknown reason."
+                        }];
+                }
+                return [2 /*return*/];
+        }
+    });
+}); };
+config.restoreDefault = function () { return __awaiter(_this, void 0, void 0, function () {
+    var newState;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                newState = initConfig();
+                return [4 /*yield*/, updateState({ newState: newState })];
             case 1:
                 if (_a.sent()) {
                     return [2 /*return*/, {
@@ -221,7 +348,7 @@ config.setParam = function (message) { return __awaiter(_this, void 0, void 0, f
                         }];
                 }
                 else {
-                    loger.out("Unable to set parameter for unknown reason.");
+                    console.log("Unable to set parameter for unknown reason.");
                     return [2 /*return*/, {
                             success: false,
                             errorMessage: "Unable to set parameter for unknown reason."

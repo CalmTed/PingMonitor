@@ -94,6 +94,7 @@ fileManager.write = async (message:fileManagerMessage)=>{
       if(typeof message.append != 'undefined'){
         flag['flag'] = message.append?'a':'w'
       }
+      // dialog.showErrorBox('Not an error',`${filepathArray[0]}`)
       fs.writeFileSync(filepathArray[0], message.content, flag)
       reply = {
         success:true

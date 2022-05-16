@@ -1,17 +1,19 @@
-import { BrowserWindow } from "electron"
+import { BrowserWindow,dialog } from "electron"
 
 const pingMonitor = ()=>{
-  const version = '1.4'
-  const dev = true
-  
-  const actionTypes = require('./components/actionTypes')
-  const fileManager = require('./components/fileManager')
-  const config = require('./components/config')
-  const loger = require('./components/loger')
-  const pinger = require('./components/pinger')
-  const stateManager = require('./components/stateManager')
+  const version = process.env.npm_package_version?process.env.npm_package_version:'1.4.0'
+  console.log(process.env)
+  const lang = process.env.LANG
+  const dev = false
+  const prefix = process.env.npm_lifecycle_event !== 'tstart'?'../../':'./'
+  const actionTypes = require(prefix+'components/actionTypes')
+  const fileManager = require(prefix+'components/fileManager')
+  const config = require(prefix+'components/config')
+  const loger = require(prefix+'components/loger')
+  const pinger = require(prefix+'components/pinger')
+  const stateManager = require(prefix+'components/stateManager')
   const store = new stateManager({version:version})
-  const comunicatorCore = require('./components/comunicatorCore')
+  const comunicatorCore = require(prefix+'components/comunicatorCore')
   const comunicator = new comunicatorCore()
   const { app } = require('electron')
 
@@ -22,6 +24,7 @@ const pingMonitor = ()=>{
     _coreState.monitors.forEach(_mon=>{
       // for(every monitor & every row)
       //ITS MIGHT BE QUITE EXPENCIVE!!
+      
       _mon.rows.forEach(_rowStr=>{
         if(_rowStr.indexOf(`"isBusy":false`)>-1 && _rowStr.indexOf(`"isPaused":false`)>-1){
           let _rowObj = JSON.parse(_rowStr)
@@ -122,8 +125,14 @@ const pingMonitor = ()=>{
 
     return _resolve
   }
-  const windowCheck = (_coreState:any,_prevState:any,_resolve:any)=>{//this function depends on global variable: windows
-    let getNormalWindow = (winData = {w:700,h:400,show:false})=>{
+  const windowCheck = async (_coreState:any,_prevState:any,_resolve:any)=>{//this function depends on global variable: windows
+    let getNormalWindow =  async (winData = {w:700,h:400,show:false})=>{
+      let _aot = false
+      let _aotC = await config.getParam('alwaysShowOnTop')
+      _aotC.success?_aot=_aotC.value:0
+      let _htb = true
+      let _htbC = await config.getParam('hideTitleBar')
+      _aotC.success?_htb=!_htbC.value:0
       let _ret = new BrowserWindow({
         width: winData.w,
         height: winData.h,
@@ -133,6 +142,11 @@ const pingMonitor = ()=>{
           nodeIntegration: true,
           contextIsolation: false
         },
+        alwaysOnTop:_aot,
+        frame:_htb,
+        // titleBarStyle:_htb?'default':'hidden',
+        transparent:!_htb,
+        // resizable:true,
         // devTools:true,
         show:winData.show,
       })
@@ -164,14 +178,18 @@ const pingMonitor = ()=>{
     // console.log('Uncreated windows',uncreatedBrowserWIndows)
     // console.log('Undeleted windows',undelitedBrowserWindows)
     if(uncreatedBrowserWIndows.length){
+      let _configData = await config.getState()
       uncreatedBrowserWIndows.forEach(async _winId => {
-        windows[_winId] = getNormalWindow()
+        windows[_winId] = await getNormalWindow()
         windows[_winId].loadFile('pm.html');
+        // windows[_winId].removeMenu();
+        // windows[_winId].setTitleBarOverlay({color:'#222222',height:0});
+        windows[_winId].setBackgroundColor('#222222');
         windows[_winId].on('ready-to-show',async ()=>{
           await comunicator.send({
             window:windows[_winId],
-            command:'sendWinId',
-            payload:_winId
+            command:'sendInitData',
+            payload:JSON.stringify({winId:_winId,configData:_configData,isProduction:process.env.npm_lifecycle_event !== 'tstart'})
           })
           windows[_winId].show()
         })
@@ -219,26 +237,8 @@ const pingMonitor = ()=>{
       })
       return _ret
     }
-    let getRequestedWindows = (_windows) => {
-      let _windowsList = []
-      _windows.forEach(_w=>{
-        if(_w.indexOf(`"requestedUpdate":true`)>-1){
-          _windowsList.push(_w)
-        }
-      })
-      return _windowsList
-    }
     if(typeof _coreState.monitors != 'undefined'){
       let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
-      // let _requestedWindows = getRequestedWindows(_coreState.windows)
-      // if(_requestedWindows.length>0){
-      //   if(typeof differenceObject.windows == 'undefined'){
-      //     // differenceObject.windows = [...getRequestedWindows(_coreState.windows)]
-      //   }else{
-      //     // differenceObject.windows = [...differenceObject.windows,...getRequestedWindows(_coreState.windows)]
-      //   }
-      // }
-      // console.log(differenceObject)
       Object.entries(differenceObject).forEach(async ([_monInd,_monVal])=>{
         let targetId = _coreState.monitors[_monInd].monitorId
         _coreState.windows.forEach(async _winStr=>{
@@ -267,7 +267,7 @@ const pingMonitor = ()=>{
       }
     }
     if(!_resolve.set){
-      _resolve = windowCheck(_coreState,_prevState,_resolve)
+      _resolve = await windowCheck(_coreState,_prevState,_resolve)
     }
     if(!_resolve.set){
       _resolve = pingCheck(_coreState,_resolve)
@@ -282,6 +282,17 @@ const pingMonitor = ()=>{
       await store.dispach({action:_resolve.action,payload:_resolve.payload})
     }
   }
+  const renderConfig = (_newConfigObj,_windows)=>{
+    //render always on top for all windows
+    let _needToChangeAOT = _newConfigObj.alwaysShowOnTop != Object.entries(windows)[0][1].isAlwaysOnTop()
+    if(_needToChangeAOT){
+      Object.entries(windows).forEach(([_wk,_wv])=>{
+        _wv.setAlwaysOnTop(_newConfigObj.alwaysShowOnTop,'screen-saver')
+        _wv.setOpacity(_newConfigObj.alwaysShowOnTop?0.9:1)
+      })
+    }
+    
+  }
   store.subscribe(compute)//execute compute on any state change
   comunicator.subscribe({
     channel:'window',
@@ -290,6 +301,69 @@ const pingMonitor = ()=>{
       dev?console.log('resived action',_pl):0
       let _plObj = JSON.parse(_pl.payload)
       await store.dispach({action:_plObj.action,payload:_plObj.payload}) 
+    }
+  })
+  comunicator.subscribe({
+    channel:'window',
+    commandListString:'getConfigData',
+    callback: async (_pl)=>{
+      dev?console.log('resived request for config',_pl):0
+      let _plObj = JSON.parse(_pl.payload)
+      let _configData = await config.getState()
+      await comunicator.send({
+          window:windows[_plObj],
+          command:'sendConfig',
+          payload:_configData
+        })
+     
+    }
+  })
+  comunicator.subscribe({
+    channel:'window',
+    commandListString:'configSetProp',
+    callback: async (_pl)=>{
+      dev?console.log('resived request to change config',_pl):0
+      let _plObj = JSON.parse(_pl.payload)
+      let _configSetResult = await config.setParam({key:_plObj.key,value:_plObj.value})
+      if(_configSetResult.success == false){
+        return 0;
+      }
+      let _configData = await config.getState()
+      renderConfig(_configData,windows)//updating window visibility
+      //sending new config
+      Object.entries(windows).forEach(async ([_winId,_winObj])=>{
+        await comunicator.send({
+            window:_winObj,
+            command:'sendConfig',
+            payload:_configData
+        })
+      })
+      if(_plObj.key == 'langCode'){
+        console.log('dispach for',_plObj.value)
+        await store.dispach({action:'writeNewLangWords',payload:_plObj.value})
+      }
+     
+    }
+  })
+  comunicator.subscribe({
+    channel:'window',
+    commandListString:'configRestoreDefaults',
+    callback: async (_pl)=>{
+      dev?console.log('resived request to restore defaults of config',_pl):0
+      let _configSetResult = await config.restoreDefault()
+      if(_configSetResult.success == false){
+        return 0;
+      }
+      let _configData = await config.getState()
+      renderConfig(_configData,windows)
+      Object.entries(windows).forEach(async ([_winId,_winObj])=>{
+        await comunicator.send({
+            window:_winObj,
+            command:'sendConfig',
+            payload:_configData
+          })
+      })
+     
     }
   })
   app.whenReady().then( async function(){
@@ -304,7 +378,11 @@ const pingMonitor = ()=>{
     
   })
 }
-pingMonitor()
+try{
+  pingMonitor()
+}catch(err){
+  dialog.showErrorBox('Error',`cant start an app\n${err}`)
+}
 const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,store:any)=>{
   
   //fileManager
