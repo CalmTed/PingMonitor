@@ -379,15 +379,28 @@ TODO
       - [+] so on config change it can rerender only text with 't' tag
       - [+] title all icons, especialy col2 trio
 2022-05-16 Bugs to remove:
-- [] sometimes cant create new monitor(window)
-- [] dispatching action on arrow keys on row input events
-- [] does not show first status in row stats when there are two or more changes
+- [+] dispatching action on arrow keys on row input events 2022-05-18
+- [+] sometimes cant create new monitor(window) 2022-05-18
+- [+] does not show first status in row stats when there are two or more changes 2022-05-18
 
-For Future:
-- better error managing
-- more effitient stateManager
-  - less calls to fileManager
-  - less loop operations
-  - more scalable settigs parameters adding
-  - swap rows with drag&drop
-  - 
+2022-05-20 todo
+- [+] cant open saved config
+- [+] wrong stats
+- [+] more grid freedom
+  - [+] even number of rows to size 4,6,8
+  - [+] ctrl+wheel sizing
+- [] better error managing
+  - [+] stateManager exeptions
+  - [+] host exeptions
+  - [+] pm.ts exeptions
+- [] more effitient stateManager
+  - [+] measure time computing to find bottlenecks
+  - [+] less calls to fileManager
+  - [+] less loop operations
+- [+] second entity
+- [] more scalable settigs parameters adding
+- [] swap rows with drag&drop
+- [] stats preview without changeon to 6x size
+- [] auto fit button
+- [] auto open last save
+- [] save window size, position and scale to window state

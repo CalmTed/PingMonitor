@@ -26,7 +26,6 @@ fileManager.read = async (message:fileManagerMessage)=>{
   let reply:fileManagerReply
   let filepathArray = [];
   if(message.openDialog){
-
     filepathArray = dialog.showOpenDialogSync({
       filters: typeof message.typeFilter != 'undefined' ? message.typeFilter : [],
       title: typeof message.dialogTitle != 'undefined' ? message.dialogTitle : 'Open file...',
@@ -94,7 +93,6 @@ fileManager.write = async (message:fileManagerMessage)=>{
       if(typeof message.append != 'undefined'){
         flag['flag'] = message.append?'a':'w'
       }
-      // dialog.showErrorBox('Not an error',`${filepathArray[0]}`)
       fs.writeFileSync(filepathArray[0], message.content, flag)
       reply = {
         success:true

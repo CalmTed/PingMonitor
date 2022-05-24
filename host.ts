@@ -2,23 +2,23 @@ import { BrowserWindow,dialog } from "electron"
 
 const pingMonitor = ()=>{
   const version = process.env.npm_package_version?process.env.npm_package_version:'1.4.0'
-  console.log(process.env)
   const lang = process.env.LANG
   const dev = false
   const prefix = process.env.npm_lifecycle_event !== 'tstart'?'../../':'./'
+  const { app,dialog } = require('electron')
   const actionTypes = require(prefix+'components/actionTypes')
   const fileManager = require(prefix+'components/fileManager')
   const config = require(prefix+'components/config')
   const loger = require(prefix+'components/loger')
   const pinger = require(prefix+'components/pinger')
   const stateManager = require(prefix+'components/stateManager')
-  const store = new stateManager({version:version})
+  const store = new stateManager({version:version,dialog:dialog})
   const comunicatorCore = require(prefix+'components/comunicatorCore')
   const comunicator = new comunicatorCore()
-  const { app } = require('electron')
 
   var windows:object = {}
   var timeOfStart = 0
+  var dontQuitApp = false
 
   const pingCheck = (_coreState:any,_resolve:any)=>{
     _coreState.monitors.forEach(_mon=>{
@@ -55,16 +55,6 @@ const pingMonitor = ()=>{
     return _resolve;
   }
   const monitorCheck = (_coreState:any,_prevState:any,_resolve:any)=>{
-    //if(no monitor) reduce(add default Monitor with initial Rows)
-    if(_coreState.monitors.length<1){
-      _resolve = {
-        set:true,
-        action:actionTypes.ADD_NEW_MONITOR
-      }
-    }
-    if(_resolve.set){
-      return _resolve
-    }
     // if number on wins is not the same then  addWindow|removeWindow
     let monitorsIds = (_state)=>{
       let _monsArrNum:number[] = [];
@@ -103,9 +93,9 @@ const pingMonitor = ()=>{
       })
       return _monitArr
     }
-    let _uniqueWinSubsArr = uniqueWinSubs(_coreState);
-    let _monitorsIdsArr = monitorsIds(_coreState);
-    let _extraWindowsStrArr = findAllExtraWindowsStr(_coreState,_monitorsIdsArr,_uniqueWinSubsArr)
+    let _uniqueWinSubsArr:number[] = uniqueWinSubs(_coreState);
+    let _monitorsIdsArr:number[] = monitorsIds(_coreState);
+    let _extraWindowsStrArr:string[] = findAllExtraWindowsStr(_coreState,_monitorsIdsArr,_uniqueWinSubsArr)
     let _unwindowedMonitors = findAllUnwindowedMonitors(_coreState,_monitorsIdsArr,_uniqueWinSubsArr)
     if(_unwindowedMonitors.length>0){//add window
       _resolve = {
@@ -175,16 +165,21 @@ const pingMonitor = ()=>{
     }
     let uncreatedBrowserWIndows = uncreatedBrowserWIndowsF(_coreState)
     let undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState)
-    // console.log('Uncreated windows',uncreatedBrowserWIndows)
-    // console.log('Undeleted windows',undelitedBrowserWindows)
+    
     if(uncreatedBrowserWIndows.length){
       let _configData = await config.getState()
       uncreatedBrowserWIndows.forEach(async _winId => {
         windows[_winId] = await getNormalWindow()
         windows[_winId].loadFile('pm.html');
         // windows[_winId].removeMenu();
-        // windows[_winId].setTitleBarOverlay({color:'#222222',height:0});
         windows[_winId].setBackgroundColor('#222222');
+        windows[_winId].on('close',async (e)=>{
+          await store.dispach({
+            action:'removeWindowById',
+            payload:JSON.stringify({winId:_winId})
+          })
+          e.returnValue = false;
+        })
         windows[_winId].on('ready-to-show',async ()=>{
           await comunicator.send({
             window:windows[_winId],
@@ -192,13 +187,20 @@ const pingMonitor = ()=>{
             payload:JSON.stringify({winId:_winId,configData:_configData,isProduction:process.env.npm_lifecycle_event !== 'tstart'})
           })
           windows[_winId].show()
+          if(dontQuitApp){
+            dontQuitApp = false
+          }
         })
+        
       });
     }
     if(undelitedBrowserWindows.length){
       undelitedBrowserWindows.forEach(_winId => {
-        windows[_winId].destroy();
-      });
+        if(Object.keys(windows).length==1){
+        }
+          windows[_winId].destroy()
+          delete windows[_winId]
+      })
     }
     
     if(_resolve.set){
@@ -221,18 +223,24 @@ const pingMonitor = ()=>{
       //we expect two objects to have the same scheme to minimize computation time
       Object.entries(_obj1).forEach(([_k,_v])=>{
         if(typeof _obj1[_k] != 'object'){
-          if(typeof _obj2 != 'undefined')
-          if(typeof _obj2[_k] != 'undefined'){
-            let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
-            if(strDiff.length>0){
-              _ret[_k] = _obj1[_k]
+          if(typeof _obj2 != 'undefined'){
+            if(typeof _obj2[_k] != 'undefined'){
+              let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
+              if(strDiff.length>0){
+                _ret[_k] = _obj1[_k]
+              }
+            }else{
+              _ret[_k] = _obj1[_k]//added new element
             }
-
           }else{
-            _ret[_k] = _obj1[_k]//added new element
+            _ret = _obj1//added new element
           }
         }else{
-          _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+          if(typeof _obj2[_k] != 'undefined'){
+            _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+          }else{
+            _ret[_k] = _obj1[_k]
+          }
         }
       })
       return _ret
@@ -242,7 +250,7 @@ const pingMonitor = ()=>{
       Object.entries(differenceObject).forEach(async ([_monInd,_monVal])=>{
         let targetId = _coreState.monitors[_monInd].monitorId
         _coreState.windows.forEach(async _winStr=>{
-          // for(windows where subscriptionKey in the list of changed monitors)
+          //for ease window where subscriptionKey in the list of changed monitors
           if(_winStr.indexOf(`"subscriptionKey":"${targetId}"`) > -1){
             let _winObj:any = JSON.parse(_winStr)
             //copying monitor state to send row data to the window
@@ -266,20 +274,24 @@ const pingMonitor = ()=>{
         action:''
       }
     }
-    if(!_resolve.set){
-      _resolve = await windowCheck(_coreState,_prevState,_resolve)
-    }
-    if(!_resolve.set){
-      _resolve = pingCheck(_coreState,_resolve)
-    }
-    if(!_resolve.set){
-      _resolve = monitorCheck(_coreState,_prevState,_resolve)
-    }
-    if(!_resolve.set){
+    try{
+      if(!_resolve.set){
+        _resolve = pingCheck(_coreState,_resolve)
+      }
+      if(!_resolve.set){
+        _resolve = await windowCheck(_coreState,_prevState,_resolve)
+      }
+      if(!_resolve.set){
+        _resolve = monitorCheck(_coreState,_prevState,_resolve)
+      }
+      if(!_resolve.set){
 
-    }else{
-      dev?console.log('Computed with action:',_resolve.action,_resolve.payload):0
-      await store.dispach({action:_resolve.action,payload:_resolve.payload})
+      }else{
+        dev?console.debug('Computed with action:',_resolve.action,_resolve.payload):0
+        await store.dispach({action:_resolve.action,payload:_resolve.payload})
+      }
+    }catch(err){
+      dialog.showErrorBox('Error',`Unable to compute\nError:${err}`)
     }
   }
   const renderConfig = (_newConfigObj,_windows)=>{
@@ -298,84 +310,124 @@ const pingMonitor = ()=>{
     channel:'window',
     commandListString:'dispachAction',
     callback: async (_pl)=>{
-      dev?console.log('resived action',_pl):0
-      let _plObj = JSON.parse(_pl.payload)
-      await store.dispach({action:_plObj.action,payload:_plObj.payload}) 
+      try{
+        dev?console.debug('resived action',_pl):0
+        let _plObj = JSON.parse(_pl.payload)
+        if(_plObj.action == 'monitorImportConfig'){
+          dontQuitApp = true
+        }
+        // let startTime = new Date().getTime()
+        let actionResult = await store.dispach({action:_plObj.action,payload:_plObj.payload})
+        // let endTime = new Date().getTime()
+        // console.debug(`Time to dispach user action ${endTime - startTime}ms`)
+        if(actionResult && _plObj.action == 'monitorImportConfig'){
+          setTimeout(()=>{
+            if(dontQuitApp){
+              dontQuitApp = false
+            }
+          },15000)
+        }
+      }catch(err){
+        dialog.showErrorBox('Error',`Unable to dispach action that was recived from a window\nPayload:${_pl}\nError:${err}`)
+      }
     }
   })
   comunicator.subscribe({
     channel:'window',
     commandListString:'getConfigData',
     callback: async (_pl)=>{
-      dev?console.log('resived request for config',_pl):0
-      let _plObj = JSON.parse(_pl.payload)
-      let _configData = await config.getState()
-      await comunicator.send({
+      try{
+        dev?console.debug('resived request for config',_pl):0
+        let _plObj = JSON.parse(_pl.payload)
+        let _configData = await config.getState()
+        await comunicator.send({
           window:windows[_plObj],
           command:'sendConfig',
           payload:_configData
         })
-     
+      }catch(err){
+        dialog.showErrorBox('Error',`Unable to get config data that was requested by a window\nPayload:${_pl}\nError:${err}`)
+      }
     }
   })
   comunicator.subscribe({
     channel:'window',
     commandListString:'configSetProp',
     callback: async (_pl)=>{
-      dev?console.log('resived request to change config',_pl):0
-      let _plObj = JSON.parse(_pl.payload)
-      let _configSetResult = await config.setParam({key:_plObj.key,value:_plObj.value})
-      if(_configSetResult.success == false){
-        return 0;
-      }
-      let _configData = await config.getState()
-      renderConfig(_configData,windows)//updating window visibility
-      //sending new config
-      Object.entries(windows).forEach(async ([_winId,_winObj])=>{
-        await comunicator.send({
-            window:_winObj,
-            command:'sendConfig',
-            payload:_configData
+      try{
+        dev?console.debug('resived request to change config',_pl):0
+        let _plObj = JSON.parse(_pl.payload)
+        let _configSetResult = await config.setParam({key:_plObj.key,value:_plObj.value})
+        if(_configSetResult.success == false){
+          return 0;
+        }
+        let _configData = await config.getState()
+        renderConfig(_configData,windows)//updating window visibility
+        //sending new config
+        Object.entries(windows).forEach(async ([_winId,_winObj])=>{
+          await comunicator.send({
+              window:_winObj,
+              command:'sendConfig',
+              payload:_configData
+          })
         })
-      })
-      if(_plObj.key == 'langCode'){
-        console.log('dispach for',_plObj.value)
-        await store.dispach({action:'writeNewLangWords',payload:_plObj.value})
+        if(_plObj.key == 'langCode'){
+          await store.dispach({action:'writeNewLangWords',payload:_plObj.value})
+        }
+      }catch(err){
+        dialog.showErrorBox('Error',`Unable to set config prop that was requested by window\nPayload:${_pl}\nError:${err}`)
       }
-     
     }
   })
   comunicator.subscribe({
     channel:'window',
     commandListString:'configRestoreDefaults',
     callback: async (_pl)=>{
-      dev?console.log('resived request to restore defaults of config',_pl):0
-      let _configSetResult = await config.restoreDefault()
-      if(_configSetResult.success == false){
-        return 0;
+      try{
+        dev?console.debug('resived request to restore defaults of config',_pl):0
+        let _configSetResult = await config.restoreDefault()
+        if(_configSetResult.success == false){
+          return 0;
+        }
+        let _configData = await config.getState()
+        renderConfig(_configData,windows)
+        Object.entries(windows).forEach(async ([_winId,_winObj])=>{
+          await comunicator.send({
+              window:_winObj,
+              command:'sendConfig',
+              payload:_configData
+            })
+        })
+      }catch(err){
+        dialog.showErrorBox('Error',`Unable to set config defaults that was requested by window\nPayload:${_pl}\nError:${err}`)
       }
-      let _configData = await config.getState()
-      renderConfig(_configData,windows)
-      Object.entries(windows).forEach(async ([_winId,_winObj])=>{
-        await comunicator.send({
-            window:_winObj,
-            command:'sendConfig',
-            payload:_configData
-          })
-      })
-     
     }
   })
   app.whenReady().then( async function(){
-    timeOfStart  = new Date().getTime()
-    await store.dispach({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})
-    
-    if(dev){
-      // testComponents(fileManager,config,loger,pinger,store)
-    }else{
 
+    timeOfStart  = new Date().getTime()
+    try{
+      await store.dispach({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})
+    }catch(err){
+      dialog.showErrorBox('Error',`Unable to start Ping Monitor\nError:${err}`)
+    }
+    if(dev){
+      testComponents(fileManager,config,loger,pinger,store)
     }
     
+  })
+  app.on('second-instance', async (event, commandLine, workingDirectory) => {
+    await store.dispach({
+      action:'addMonitor',
+      payload:JSON.stringify({})
+    })
+  })
+  app.on('window-all-closed', function () {
+    if(!dontQuitApp){
+      if (process.platform !== 'darwin') app.quit()
+    }else{
+      console.debug('will not close all windows')
+    }
   })
 }
 try{
@@ -391,11 +443,11 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
   const fileContent = await fileManager.read({openDialog:false,path:testFileName})
   const wasDeleted = await fileManager.remove({openDialog:false,path:testFileName})
   if(fileContent.success && wasDeleted.success){
-    console.log('[PASS] test 1 fileManager!')
+    console.debug('[PASS] test 1 fileManager!')
   }else{
-    console.log('[FAIL] test 1 fileManager!')
-    console.log(`${!fileContent.success?fileContent.errorMessage:''}`)
-    console.log(`${!wasDeleted.success?wasDeleted.errorMessage:''}`)
+    console.debug('[FAIL] test 1 fileManager!')
+    console.debug(`${!fileContent.success?fileContent.errorMessage:''}`)
+    console.debug(`${!wasDeleted.success?wasDeleted.errorMessage:''}`)
   }
 
   //config
@@ -403,46 +455,48 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
   const setResult = await config.setParam({key:'__keyForTesting',value:testConfigValue})
   const testValueResult = await config.getParam('__keyForTesting')
   if(setResult.success&&testValueResult.value == testConfigValue){
-    console.log('[PASS] test 2 config!')
+    console.debug('[PASS] test 2 config!')
   }else{
-    console.log('[FAIL] test 2 config!')
-    typeof setResult.errorMessage!='undefined'?console.log(setResult.errorMessage):0
-    console.log(`Recived: ${testValueResult.value} Expected:${testConfigValue}`)
+    console.debug('[FAIL] test 2 config!')
+    typeof setResult.errorMessage!='undefined'?console.debug(setResult.errorMessage):0
+    console.debug(`Recived: ${testValueResult.value} Expected:${testConfigValue}`)
   }
 
   //logger
   if(loger.out('Initial test')){
-    console.log('[PASS] test 3 loger!')    
+    console.debug('[PASS] test 3 loger!')    
   }else{
-    console.log('[FAIL] test 3 loger!')
+    console.debug('[FAIL] test 3 loger!')
   }
 
   //pinger  
   let pingResult = await pinger.probe({address:'localhost',rowId:0})
   if(pingResult.success){
-    console.log('[PASS] test 4 pinger!')
-    // console.log(pingResult)
+    console.debug('[PASS] test 4 pinger!')
+    // console.debug(pingResult)
   }else{
-    console.log('[FAIL] test 4 pinger!:')
-    console.log(pingResult.errorMessage)
+    console.debug('[FAIL] test 4 pinger!:')
+    console.debug(pingResult.errorMessage)
   }
 
   let valueForTesting = Math.round((Math.random()*1000)*1000)
   let stateManagerTestResult = false
   await store.dispach({action:'setPropertyForTesting',payload:valueForTesting})
   await store.dispach({action:'setPropertyForTesting',payload:42})
-  let undo = store.undo()
-  let recivedValue = store.__stateNow().propertyForTesting;
+  let undo = await store.undo()
+  let recivedQuery = await store.__stateNow();
+  let recivedValue = recivedQuery.propertyForTesting;
+
   if(undo){
     if(recivedValue == valueForTesting){
       stateManagerTestResult = true
     }
   }
   if(stateManagerTestResult){
-    console.log('[PASS] test 5 stateManager!')
+    console.debug('[PASS] test 5 stateManager!')
   }else{
-    console.log('[FAIL] test 5 stateManager!')
-    console.log(`Expected:${valueForTesting} Recived:${recivedValue}`)
+    console.debug('[FAIL] test 5 stateManager!')
+    console.debug(`Expected:${valueForTesting} Recived:${recivedValue}`)
   }
 
 }

@@ -12,7 +12,7 @@ var contextMenu
 const {webFrame} = require('electron')
 const Page = (_winId)=>{
     this.appConfig
-    this.isProduction = false
+    this.isProduction = true
     this.winId = _winId
     this.state
     this.siren = Siren()
@@ -108,6 +108,7 @@ const Page = (_winId)=>{
         let _ret = word
         let _langSet = this.state.langWords
         if(typeof _langSet[word] == 'undefined'){
+            // console.log(`"${word}":""`)
             return _ret
         }
         if(_langSet[word].length == 0 || word.length == 0){
@@ -117,6 +118,7 @@ const Page = (_winId)=>{
         return _ret
     }
     this.render = (_state:any)=>{
+        try{
         let initialRender = false
         let difference:any
         if(typeof this.state == 'undefined'){
@@ -128,8 +130,8 @@ const Page = (_winId)=>{
         }
         let _toFormat = (_ms)=>{
             let _h = Math.floor((_ms)/1000/60/60)
-            let _m = Math.floor((_ms-(_h*360000))/1000/60)
-            let _s = Math.floor((_ms-(_h*360000)-(_m*60000))/1000)
+            let _m = Math.floor((_ms-(_h*3600000))/1000/60)
+            let _s = Math.floor((_ms-(_h*3600000)-(_m*60000))/1000)
             let addZero = (num)=>{
                 return num<10?`0${num}`:`${num}`
             }
@@ -192,6 +194,7 @@ const Page = (_winId)=>{
             return _ret;
         }
         let _getStats  = ({history})=>{ 
+            
             let _changesList:{
                     status:string,
                     prevStatus:string,  
@@ -203,50 +206,124 @@ const Page = (_winId)=>{
                     status:string,
                     duration:number,
                     changesNum:number
-                }[] = []
-            let _tempStatus
-            let _tempBeginigTime
-            history.reverse().forEach(({status,timestamp})=>{
-                if(!_tempStatus){_tempStatus = status}
-                if(!_tempBeginigTime){_tempBeginigTime = timestamp}
-                if(_tempStatus != status){
-
-                    _changesList.push({
-                        status:_tempStatus,
-                        prevStatus:status,
-                        duration:Math.abs(timestamp - _tempBeginigTime),
-                        from:_tempBeginigTime,
-                        until:timestamp
-                    })
-                    _tempStatus = status;
-                    _tempBeginigTime = timestamp;
-                }
-            })
-            if(_changesList.length == 0){
-                if(history.length>0){
-                    _statusList.push({
-                        status:history[history.length-1].status,
-                        duration:Math.abs(history[history.length-1].timestamp - history[0].timestamp),
-                        changesNum:0
-                    })
-                }
-            }else{
-                _changesList.forEach(_chLEl=>{
-                    if(!_statusList.find(_slEl=>{return _slEl.status == _chLEl.status})){
-                        _statusList.push({
-                            status:_chLEl.status,
-                            duration:_chLEl.duration,
-                            changesNum:1
+            }[] = [];
+            if(history.length<2){
+                return {
+                    changesList:_changesList,
+                    statusList:_statusList
+                }  
+            }
+            let _getChanges = (history)=>{
+                let _ret
+                let _tempBeginigTime
+                let _tempStatus
+                let _startTime
+                history.forEach(({status,timestamp},_i)=>{
+                    if(!_tempStatus){_tempStatus = status}
+                    if(!_tempBeginigTime){_tempBeginigTime = timestamp;_startTime = timestamp}
+                    if(_tempStatus != status){
+                        _ret.push({
+                            status:status,
+                            prevStatus:_tempStatus,
+                            duration:Math.abs(timestamp - _tempBeginigTime),
+                            from:timestamp,
+                            until:_tempBeginigTime
                         })
-                    }else{
-                        let _index = _statusList.indexOf(_statusList.find(_slEl=>{return _slEl.status == _chLEl.status}))
-                        _statusList[_index].duration += _chLEl.duration
-                        _statusList[_index].changesNum++;
+                        _tempStatus = status;
+                        _tempBeginigTime = timestamp;
+                    }else{//same status but the end of history
+                        if(_ret.length>0){
+                            _ret[_ret.length-1].duration = Math.abs(timestamp - _tempBeginigTime)
+                            _ret[_ret.length-1].until = timestamp
+                        }
                     }
                 })
+                return _ret
             }
+            let _getStatus = (__changesList)=>{
+                let _ret = []
+                if(__changesList.length == 0){
+                    if(history.length>0){
+                        _ret.push({
+                            status:history[history.length-1].status,
+                            duration:Math.abs(history[history.length-1].timestamp - history[0].timestamp),
+                            changesNum:0
+                        })
+                    }
+                }else{
+                    __changesList.forEach(_chLEl=>{
+                        if(_ret.length == 0){
+                            //adding status before first change
+                            console.log(_chLEl.duration,_chLEl.from,history[0].timestamp)
+                            _ret.push({
+                                status:_chLEl.prevStatus,
+                                duration:Math.abs(_chLEl.from - history[0].timestamp),
+                                changesNum:1
+                            })
+                            console.log('updated 1')   
+                        }
+                        if(!_ret.find(_slEl=>{return _slEl.status == _chLEl.status})){
+                            _ret.push({
+                                status:_chLEl.status,
+                                duration:_chLEl.duration,
+                                changesNum:1
+                            })
+                            console.log('updated 2')
+                        }else{
+                            let _index = _ret.indexOf(_ret.find(_slEl=>{return _slEl.status == _chLEl.status}))
+                            _ret[_index].duration += _chLEl.duration
+                            _ret[_index].changesNum++;
+                        }
+                    })
+                }
+                return _ret
+            }
+            let initialStatus = history[0].status
+            let initialTime = history[0].timestamp
+            let addStatusIfNeeded = (__statusList,__status,__duration)=>{
+                if(!__statusList.find(_slEl=>{return _slEl.status == __status})){
+                    __statusList.push({
+                        status:__status,
+                        duration:__duration,
+                        changesNum:1
+                    })
+                }else{
+                    let _index = __statusList.indexOf(__statusList.find(_slEl=>{return _slEl.status == __status}))
+                    __statusList[_index].duration += __duration
+                    __statusList[_index].changesNum++;
+                }
+                return __statusList
+            }
+            history.forEach((_moment,_i)=>{
+                let duration = _moment.timestamp - initialTime
+                if(_moment.status !== initialStatus){
+                    //changes
+                    _changesList.push({
+                        status:_moment.status,
+                        prevStatus:initialStatus,
+                        duration:duration,
+                        from:initialTime,
+                        until:_moment.timestamp 
+                    })
+                    //status
+                    _statusList = addStatusIfNeeded(_statusList,initialStatus,duration)
+                    initialStatus = _moment.status
+                    initialTime = _moment.timestamp
+                }else if(_i == history.length-1){
+                    _changesList.push({
+                        status:_moment.status,
+                        prevStatus:initialStatus,
+                        duration:duration,
+                        from:initialTime,
+                        until:_moment.timestamp 
+                    })
+                    _statusList = addStatusIfNeeded(_statusList,initialStatus,duration)
+                } 
+            })
+            console.log(_changesList)
+            console.log(_statusList )
             return {
-                changesList:_changesList,
+                changesList:_changesList.reverse(),
                 statusList:_statusList
             }
         }
@@ -976,6 +1053,9 @@ const Page = (_winId)=>{
                 let eventElement = e.target as HTMLInputElement
                 let _name:string = name
                 let _value:any = e.target.value
+                if(e.key.length>1){
+                    return 0
+                }
                 if(name == 'updatetime'){
                     _name = 'updateTimeMS'
                     _value = Number(_value.replace(/[^0-9]/g,'')) * 1000;
@@ -1104,7 +1184,7 @@ const Page = (_winId)=>{
                 let _statsLastChangeTimeDom = document.createElement('statslast')
                 _chagesList.forEach((_chLEl,_i)=>{
                     let _changeElement = document.createElement('changeelement')
-                    _changeElement.innerHTML = `<status>${this.t(_chLEl.status)}</status> <duration>${_toFormat(_chLEl.duration)}</duration>`
+                    _changeElement.innerHTML = `<status>${this.t(_chLEl.prevStatus)}</status> <duration>${_toFormat(_chLEl.duration)}</duration>`
                     if(_i==0){
                         _changeElement.style.setProperty('--icon-text',`'-'`);
                     }else{
@@ -1176,6 +1256,10 @@ const Page = (_winId)=>{
                 contextMenu.show(e)
             }
             _rowDOM.onkeyup = (_e:any)=>{
+                //not for inputs
+                if(_e.path.filter(_el=>{return _el.tagName == 'INPUT'}).length > 0){
+                    return 0;
+                }
                 if(_e.key == 'Enter'){
                     contextMenu.show(_e)
                 }
@@ -1290,6 +1374,7 @@ const Page = (_winId)=>{
                     domList.append(rowElement)
             }):0
             domRoot.onclick = (_e:any)=>{
+                //if clicked not on row
                 if(_e.path.filter(_el=>{return _el.tagName == 'ROW'}).length == 0){
                     contextMenu.hideContextMenu()
                     let _selectedRows = this.state.monitor.rows.filter(_r=>_r.indexOf(`"isSelected":true`)>-1).map(_r=>JSON.parse(_r))
@@ -1303,7 +1388,13 @@ const Page = (_winId)=>{
                             })
                         })
                     }
+                }else{
+                    //if clicked on row 
+                    if(contextMenu.isShown){
+                        contextMenu.hideContextMenu()
+                    }
                 }
+                //if imgPicker is open
                 if(document.querySelector('imgpickermodal[hidden="false"]') != null){
                     //hide image picker
                     let comunicator = Comunicator()
@@ -1315,6 +1406,7 @@ const Page = (_winId)=>{
                         })
                     })
                 }
+                //if clicked on menu tool button
                 if(document.querySelector('menumodal[hidden="false"]') != null){
                     let comunicator = Comunicator()
                     comunicator.send({
@@ -1325,6 +1417,7 @@ const Page = (_winId)=>{
                         })
                     })
                 }
+                //if settings is open
                 if(document.querySelector('settingsmodal[hidden="false"]') != null && _e.path.filter(_el=>{return _el.tagName == 'SETTINGSMODAL'}).length == 0){
                     let comunicator = Comunicator()
                     comunicator.send({
@@ -1390,6 +1483,15 @@ const Page = (_winId)=>{
                     
                 }
                 
+            }
+            document.body.onwheel = (_e:any)=>{
+                if(_e.ctrlKey){
+                    if(_e.deltaY>0){//up
+                        webFrame.setZoomFactor(webFrame.getZoomFactor()*1.02);
+                    }else{//down
+                        webFrame.setZoomFactor(webFrame.getZoomFactor()/1.02);
+                    }
+                }
             }
         }else{
             let _changeHtmlIfNedded = (selector,value)=>{
@@ -1709,6 +1811,10 @@ const Page = (_winId)=>{
             this.siren.start()
         }else{
             this.siren.stop()
+        }   
+        }catch(err){
+            console.error(`State`,_state)
+            alert(`Unable to render new state\n${err}`)
         }
         
     }
@@ -1717,7 +1823,12 @@ const Page = (_winId)=>{
 const { ipcRenderer } = require('electron')
 const Comunicator = ()=>{
     this.send = ({command,payload})=>{
-        ipcRenderer.invoke('window',{command:command,payload:payload});
+        try{
+            ipcRenderer.invoke('window',{command:command,payload:payload});
+        }catch(err){
+            console.error(`Command:${command}\nPayload:${payload}`)
+            alert(`Cant send message by communicator\nError:${err}`)
+        }
     }
     this.subscribe = (_callback = (_m:comunicatorMessage)=>{},_channel = 'window')=>{
         ipcRenderer.on(_channel, function (event, message:comunicatorMessage) {
@@ -1780,6 +1891,7 @@ const ContextMenu = ()=>{
         }
     }
     this.renderContextMenu = (_param)=>{
+        try{
         //create dom element if not existed
         if(document.querySelector('contextmenu') == null){
             let rootDom = document.querySelector('.root')
@@ -1919,7 +2031,7 @@ const ContextMenu = ()=>{
                 }
                 options.forEach(_opt=>{
                     let _contextOptionDom = document.createElement('option')
-                    _contextOptionDom.innerHTML = `${_opt.name}`
+                    _contextOptionDom.innerHTML = `${this.t(_opt.name)}`
                     _contextOptionDom.style.setProperty('--icon-name',`'${_opt.icon}'`)
                     _contextOptionDom.style.setProperty('--option-width',_opt.width)
                     _contextOptionDom.setAttribute('tabindex','5')
@@ -1955,6 +2067,10 @@ const ContextMenu = ()=>{
                 _renderOptions()
             break;
         }
+        }catch(err){
+            console.log(`Cant render contextMenu`,_param)
+            alert(`Cant render contextMenu ${_param}`)
+        }   
     }
     this.show = (_e)=>{
         if(this.isShown){
@@ -1998,7 +2114,7 @@ const pageStart = ()=>{
                 })
             })
         }
-        if(_message.command == 'sendWinState'){ 
+        if(_message.command == 'sendWinState'){
             if(page){
                 let _resivedStateObj:any
                 try{

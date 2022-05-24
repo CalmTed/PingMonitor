@@ -19,7 +19,7 @@
     "target": "portable",
     "icon": "assets/icons/PM.ico",
     "compression": "maximum",
-    "asar": false,
+    "asar": true,
     "extraFiles": [
       "assets/config.json",
       "assets/local/ua.json",

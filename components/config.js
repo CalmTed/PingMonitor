@@ -183,7 +183,12 @@ config.getParam = function (key) { return __awaiter(_this, void 0, void 0, funct
                         }];
                 }
                 keyPath = [];
-                keyPath = key.split('_');
+                if (key.substring(0, 2) != '__') {
+                    keyPath = key.split('_');
+                }
+                else {
+                    keyPath = [key];
+                }
                 if (keyPath.length > 1) {
                     try {
                         switch (keyPath.length) {
@@ -250,7 +255,12 @@ config.setParam = function (message) { return __awaiter(_this, void 0, void 0, f
                         }];
                 }
                 keyPath = [];
-                keyPath = message.key.split('_');
+                if (message.key.substring(0, 2) != '__') {
+                    keyPath = message.key.split('_');
+                }
+                else {
+                    keyPath = [message.key];
+                }
                 if (keyPath.length > 1) {
                     try {
                         switch (keyPath.length) {

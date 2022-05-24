@@ -145,7 +145,11 @@ config.getParam = async (key:string)=>{
     }
     let keyPath = []
     let neededValue
-    keyPath = key.split('_')
+    if(key.substring(0,2) != '__'){
+        keyPath = key.split('_')
+    }else{
+        keyPath = [key]
+    }
     if(keyPath.length>1){
         try{
             switch(keyPath.length){
@@ -196,7 +200,11 @@ config.setParam = async (message:configSetParamMessage)=>{
     }
     let keyPath = []
     let neededValue
-    keyPath = message.key.split('_')
+    if(message.key.substring(0,2) != '__'){
+        keyPath = message.key.split('_')
+    }else{
+        keyPath = [message.key]
+    }
     if(keyPath.length>1){
         try{
             switch(keyPath.length){

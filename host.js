@@ -39,22 +39,22 @@ exports.__esModule = true;
 var electron_1 = require("electron");
 var pingMonitor = function () {
     var version = process.env.npm_package_version ? process.env.npm_package_version : '1.4.0';
-    console.log(process.env);
     var lang = process.env.LANG;
     var dev = false;
     var prefix = process.env.npm_lifecycle_event !== 'tstart' ? '../../' : './';
+    var _a = require('electron'), app = _a.app, dialog = _a.dialog;
     var actionTypes = require(prefix + 'components/actionTypes');
     var fileManager = require(prefix + 'components/fileManager');
     var config = require(prefix + 'components/config');
     var loger = require(prefix + 'components/loger');
     var pinger = require(prefix + 'components/pinger');
     var stateManager = require(prefix + 'components/stateManager');
-    var store = new stateManager({ version: version });
+    var store = new stateManager({ version: version, dialog: dialog });
     var comunicatorCore = require(prefix + 'components/comunicatorCore');
     var comunicator = new comunicatorCore();
-    var app = require('electron').app;
     var windows = {};
     var timeOfStart = 0;
+    var dontQuitApp = false;
     var pingCheck = function (_coreState, _resolve) {
         _coreState.monitors.forEach(function (_mon) {
             // for(every monitor & every row)
@@ -102,16 +102,6 @@ var pingMonitor = function () {
         return _resolve;
     };
     var monitorCheck = function (_coreState, _prevState, _resolve) {
-        //if(no monitor) reduce(add default Monitor with initial Rows)
-        if (_coreState.monitors.length < 1) {
-            _resolve = {
-                set: true,
-                action: actionTypes.ADD_NEW_MONITOR
-            };
-        }
-        if (_resolve.set) {
-            return _resolve;
-        }
         // if number on wins is not the same then  addWindow|removeWindow
         var monitorsIds = function (_state) {
             var _monsArrNum = [];
@@ -253,8 +243,21 @@ var pingMonitor = function () {
                                     _a[_b] = _c.sent();
                                     windows[_winId].loadFile('pm.html');
                                     // windows[_winId].removeMenu();
-                                    // windows[_winId].setTitleBarOverlay({color:'#222222',height:0});
                                     windows[_winId].setBackgroundColor('#222222');
+                                    windows[_winId].on('close', function (e) { return __awaiter(void 0, void 0, void 0, function () {
+                                        return __generator(this, function (_a) {
+                                            switch (_a.label) {
+                                                case 0: return [4 /*yield*/, store.dispach({
+                                                        action: 'removeWindowById',
+                                                        payload: JSON.stringify({ winId: _winId })
+                                                    })];
+                                                case 1:
+                                                    _a.sent();
+                                                    e.returnValue = false;
+                                                    return [2 /*return*/];
+                                            }
+                                        });
+                                    }); });
                                     windows[_winId].on('ready-to-show', function () { return __awaiter(void 0, void 0, void 0, function () {
                                         return __generator(this, function (_a) {
                                             switch (_a.label) {
@@ -266,6 +269,9 @@ var pingMonitor = function () {
                                                 case 1:
                                                     _a.sent();
                                                     windows[_winId].show();
+                                                    if (dontQuitApp) {
+                                                        dontQuitApp = false;
+                                                    }
                                                     return [2 /*return*/];
                                             }
                                         });
@@ -278,7 +284,10 @@ var pingMonitor = function () {
                 case 2:
                     if (undelitedBrowserWindows.length) {
                         undelitedBrowserWindows.forEach(function (_winId) {
+                            if (Object.keys(windows).length == 1) {
+                            }
                             windows[_winId].destroy();
+                            delete windows[_winId];
                         });
                     }
                     if (_resolve.set) {
@@ -301,7 +310,7 @@ var pingMonitor = function () {
                         Object.entries(_obj1).forEach(function (_a) {
                             var _k = _a[0], _v = _a[1];
                             if (typeof _obj1[_k] != 'object') {
-                                if (typeof _obj2 != 'undefined')
+                                if (typeof _obj2 != 'undefined') {
                                     if (typeof _obj2[_k] != 'undefined') {
                                         var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
                                         if (strDiff.length > 0) {
@@ -311,9 +320,18 @@ var pingMonitor = function () {
                                     else {
                                         _ret[_k] = _obj1[_k]; //added new element
                                     }
+                                }
+                                else {
+                                    _ret = _obj1; //added new element
+                                }
                             }
                             else {
-                                _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
+                                if (typeof _obj2[_k] != 'undefined') {
+                                    _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
+                                }
+                                else {
+                                    _ret[_k] = _obj1[_k];
+                                }
                             }
                         });
                         return _ret;
@@ -359,7 +377,7 @@ var pingMonitor = function () {
         });
     }); };
     var compute = function (_coreState, _prevState) { return __awaiter(void 0, void 0, void 0, function () {
-        var _resolve;
+        var _resolve, err_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -369,27 +387,35 @@ var pingMonitor = function () {
                             action: ''
                         }
                     };
-                    if (!!_resolve.set) return [3 /*break*/, 2];
-                    return [4 /*yield*/, windowCheck(_coreState, _prevState, _resolve)];
+                    _a.label = 1;
                 case 1:
-                    _resolve = _a.sent();
-                    _a.label = 2;
-                case 2:
+                    _a.trys.push([1, 7, , 8]);
                     if (!_resolve.set) {
                         _resolve = pingCheck(_coreState, _resolve);
                     }
+                    if (!!_resolve.set) return [3 /*break*/, 3];
+                    return [4 /*yield*/, windowCheck(_coreState, _prevState, _resolve)];
+                case 2:
+                    _resolve = _a.sent();
+                    _a.label = 3;
+                case 3:
                     if (!_resolve.set) {
                         _resolve = monitorCheck(_coreState, _prevState, _resolve);
                     }
-                    if (!!_resolve.set) return [3 /*break*/, 3];
-                    return [3 /*break*/, 5];
-                case 3:
-                    dev ? console.log('Computed with action:', _resolve.action, _resolve.payload) : 0;
-                    return [4 /*yield*/, store.dispach({ action: _resolve.action, payload: _resolve.payload })];
+                    if (!!_resolve.set) return [3 /*break*/, 4];
+                    return [3 /*break*/, 6];
                 case 4:
+                    dev ? console.debug('Computed with action:', _resolve.action, _resolve.payload) : 0;
+                    return [4 /*yield*/, store.dispach({ action: _resolve.action, payload: _resolve.payload })];
+                case 5:
                     _a.sent();
-                    _a.label = 5;
-                case 5: return [2 /*return*/];
+                    _a.label = 6;
+                case 6: return [3 /*break*/, 8];
+                case 7:
+                    err_1 = _a.sent();
+                    dialog.showErrorBox('Error', "Unable to compute\nError:".concat(err_1));
+                    return [3 /*break*/, 8];
+                case 8: return [2 /*return*/];
             }
         });
     }); };
@@ -409,16 +435,37 @@ var pingMonitor = function () {
         channel: 'window',
         commandListString: 'dispachAction',
         callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _plObj;
+            var _plObj, actionResult, err_2;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        dev ? console.log('resived action', _pl) : 0;
+                        _a.trys.push([0, 2, , 3]);
+                        dev ? console.debug('resived action', _pl) : 0;
                         _plObj = JSON.parse(_pl.payload);
-                        return [4 /*yield*/, store.dispach({ action: _plObj.action, payload: _plObj.payload })];
+                        if (_plObj.action == 'monitorImportConfig') {
+                            dontQuitApp = true;
+                        }
+                        return [4 /*yield*/, store.dispach({ action: _plObj.action, payload: _plObj.payload })
+                            // let endTime = new Date().getTime()
+                            // console.debug(`Time to dispach user action ${endTime - startTime}ms`)
+                        ];
                     case 1:
-                        _a.sent();
-                        return [2 /*return*/];
+                        actionResult = _a.sent();
+                        // let endTime = new Date().getTime()
+                        // console.debug(`Time to dispach user action ${endTime - startTime}ms`)
+                        if (actionResult && _plObj.action == 'monitorImportConfig') {
+                            setTimeout(function () {
+                                if (dontQuitApp) {
+                                    dontQuitApp = false;
+                                }
+                            }, 15000);
+                        }
+                        return [3 /*break*/, 3];
+                    case 2:
+                        err_2 = _a.sent();
+                        dialog.showErrorBox('Error', "Unable to dispach action that was recived from a window\nPayload:".concat(_pl, "\nError:").concat(err_2));
+                        return [3 /*break*/, 3];
+                    case 3: return [2 /*return*/];
                 }
             });
         }); }
@@ -427,11 +474,12 @@ var pingMonitor = function () {
         channel: 'window',
         commandListString: 'getConfigData',
         callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _plObj, _configData;
+            var _plObj, _configData, err_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        dev ? console.log('resived request for config', _pl) : 0;
+                        _a.trys.push([0, 3, , 4]);
+                        dev ? console.debug('resived request for config', _pl) : 0;
                         _plObj = JSON.parse(_pl.payload);
                         return [4 /*yield*/, config.getState()];
                     case 1:
@@ -443,7 +491,12 @@ var pingMonitor = function () {
                             })];
                     case 2:
                         _a.sent();
-                        return [2 /*return*/];
+                        return [3 /*break*/, 4];
+                    case 3:
+                        err_3 = _a.sent();
+                        dialog.showErrorBox('Error', "Unable to get config data that was requested by a window\nPayload:".concat(_pl, "\nError:").concat(err_3));
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
                 }
             });
         }); }
@@ -452,11 +505,12 @@ var pingMonitor = function () {
         channel: 'window',
         commandListString: 'configSetProp',
         callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _plObj, _configSetResult, _configData;
+            var _plObj, _configSetResult, _configData_2, err_4;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        dev ? console.log('resived request to change config', _pl) : 0;
+                        _a.trys.push([0, 5, , 6]);
+                        dev ? console.debug('resived request to change config', _pl) : 0;
                         _plObj = JSON.parse(_pl.payload);
                         return [4 /*yield*/, config.setParam({ key: _plObj.key, value: _plObj.value })];
                     case 1:
@@ -466,8 +520,8 @@ var pingMonitor = function () {
                         }
                         return [4 /*yield*/, config.getState()];
                     case 2:
-                        _configData = _a.sent();
-                        renderConfig(_configData, windows); //updating window visibility
+                        _configData_2 = _a.sent();
+                        renderConfig(_configData_2, windows); //updating window visibility
                         //sending new config
                         Object.entries(windows).forEach(function (_a) {
                             var _winId = _a[0], _winObj = _a[1];
@@ -477,7 +531,7 @@ var pingMonitor = function () {
                                         case 0: return [4 /*yield*/, comunicator.send({
                                                 window: _winObj,
                                                 command: 'sendConfig',
-                                                payload: _configData
+                                                payload: _configData_2
                                             })];
                                         case 1:
                                             _b.sent();
@@ -487,12 +541,16 @@ var pingMonitor = function () {
                             });
                         });
                         if (!(_plObj.key == 'langCode')) return [3 /*break*/, 4];
-                        console.log('dispach for', _plObj.value);
                         return [4 /*yield*/, store.dispach({ action: 'writeNewLangWords', payload: _plObj.value })];
                     case 3:
                         _a.sent();
                         _a.label = 4;
-                    case 4: return [2 /*return*/];
+                    case 4: return [3 /*break*/, 6];
+                    case 5:
+                        err_4 = _a.sent();
+                        dialog.showErrorBox('Error', "Unable to set config prop that was requested by window\nPayload:".concat(_pl, "\nError:").concat(err_4));
+                        return [3 /*break*/, 6];
+                    case 6: return [2 /*return*/];
                 }
             });
         }); }
@@ -501,11 +559,12 @@ var pingMonitor = function () {
         channel: 'window',
         commandListString: 'configRestoreDefaults',
         callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _configSetResult, _configData;
+            var _configSetResult, _configData_3, err_5;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        dev ? console.log('resived request to restore defaults of config', _pl) : 0;
+                        _a.trys.push([0, 3, , 4]);
+                        dev ? console.debug('resived request to restore defaults of config', _pl) : 0;
                         return [4 /*yield*/, config.restoreDefault()];
                     case 1:
                         _configSetResult = _a.sent();
@@ -514,8 +573,8 @@ var pingMonitor = function () {
                         }
                         return [4 /*yield*/, config.getState()];
                     case 2:
-                        _configData = _a.sent();
-                        renderConfig(_configData, windows);
+                        _configData_3 = _a.sent();
+                        renderConfig(_configData_3, windows);
                         Object.entries(windows).forEach(function (_a) {
                             var _winId = _a[0], _winObj = _a[1];
                             return __awaiter(void 0, void 0, void 0, function () {
@@ -524,7 +583,7 @@ var pingMonitor = function () {
                                         case 0: return [4 /*yield*/, comunicator.send({
                                                 window: _winObj,
                                                 command: 'sendConfig',
-                                                payload: _configData
+                                                payload: _configData_3
                                             })];
                                         case 1:
                                             _b.sent();
@@ -533,29 +592,64 @@ var pingMonitor = function () {
                                 });
                             });
                         });
-                        return [2 /*return*/];
+                        return [3 /*break*/, 4];
+                    case 3:
+                        err_5 = _a.sent();
+                        dialog.showErrorBox('Error', "Unable to set config defaults that was requested by window\nPayload:".concat(_pl, "\nError:").concat(err_5));
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
                 }
             });
         }); }
     });
     app.whenReady().then(function () {
         return __awaiter(this, void 0, void 0, function () {
+            var err_6;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         timeOfStart = new Date().getTime();
-                        return [4 /*yield*/, store.dispach({ action: actionTypes.SET_PROPERTY_FOR_TESTING, payload: 42 })];
+                        _a.label = 1;
                     case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, store.dispach({ action: actionTypes.SET_PROPERTY_FOR_TESTING, payload: 42 })];
+                    case 2:
                         _a.sent();
+                        return [3 /*break*/, 4];
+                    case 3:
+                        err_6 = _a.sent();
+                        dialog.showErrorBox('Error', "Unable to start Ping Monitor\nError:".concat(err_6));
+                        return [3 /*break*/, 4];
+                    case 4:
                         if (dev) {
-                            // testComponents(fileManager,config,loger,pinger,store)
-                        }
-                        else {
+                            testComponents(fileManager, config, loger, pinger, store);
                         }
                         return [2 /*return*/];
                 }
             });
         });
+    });
+    app.on('second-instance', function (event, commandLine, workingDirectory) { return __awaiter(void 0, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, store.dispach({
+                        action: 'addMonitor',
+                        payload: JSON.stringify({})
+                    })];
+                case 1:
+                    _a.sent();
+                    return [2 /*return*/];
+            }
+        });
+    }); });
+    app.on('window-all-closed', function () {
+        if (!dontQuitApp) {
+            if (process.platform !== 'darwin')
+                app.quit();
+        }
+        else {
+            console.debug('will not close all windows');
+        }
     });
 };
 try {
@@ -565,7 +659,7 @@ catch (err) {
     electron_1.dialog.showErrorBox('Error', "cant start an app\n".concat(err));
 }
 var testComponents = function (fileManager, config, loger, pinger, store) { return __awaiter(void 0, void 0, void 0, function () {
-    var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, undo, recivedValue;
+    var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, undo, recivedQuery, recivedValue;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -580,12 +674,12 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
             case 3:
                 wasDeleted = _a.sent();
                 if (fileContent.success && wasDeleted.success) {
-                    console.log('[PASS] test 1 fileManager!');
+                    console.debug('[PASS] test 1 fileManager!');
                 }
                 else {
-                    console.log('[FAIL] test 1 fileManager!');
-                    console.log("".concat(!fileContent.success ? fileContent.errorMessage : ''));
-                    console.log("".concat(!wasDeleted.success ? wasDeleted.errorMessage : ''));
+                    console.debug('[FAIL] test 1 fileManager!');
+                    console.debug("".concat(!fileContent.success ? fileContent.errorMessage : ''));
+                    console.debug("".concat(!wasDeleted.success ? wasDeleted.errorMessage : ''));
                 }
                 testConfigValue = Math.round((Math.random() * 1000) * 1000);
                 return [4 /*yield*/, config.setParam({ key: '__keyForTesting', value: testConfigValue })];
@@ -595,30 +689,30 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
             case 5:
                 testValueResult = _a.sent();
                 if (setResult.success && testValueResult.value == testConfigValue) {
-                    console.log('[PASS] test 2 config!');
+                    console.debug('[PASS] test 2 config!');
                 }
                 else {
-                    console.log('[FAIL] test 2 config!');
-                    typeof setResult.errorMessage != 'undefined' ? console.log(setResult.errorMessage) : 0;
-                    console.log("Recived: ".concat(testValueResult.value, " Expected:").concat(testConfigValue));
+                    console.debug('[FAIL] test 2 config!');
+                    typeof setResult.errorMessage != 'undefined' ? console.debug(setResult.errorMessage) : 0;
+                    console.debug("Recived: ".concat(testValueResult.value, " Expected:").concat(testConfigValue));
                 }
                 //logger
                 if (loger.out('Initial test')) {
-                    console.log('[PASS] test 3 loger!');
+                    console.debug('[PASS] test 3 loger!');
                 }
                 else {
-                    console.log('[FAIL] test 3 loger!');
+                    console.debug('[FAIL] test 3 loger!');
                 }
                 return [4 /*yield*/, pinger.probe({ address: 'localhost', rowId: 0 })];
             case 6:
                 pingResult = _a.sent();
                 if (pingResult.success) {
-                    console.log('[PASS] test 4 pinger!');
-                    // console.log(pingResult)
+                    console.debug('[PASS] test 4 pinger!');
+                    // console.debug(pingResult)
                 }
                 else {
-                    console.log('[FAIL] test 4 pinger!:');
-                    console.log(pingResult.errorMessage);
+                    console.debug('[FAIL] test 4 pinger!:');
+                    console.debug(pingResult.errorMessage);
                 }
                 valueForTesting = Math.round((Math.random() * 1000) * 1000);
                 stateManagerTestResult = false;
@@ -628,19 +722,24 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: 42 })];
             case 8:
                 _a.sent();
-                undo = store.undo();
-                recivedValue = store.__stateNow().propertyForTesting;
+                return [4 /*yield*/, store.undo()];
+            case 9:
+                undo = _a.sent();
+                return [4 /*yield*/, store.__stateNow()];
+            case 10:
+                recivedQuery = _a.sent();
+                recivedValue = recivedQuery.propertyForTesting;
                 if (undo) {
                     if (recivedValue == valueForTesting) {
                         stateManagerTestResult = true;
                     }
                 }
                 if (stateManagerTestResult) {
-                    console.log('[PASS] test 5 stateManager!');
+                    console.debug('[PASS] test 5 stateManager!');
                 }
                 else {
-                    console.log('[FAIL] test 5 stateManager!');
-                    console.log("Expected:".concat(valueForTesting, " Recived:").concat(recivedValue));
+                    console.debug('[FAIL] test 5 stateManager!');
+                    console.debug("Expected:".concat(valueForTesting, " Recived:").concat(recivedValue));
                 }
                 return [2 /*return*/];
         }

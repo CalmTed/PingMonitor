@@ -69,8 +69,14 @@ class stateManager {
     __state:coreState
     __subscribers = []
     __history = []
+    __fileManager = require('./fileManager')
+    __actionTypes = require('./actionTypes')
+    __loger = require('./loger')
+    __config = require('./config')
+    dialog:any
     constructor (data:any){
         this.__appVersion = data.version
+        this.dialog = data.dialog
     }
     __genId(target:'monitor'|'window'|'row'){
         let _ret = -1;
@@ -78,7 +84,7 @@ class stateManager {
             case 'monitor':_ret = Math.round(Math.random()*9000+999);break;
             case 'window':_ret = Math.round(Math.random()*90000+9999);break;
             case 'row':_ret = Math.round(Math.random()*900000+99999);break;
-            default: loger.out('Unknown genId target');break;
+            default: this.__loger.out('Unknown genId target');break;
         }
         return _ret
     }
@@ -88,16 +94,15 @@ class stateManager {
     __getLangCode = async ()=>{
         //TODO make it async
         if(typeof this.__langCode == 'undefined'){
-            let config = require('./config')
-            let _LCRequest = await config.getParam('langCode')
+
+            let _LCRequest = await this.__config.getParam('langCode')
             this.__langCode = _LCRequest.value
         }
         return this.__langCode
     }
     __getImagesList = async ()=>{
         let _imgNames:any
-        let fileManager = require('./fileManager')
-        _imgNames = await fileManager.getNames({path:'assets/icons',typeFilter:[{name:'*',extensions:['.png']}]})
+        _imgNames = await this.__fileManager.getNames({path:'assets/icons',typeFilter:[{name:'*',extensions:['.png']}]})
         if(_imgNames.success){
             return _imgNames.payload.content
         }else{
@@ -106,8 +111,7 @@ class stateManager {
     }
     __getInitialPingTimeStrategy = async ()=>{
         let _ret = []
-        let config = require('./config')
-        let _defaultPTS = await config.getParam('defaultPingTimeStrategy')
+        let _defaultPTS = await this.__config.getParam('defaultPingTimeStrategy')
         if(_defaultPTS.success){
             Object.entries(_defaultPTS.value).forEach(([_k,_v])=>{
                 _ret.push({
@@ -146,9 +150,8 @@ class stateManager {
     
     }
     __getAllWords = async (_code)=>{
-        let fileManager = require('./fileManager')
         let _wordsList:any
-        _wordsList = await fileManager.read({path:`assets/local/${_code}.json`,openDialog:false})
+        _wordsList = await this.__fileManager.read({path:`assets/local/${_code}.json`,openDialog:false})
         if(_wordsList.success){
             try{
                 return JSON.parse(_wordsList.payload.content)
@@ -183,7 +186,6 @@ class stateManager {
         return JSON.stringify(_winData)
     }
     __getInitialCoreState = async ()=>{
-        let config = require('./config')
         let _appVersion = this.__getAppVersion()
         let _appLangCode = await this.__getLangCode()
 
@@ -193,9 +195,9 @@ class stateManager {
             _monitorId:_initialMonitorId1
         }
         let _initialColorMode = 'dark'
-        let _initialColorModeRequest = await config.getParam('colorMode')
+        let _initialColorModeRequest = await this.__config.getParam('colorMode')
         _initialColorModeRequest.success?_initialColorMode = _initialColorModeRequest.value:0;
-        let _initialValuesRequest = await config.getParam('initialRows')
+        let _initialValuesRequest = await this.__config.getParam('initialRows')
         if(_initialValuesRequest.success){
             _initValues = {
                 _monitorId:_initialMonitorId1,
@@ -226,9 +228,11 @@ class stateManager {
         }
     }
     __stateNow = async ()=>{
-        let _reply = JSON.stringify(await this.__getInitialCoreState())
+        let _reply
         if(typeof this.__state !== 'undefined'){
             _reply = JSON.stringify({...this.__state})
+        }else{
+            _reply = JSON.stringify(await this.__getInitialCoreState())
         }
         return JSON.parse(_reply)
     }
@@ -249,46 +253,51 @@ class stateManager {
             return Number(parseInt(_num))<10?`0${_num}`:`${_num}`
         }
         let _dateNow = new Date()
-        let fileManager = require('./fileManager')
-        let _exportResult = await fileManager.write({
+        let _exportResult = await this.__fileManager.write({
             openDialog:false,
             path:`${name}.txt`,
             content:`${_dateNow.getFullYear()}-${_addZero(_dateNow.getMonth()+1)}-${_addZero(_dateNow.getDate())} ${_addZero(_dateNow.getHours())}-${_addZero(_dateNow.getMinutes())}-${_addZero(_dateNow.getSeconds())}${_indent(indent)}${text}\n`,
             append:true
         })
+        if(!_exportResult.success){
+            this.dialog.showErrorBox('Error',`Unable to write user logger\nError:${_exportResult.errorMessage}`)
+        }
     }
     __reduce = async (_state:coreState, action:actionType)=>{
-        let actionTypes = require('./actionTypes')
-        let fileManager = require('./fileManager')
-        let loger = require('./loger')
-        let config = require('./config')
+        let _configState = await this.__config.getState()
         let __newRow = async ({_state,_monitorId,_position=0}/* MAY BE THERE SHOULD BE CUSTOM VALUES*/)=>{
-            let _newRowRuleRequest = await config.getParam('newRowRule')
+            let _newRowRuleRequest = _configState.newRowRule
             let _name,_updateTimeMS,_ipAddress,_size,_imageLink,_isPaused,_isMuted
-            switch(_newRowRuleRequest.value){
+            switch(_newRowRuleRequest){
                 case 'copyPrev':
-                    let _lastRowDataArr = _state.monitors.find(_m=>{return _m.monitorId = _monitorId}).rows.filter((_r,_i,_a)=>{return _i==_a.length-1})
-                    if( _lastRowDataArr.length > 0){
-                        let _lastRowDataObj = JSON.parse(_lastRowDataArr)
-                        _name = _lastRowDataObj.name
-                        _updateTimeMS = _lastRowDataObj.updateTimeMS
-                        _ipAddress = _lastRowDataObj.ipAddress
-                        _size = _lastRowDataObj.size
-                        _imageLink = _lastRowDataObj.imageLink
-                        _isPaused = _lastRowDataObj.isPaused
-                        _isMuted = _lastRowDataObj.isMuted
-                        break;
+                    let _targetMonitor = _state.monitors.find(_m=>{return _m.monitorId = _monitorId})
+                    if(typeof _targetMonitor == 'undefined'){
+                        _targetMonitor = {rows:undefined}
+                    }
+                    if(typeof _targetMonitor.rows !== 'undefined'){
+                        let _lastRowDataArr = _targetMonitor.rows.filter((_r,_i,_a)=>{return _i==_a.length-1})
+                        if( _lastRowDataArr.length > 0){
+                            let _lastRowDataObj = JSON.parse(_lastRowDataArr)
+                            _name = _lastRowDataObj.name
+                            _updateTimeMS = _lastRowDataObj.updateTimeMS
+                            _ipAddress = _lastRowDataObj.ipAddress
+                            _size = _lastRowDataObj.size
+                            _imageLink = _lastRowDataObj.imageLink
+                            _isPaused = _lastRowDataObj.isPaused
+                            _isMuted = _lastRowDataObj.isMuted
+                            break;
+                        }
                     }
                 default:
                     //getting from config
-                    let _defaultRowDataRwquest = await config.getParam('defaultNewRow')
-                    _name = _defaultRowDataRwquest.value.name
-                    _updateTimeMS = _defaultRowDataRwquest.value.updateTimeMS
-                    _ipAddress = _defaultRowDataRwquest.value.address
-                    _size = _defaultRowDataRwquest.value.size
-                    _imageLink = _defaultRowDataRwquest.value.pictureLink
-                    _isPaused = _defaultRowDataRwquest.value.isPaused
-                    _isMuted = _defaultRowDataRwquest.value.isMuted
+                    let _defaultRowDataRwquest = _configState.defaultNewRow
+                    _name = _defaultRowDataRwquest.name
+                    _updateTimeMS = _defaultRowDataRwquest.updateTimeMS
+                    _ipAddress = _defaultRowDataRwquest.address
+                    _size = _defaultRowDataRwquest.size
+                    _imageLink = _defaultRowDataRwquest.pictureLink
+                    _isPaused = _defaultRowDataRwquest.isPaused
+                    _isMuted = _defaultRowDataRwquest.isMuted
                     break;
             }
             return this.__getInitialRowState({
@@ -355,26 +364,28 @@ class stateManager {
         let _neededWindowIndex:number;
         let _payloadObj:any;
         switch(action.action){
-            case actionTypes.SET_PROPERTY_FOR_TESTING:
+            case this.__actionTypes.SET_PROPERTY_FOR_TESTING:
                _state = {..._state,propertyForTesting:action.payload}
                break
             /*MONITOR      MONITOR      MONITOR      MONITOR      MONITOR      MONITOR      MONITOR*/
-            case actionTypes.ADD_NEW_MONITOR:
-                _newMonitors = [..._state.monitors,await __newMonitor()]
+            case this.__actionTypes.ADD_NEW_MONITOR:
+                _newMonitors = JSON.parse(JSON.stringify(_state.monitors))
+                let _newMon = await __newMonitor()
+                _newMonitors.push(_newMon)
                 _state = {..._state,monitors:_newMonitors}
-                break
-            case actionTypes.REMOVE_MONITOR_BY_ID:
+                break;
+            case this.__actionTypes.REMOVE_MONITOR_BY_ID:
                 _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
                 _state = {..._state,monitors:_newMonitors}
-                break
-            case actionTypes.MONITOR_EXPORT_CONFIG:
+                break;
+            case this.__actionTypes.MONITOR_EXPORT_CONFIG:
                 let _dateNow = new Date();
                 let _exportTimeStamp = `${_dateNow.getFullYear()}-${_dateNow.getMonth()+1}-${_dateNow.getDate()} ${_dateNow.getHours()+1}-${_dateNow.getMinutes()}-${_dateNow.getSeconds()}`;
                 let _initialState = {..._state}
                 let _modifiedState = JSON.parse(JSON.stringify(_initialState))
                 let _savePingHistory = false
-                let _savePingHistoryRequest = await config.getParam('savePingHistoryToConfig')
-                _savePingHistoryRequest.success?_savePingHistory = _savePingHistoryRequest.value:0;
+                let _savePingHistoryRequest = _configState.savePingHistoryToConfig
+                _savePingHistoryRequest?_savePingHistory = _savePingHistoryRequest:0;
                 _initialState.monitors.forEach((_monit,_monitIndex)=>{
                     _monit.rows.forEach((_rowStr,_rowIndex)=>{
                         let _rowObg = JSON.parse(_rowStr)
@@ -382,6 +393,8 @@ class stateManager {
                         Object.entries(_rowObg).forEach(([_rok,_rov])=>{
                             if(!_savePingHistory && _rok=='history'){
                                 _modRowObg[_rok] = []
+                            }if(_rok=='isBusy'){
+                                _modRowObg[_rok] = false
                             }else{
                                 _modRowObg[_rok] = _rov
                             }
@@ -390,7 +403,7 @@ class stateManager {
                     })
                 })
                 let _exportContent = JSON.stringify(_modifiedState,undefined,4);
-                let _exportResult = await fileManager.write({
+                let _exportResult = await this.__fileManager.write({
                     openDialog:true,
                     path:`PM Config ${_exportTimeStamp}.pm`,
                     dialogTile:`Save config`,
@@ -399,13 +412,13 @@ class stateManager {
                 if(_exportResult.success){
                     //do nothing or show little message
                 }else{
-                    loger.out(`Reducer error:MONITOR_EXPORT_CONFIG unable to write config ${_exportResult}`)
+                    this.__loger.out(`Reducer error:MONITOR_EXPORT_CONFIG unable to write config ${_exportResult}`)
                 }
                 break;
-            case actionTypes.MONITOR_IMPORT_CONFIG:
+            case this.__actionTypes.MONITOR_IMPORT_CONFIG:
                 _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
                 let _importContent = ``;
-                let _importResult = await fileManager.read({
+                let _importResult = await this.__fileManager.read({
                     openDialog:true,
                     dialogTile:`Save config`,
                     content:_importContent
@@ -417,13 +430,13 @@ class stateManager {
                         _state = {..._openedStateObj}
                     }
                 }else{
-                    loger.out(`Reducer error:MONITOR_IMPORT_CONFIG unable to read config ${_importResult}`)
+                    this.__loger.out(`Reducer error:MONITOR_IMPORT_CONFIG unable to read config ${_importResult}`)
                 }
                 break;
             /*WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW     WINDOW*/
-            case actionTypes.ADD_NEW_WINDOW_BY_SUBKEY:
+            case this.__actionTypes.ADD_NEW_WINDOW_BY_SUBKEY:
                 if(typeof action.payload != 'string'){
-                    loger.out(`Reducer error:${action.action} expected to recive subscriptionKey:string`)
+                    this.__loger.out(`Reducer error:${action.action} expected to recive subscriptionKey:string`)
                     break;
                 }
                 let _langCode = await this.__getLangCode()
@@ -432,18 +445,31 @@ class stateManager {
                 
                 _state = {..._state,windows:_newWindowsStr}
                 break;
-            case actionTypes.REMOVE_WINDOW_BY_ID:
+            case this.__actionTypes.REMOVE_WINDOW_BY_ID:
                 if(typeof action.payload != 'string'){
-                    loger.out(`Reducer error:${action.action} expected to recive winId:string`)
+                    this.__loger.out(`Reducer error:${action.action} expected to recive winId:string in JSON format`)
                     break;
                 }
+                let _winId = JSON.parse(action.payload).winId
                 //going lazy way without parsing json string
-                _newWindowsStr = [..._state.windows.filter(_w=>_w.indexOf(`"winId":${action.payload}`)  == -1)]
-                _state = {..._state,windows:_newWindowsStr}
+                _newWindowsStr = [..._state.windows.filter(_w=>_w.indexOf(`"winId":${_winId}`)  == -1)]
+                //check if we need to remove monitor
+                //if there are monitors without windows subscrubed to them filter them
+                _newMonitors = [..._state.monitors]
+                
+                _newMonitors = _newMonitors.filter((_m)=>{
+                    let _ret = true;
+                    if(typeof _newWindowsStr.find(_w=>{return _w.indexOf(`"subscriptionKey":"${_m.monitorId}"`)>-1}) == 'undefined'){
+                        _ret = false
+                    }
+                    return _ret;
+                })
+                
+                _state = {..._state,windows:_newWindowsStr,monitors:_newMonitors}
                 break;
-            case actionTypes.WIN_SET_PROP:
+            case this.__actionTypes.WIN_SET_PROP:
                 if(typeof action.payload != 'string'){
-                    loger.out(`Reducer error:${action.action} expected to recive winId:string,key:string,value:string`)
+                    this.__loger.out(`Reducer error:${action.action} expected to recive winId:string,key:string,value:string`)
                     break;
                 }
                 _newWindowsStr = [..._state.windows]
@@ -452,19 +478,20 @@ class stateManager {
                     return _w.indexOf(`"winId":${_payloadObj.winId}`) >-1 
                 }).indexOf(true)
                 if(_neededWindowIndex == -1){
-                    loger.out(`Reducer error:${action.action} window with entered winId is not found`)
+                    this.__loger.out(`Reducer error:${action.action} window with entered winId is not found`)
                     break;
                 }
                 _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex])
-                if(_newWindowsObj[_payloadObj.key] != _payloadObj.value){// limits at least some duplicates
-                    _newWindowsObj[_payloadObj.key] = _payloadObj.value;
+                if(_newWindowsObj[_payloadObj.key] == _payloadObj.value){// limits at least some duplicate values
+                    break;
                 }
+                _newWindowsObj[_payloadObj.key] = _payloadObj.value;
                 _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
                 _state = {..._state,windows:_newWindowsStr}
                 break;
-            case actionTypes.WIN_TOGGLE_PROP:
+            case this.__actionTypes.WIN_TOGGLE_PROP:
                 if(typeof action.payload != 'string'){
-                    loger.out(`Reducer error:${action.action} expected to recive winId:string,key:string`)
+                    this.__loger.out(`Reducer error:${action.action} expected to recive winId:string,key:string`)
                     break;
                 }
                 _newWindowsStr = [..._state.windows]
@@ -477,9 +504,9 @@ class stateManager {
                 _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
                 _state = {..._state,windows:_newWindowsStr}
                 break;
-            case actionTypes.WIN_SET_IMAGE_PICKER_OPEN:
+            case this.__actionTypes.WIN_SET_IMAGE_PICKER_OPEN:
                 if(!__validateInputs(action.payload,['rowId','winId','value'])){
-                    loger.out(`WIN_SET_IMAGE_PICKER_OPEN Error: expected to recive rowId,winId,value`)
+                    this.__loger.out(`WIN_SET_IMAGE_PICKER_OPEN Error: expected to recive rowId,winId,value`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -504,17 +531,7 @@ class stateManager {
                 _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
                 _state = {..._state,monitors:_newMonitors,windows:_newWindowsStr}
                 break;
-            case actionTypes.WIN_REQUEST_STATE:
-                if(!__validateInputs(action.payload,['winId'])){
-                    loger.out(`WIN_SET_IMAGE_PICKER_OPEN Error: expected to recive winId`)
-                    break;
-                }
-                break;
-            case actionTypes.WIN_WRITE_NEW_LANG_WORDS:
-                // let _newLangCodeRequest = await config.getParam('langCode')
-                // if(!_newLangCodeRequest.success){
-                //     break;
-                // }
+            case this.__actionTypes.WIN_WRITE_NEW_LANG_WORDS:
                 let _newWords = await this.__getAllWords(action.payload)
                 let _newWindows = [..._state.windows]
                 _newWindows.forEach((_w,_wi)=>{
@@ -526,9 +543,9 @@ class stateManager {
                 _state = {..._state,windows:_newWindows}
                 break;    
             /*ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW    ROW*/
-            case actionTypes.ADD_ROW:
+            case this.__actionTypes.ADD_ROW:
                 if(!__validateInputs(action.payload,['monitorId'])){
-                    loger.out(`ROW_SET_PROP Error: expected to recive monitorId`)
+                    this.__loger.out(`ADD_ROW Error: expected to recive monitorId`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -540,9 +557,9 @@ class stateManager {
                 _newMonitors[_neededMonitorIndex].rows.push(_newRowElement)
                 _state = {..._state,monitors:_newMonitors}
                 break;
-            case actionTypes.REMOVE_ROW:
+            case this.__actionTypes.REMOVE_ROW:
                 if(!__validateInputs(action.payload,['rowId'])){
-                    loger.out(`REMOVE_ROW Error: expected to recive rowId`)
+                    this.__loger.out(`REMOVE_ROW Error: expected to recive rowId`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -554,15 +571,15 @@ class stateManager {
                 _newMonitors[_neededMonitorIndex].rows = _newMonitors[_neededMonitorIndex].rows.filter(_rwStr=>{return _rwStr.indexOf(`"rowId":${_payloadObj.rowId}`) == -1})
                 _state = {..._state,monitors:_newMonitors}
                 break;
-            case actionTypes.ROW_SUBMIT_PING_PROBE:
+            case this.__actionTypes.ROW_SUBMIT_PING_PROBE:
                 if(!__validateInputs(action.payload,['rowId','status','dellay','packetLoss','ttl','fullResponce'])){
-                    loger.out(`ROW_SET_PROP Error: expected to recive rowId,status,dellay,packetLoss,ttl,fullResponce`)
-                    break
+                    this.__loger.out(`ROW_SUBMIT_PING_PROBE Error: expected to recive rowId,status,dellay,packetLoss,ttl,fullResponce`)
+                    break;
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
                 if(!_rowInfo.success){
-                    loger.out(`ROW_SET_PROP Error: row was not found`)
+                    this.__loger.out(`ROW_SET_PROP Error: row was not found`)
                     break;
                 }
                 _rowInfo.rowObj.isBusy = false
@@ -575,9 +592,13 @@ class stateManager {
                     ttl:_payloadObj.ttl,
                     fullResponce:_payloadObj.fillResponce
                 })
-                let pingHistoryTimeLimitMINS = await config.getParam('pingHistoryTimeLimitMINS')
-                if((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp)>pingHistoryTimeLimitMINS.value*60*1000){
+                let pingHistoryTimeLimitMINS = _configState.pingHistoryTimeLimitMINS
+                if((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp)>pingHistoryTimeLimitMINS*60*1000){
                     _rowInfo.rowObj.history.shift()
+                    //this duplication is for deliting speed faster than adding, if there is too much history
+                    if((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp)>pingHistoryTimeLimitMINS*60*1000){
+                        _rowInfo.rowObj.history.shift()
+                    }
                 }
                 try{
                     let _ptsNeededStatus = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status)
@@ -589,7 +610,7 @@ class stateManager {
                         //TODO add new PTS
                     }
                 }catch(e){
-                    loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
+                    this.__loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
                 }
                 //do we need to turn on alarm
                 if(_payloadObj.status != 'online' && _rowInfo.rowObj.isMuted == false && _rowInfo.rowObj.isPaused == false){
@@ -599,48 +620,46 @@ class stateManager {
                             lastNotOnlineProbeTime = _rowInfo.rowObj.history[i].timestamp
                         i--
                     }
-                    let timeToAlarmMS = await config.getParam('timeToAlarmMS')
-                    if(new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS.value && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].status != 'online'){
+                    let timeToAlarmMS = _configState.timeToAlarmMS
+                    if(new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].status != 'online'){
                         _rowInfo.rowObj.isAlarmed = true
                     }
                 }
                 //do we need ot write change to log
                 if(_rowInfo.rowObj.history.length>1){
-                    let _userLoggerRequest = await config.getParam('logSettings')
-                    if(_userLoggerRequest.success){
-                        //do we need to check for log
-                        if(_userLoggerRequest.value.logChanges){
-                            let _getTimeOfLastChange = (_hist:any[])=>{
-                                let _ret:any = {}
-                                let _i:number=_hist.length-1
-                                let _statusNow:string = _hist[_i].status
-                                while(_statusNow == _hist[_i].status && _i>0){
-                                    _i--
-                                }
-                                if(_i!=0){
-                                    _ret.time = new Date().getTime() - _hist[_i].timestamp
-                                    _ret.from = _hist[_i]
-                                    _ret.to = _hist[_i+1]
-                                }
-                                return _ret
+                    let _userLoggerRequest = _configState.logSettings
+                    //do we need to check for log
+                    if(_userLoggerRequest.logChanges){
+                        let _getTimeOfLastChange = (_hist:any[])=>{
+                            let _ret:any = {}
+                            let _i:number=_hist.length-1
+                            let _statusNow:string = _hist[_i].status
+                            while(_statusNow == _hist[_i].status && _i>0){
+                                _i--
                             }
-                            //do we need to check for change -> get time from last change
-                            let _lastChangeData = _getTimeOfLastChange(_rowInfo.rowObj.history)
-                            if(Object.keys(_lastChangeData).length!=0){
-                                let _prevUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.from.status).updateTimeMS
-                                let _currUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.to.status).updateTimeMS
-                                let _upperLimit = _prevUpdateTime>_currUpdateTime?_prevUpdateTime+1000:_currUpdateTime+1000
-                                //does this time greather then time from config
-                               if(_lastChangeData.time > _userLoggerRequest.value.timeToLogStatusChangeMS && 
-                                    _lastChangeData.time < _userLoggerRequest.value.timeToLogStatusChangeMS + _upperLimit){//to not to emit twise
-                                    //save to userLog with name from config
-                                    let _dateNow = new Date()
-                                    let _logNameDate = _userLoggerRequest.value.newLogNameEveryday?`${_dateNow.getFullYear()}-${_dateNow.getMonth()+1}-${_dateNow.getDate()}`:` `
-                                    let _logName = `${_userLoggerRequest.value.defaultLogName} ${_logNameDate}`
-                                    let _logText = `${_rowInfo.rowObj.name} ${_lastChangeData.from.status}>${_lastChangeData.to.status}`
-                                    let _logIndent = _rowInfo.rowObj.position
-                                    await this.__userLogger({name:_logName,text:_logText,indent:_logIndent})
-                                }
+                            if(_i!=0){
+                                _ret.time = new Date().getTime() - _hist[_i].timestamp
+                                _ret.from = _hist[_i]
+                                _ret.to = _hist[_i+1]
+                            }
+                            return _ret
+                        }
+                        //do we need to check for change -> get time from last change
+                        let _lastChangeData = _getTimeOfLastChange(_rowInfo.rowObj.history)
+                        if(Object.keys(_lastChangeData).length!=0){
+                            let _prevUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.from.status).updateTimeMS
+                            let _currUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.to.status).updateTimeMS
+                            let _upperLimit = _prevUpdateTime>_currUpdateTime?_prevUpdateTime+1000:_currUpdateTime+1000
+                            //does this time with in time limits range
+                            if(_lastChangeData.time > _userLoggerRequest.timeToLogStatusChangeMS && 
+                                _lastChangeData.time < _userLoggerRequest.timeToLogStatusChangeMS + _upperLimit){//to not to emit writing twise
+                                //save to userLog with name from config
+                                let _dateNow = new Date()
+                                let _logNameDate = _userLoggerRequest.newLogNameEveryday?`${_dateNow.getFullYear()}-${_dateNow.getMonth()+1}-${_dateNow.getDate()}`:` `
+                                let _logName = `${_userLoggerRequest.defaultLogName} ${_logNameDate}`
+                                let _logText = `${_rowInfo.rowObj.name} ${_lastChangeData.from.status}>${_lastChangeData.to.status}`
+                                let _logIndent = _rowInfo.rowObj.position
+                                await this.__userLogger({name:_logName,text:_logText,indent:_logIndent})
                             }
                         }
                     }
@@ -648,8 +667,8 @@ class stateManager {
                 //do we need to unmute
                 if(_rowInfo.rowObj.history.length>1){
                     if(_payloadObj.status == 'online' && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-2].status != 'online'){
-                        let unmuteOnGettingOnline = await config.getParam('unmuteOnGettingOnline')
-                        if(unmuteOnGettingOnline.value){
+                        let unmuteOnGettingOnline = _configState.unmuteOnGettingOnline
+                        if(unmuteOnGettingOnline && _rowInfo.rowObj.isMuted){
                             _rowInfo.rowObj.isMuted = false
                         }
                     }
@@ -659,19 +678,19 @@ class stateManager {
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
                 _state = {..._state}
                 break;
-            case actionTypes.ROW_SET_PROP:
+            case this.__actionTypes.ROW_SET_PROP:
                 if(!__validateInputs(action.payload,['rowId','key','value'])){
-                    loger.out(`ROW_SET_PROP Error: expected to recive rowId,key and value`)
+                    this.__loger.out(`ROW_SET_PROP Error: expected to recive rowId,key and value`)
                     break
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
                 if(typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined'){
-                    loger.out(`ROW_SET_PROP error unknown key of the row. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    this.__loger.out(`ROW_SET_PROP error unknown key of the row. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
                 }
                 if(_rowInfo.rowObj[_rowInfo.payloadObj.key] === _rowInfo.payloadObj.value){
-                    loger.out(`ROW_SET_PROP warn value is already set. Key:${_rowInfo.payloadObj.key} Values:${_rowInfo.rowObj[_rowInfo.payloadObj.key]}>>${_rowInfo.payloadObj.value} RowId:${_rowInfo.payloadObj.rowId}`)
+                    this.__loger.out(`ROW_SET_PROP warn value is already set. Key:${_rowInfo.payloadObj.key} Values:${_rowInfo.rowObj[_rowInfo.payloadObj.key]}>>${_rowInfo.payloadObj.value} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
                 }
                 if(['name','address','updateTimeMS'].includes(_rowInfo.payloadObj.key)){
@@ -690,10 +709,11 @@ class stateManager {
                             break;
                         } 
                         try{
+                            //try to change PTS of the row
                             let _actualStatus = _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].status
                             _rowInfo.rowObj.pingTimeStrategy.find(_pts=>{return _pts.conditions.status == _actualStatus}).updateTimeMS = _rowInfo.payloadObj.value
                         }catch(e){
-                            loger.out(`ROW_SET_PROP unable to write PTS Key:${_rowInfo.payloadObj.key} Values:${_rowInfo.rowObj[_rowInfo.payloadObj.key]}>>${_rowInfo.payloadObj.value} RowId:${_rowInfo.payloadObj.rowId}`)
+                            this.__loger.out(`ROW_SET_PROP unable to write PTS Key:${_rowInfo.payloadObj.key} Values:${_rowInfo.rowObj[_rowInfo.payloadObj.key]}>>${_rowInfo.payloadObj.value} RowId:${_rowInfo.payloadObj.rowId}`)
                         }
                     }
                 }
@@ -702,15 +722,15 @@ class stateManager {
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
                 _state = {..._state,monitors:_newMonitors}
                 break;
-            case actionTypes.ROW_TOGGLE_PROP:
+            case this.__actionTypes.ROW_TOGGLE_PROP:
                 if(!__validateInputs(action.payload,['rowId','key'])){
-                    loger.out(`ROW_TOGGLE_PROP Error: expected to recive rowId and key`)
+                    this.__loger.out(`ROW_TOGGLE_PROP Error: expected to recive rowId and key`)
                     break;
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
                 if(typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined'){
-                    loger.out(`ROW_TOGGLE_PROP error unknown key of the row. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    this.__loger.out(`ROW_TOGGLE_PROP error unknown key of the row. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
                 }
                 _rowInfo.rowObj[_rowInfo.payloadObj.key] = !_rowInfo.rowObj[_rowInfo.payloadObj.key]
@@ -718,9 +738,9 @@ class stateManager {
                 _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr
                 _state = {..._state,monitors:_newMonitors}
             break;
-            case actionTypes.ROW_CLEAR_ALL_HISTORY:
+            case this.__actionTypes.ROW_CLEAR_ALL_HISTORY:
                 if(!__validateInputs(action.payload,['monitorId'])){
-                    loger.out(`ROW_CLEAR_ALL_HISTORY Error: expected to recive monitorId`)
+                    this.__loger.out(`ROW_CLEAR_ALL_HISTORY Error: expected to recive monitorId`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -737,16 +757,16 @@ class stateManager {
                 })
                 _state = {..._state,monitors:_newMonitors}
             break;
-            case actionTypes.ROW_EDIT_PROP_SET:
+            case this.__actionTypes.ROW_EDIT_PROP_SET:
                 if(!__validateInputs(action.payload,['rowId','key'])){
-                    loger.out(`ROW_EDIT_PROP_SET Error: expected to recive rowId,key`)
+                    this.__loger.out(`ROW_EDIT_PROP_SET Error: expected to recive rowId,key`)
                     break;
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
                 
                 if(!['name','address','updatetime','image'].includes(_rowInfo.payloadObj.key)){
-                    loger.out(`ROW_EDIT_PROP_SET error unknown key(${_rowInfo.payloadObj.key}). Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    this.__loger.out(`ROW_EDIT_PROP_SET error unknown key(${_rowInfo.payloadObj.key}). Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
                 }
                 if(!_rowInfo.rowObj['isEditing']){
@@ -757,15 +777,15 @@ class stateManager {
                     _state = {..._state,monitors:_newMonitors}
                 }
                 break;
-            case actionTypes.ROW_EDIT_PROP_REMOVE:
+            case this.__actionTypes.ROW_EDIT_PROP_REMOVE:
                 if(!__validateInputs(action.payload,['rowId','key'])){
-                    loger.out(`ROW_EDIT_PROP_REMOVE Error: expected to recive rowId,key`)
+                    this.__loger.out(`ROW_EDIT_PROP_REMOVE Error: expected to recive rowId,key`)
                     break;
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
                 if(!['name','address','updatetime','image'].includes(_rowInfo.payloadObj.key)){
-                    loger.out(`ROW_EDIT_PROP_REMOVE error unknown key(${_rowInfo.payloadObj.key}). Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
+                    this.__loger.out(`ROW_EDIT_PROP_REMOVE error unknown key(${_rowInfo.payloadObj.key}). Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
                 }
                 if(_rowInfo.rowObj['isEditing']){
@@ -776,9 +796,9 @@ class stateManager {
                     _state = {..._state,monitors:_newMonitors}
                 }
                 break;
-            case actionTypes.ROW_PAUSE_ALL:
+            case this.__actionTypes.ROW_PAUSE_ALL:
                 if(!__validateInputs(action.payload,['monitorId'])){
-                    loger.out(`ROW_PAUSE_ALL Error: expected to recive monitorId`)
+                    this.__loger.out(`ROW_PAUSE_ALL Error: expected to recive monitorId`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -814,9 +834,9 @@ class stateManager {
                 }
                 _state = {..._state,monitors:_newMonitors}
                 break;
-            case actionTypes.ROW_UNALARM_ALL:
+            case this.__actionTypes.ROW_UNALARM_ALL:
                 if(!__validateInputs(action.payload,['monitorId'])){
-                    loger.out(`ROW_UNALARM_ALL Error: expected to recive monitorId`)
+                    this.__loger.out(`ROW_UNALARM_ALL Error: expected to recive monitorId`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -826,16 +846,16 @@ class stateManager {
                 }).indexOf(true)
                 _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
                     let _rowObj = JSON.parse(_rowStr)
-                    if(_rowObj.isAlarmed == true){
+                    if(_rowObj.isAlarmed){
                         _rowObj.isAlarmed = false
                         _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj)
                     }
                 })
                 _state = {..._state,monitors:_newMonitors}
                 break;
-            case actionTypes.ROW_UNSELECT_ALL:
+            case this.__actionTypes.ROW_UNSELECT_ALL:
                 if(!__validateInputs(action.payload,['monitorId'])){
-                    loger.out(`ROW_UNSELECT_ALL Error: expected to recive monitorId`)
+                    this.__loger.out(`ROW_UNSELECT_ALL Error: expected to recive monitorId`)
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
@@ -845,7 +865,7 @@ class stateManager {
                 }).indexOf(true)
                 _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
                     let _rowObj = JSON.parse(_rowStr)
-                    if(_rowObj.isSelected == true){
+                    if(_rowObj.isSelected){
                         _rowObj.isSelected = false
                         _newMonitors[_neededMonitorIndex].rows[_i] = JSON.stringify(_rowObj)
                     }
@@ -853,7 +873,7 @@ class stateManager {
                 _state = {..._state,monitors:_newMonitors}
                 break;
             default:
-                loger.out(`Reducer error: Unknown action type: ${action.action}`)
+                this.__loger.out(`Reducer error: Unknown action type: ${action.action}`)
                 console.error(`Reducer error: Unknown action type: ${action.action}`)
                 break;
         }
@@ -861,41 +881,40 @@ class stateManager {
         return _state
     }
     __setState = async(_state:coreState)=>{
-        
-        _state = {..._state}
+        _state = JSON.parse(JSON.stringify(_state))
         let _prevState = {...await this.__stateNow()}
         this.__state = {..._state}
 
-        let checkFullDifference = (_obj1:object,_obj2:object)=>{
-            //TODO make this work properly
-            let checkDiffStr = (_one,_two)=>{
-              let _strdiffret = '';
-              let aArr = _one.split('');
-              let bArr = _two.split('');
-              aArr.forEach((letter,i)=>{
-                if(aArr[i] != bArr[i]){
-                  _strdiffret += aArr[i]
-                }
-              })
-              return _strdiffret
-            }
-            let _ret:any = {}
-            //we expect two objects to have the same scheme to minimize computation time
-            Object.entries(_obj1).forEach(([_k,_v])=>{
-              if(typeof _obj1[_k] != 'object'){
-                let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
-                if(strDiff.length > 0){
-                  _ret[_k] = _v
-                }
-              }else{
-                _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
-              }
-            })
-            return _ret
-          }
-        if(typeof _state.monitors > 'undefined'){
-            let _fullMonotorDifference = checkFullDifference(_state.monitors,_prevState.monitors)
-        }
+        // let checkFullDifference = (_obj1:object,_obj2:object)=>{
+        //     //TODO make this work properly
+        //     let checkDiffStr = (_one,_two)=>{
+        //       let _strdiffret = '';
+        //       let aArr = _one.split('');
+        //       let bArr = _two.split('');
+        //       aArr.forEach((letter,i)=>{
+        //         if(aArr[i] != bArr[i]){
+        //           _strdiffret += aArr[i]
+        //         }
+        //       })
+        //       return _strdiffret
+        //     }
+        //     let _ret:any = {}
+        //     //we expect two objects to have the same scheme to minimize computation time
+        //     Object.entries(_obj1).forEach(([_k,_v])=>{
+        //       if(typeof _obj1[_k] != 'object'){
+        //         let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
+        //         if(strDiff.length > 0){
+        //           _ret[_k] = _v
+        //         }
+        //       }else{
+        //         _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+        //       }
+        //     })
+        //     return _ret
+        //   }
+        // if(typeof _state.monitors > 'undefined'){
+        //     let _fullMonotorDifference = checkFullDifference(_state.monitors,_prevState.monitors)
+        // }
           
 
 
@@ -934,9 +953,13 @@ class stateManager {
         return _ret;
     }
     dispach = async (action:actionType)=>{
-        let _newState = await this.__reduce( await this.__stateNow(),action)
-
-        return await this.__setState(_newState) ? true : false;
+        try{
+            let _newState = await this.__reduce( await this.__stateNow(),action)
+            return await this.__setState(_newState) ? true : false;
+        }catch(err){
+            this.dialog.showErrorBox('Error',`Unable to dispach action\nAction:${JSON.stringify(action)}\nError:${err}`)
+            return false
+        }
     }
     subscribe = (_callback:any)=>{
         this.__subscribers.push(_callback)

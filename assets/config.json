@@ -6,8 +6,8 @@
     "initialRows": [
         {
             "address": "localhost",
-            "updateTimeMS": 10000,
-            "size": "2Small",
+            "updateTimeMS": 3000,
+            "size": "1Little",
             "name": "Initial row 1",
             "pictureLink": "0 PingMonitor.png",
             "isPaused": true,
@@ -16,8 +16,8 @@
     ],
     "defaultNewRow": {
         "address": "localhost",
-        "size": "2Small",
-        "updateTimeMS": 10000,
+        "size": "1Little",
+        "updateTimeMS": 3000,
         "name": "Default row",
         "pictureLink": "0 PingMonitor.png",
         "isPaused": true,
@@ -31,14 +31,14 @@
     "newRowRule": "copyPrev",
     "timeToAlarmMS": 10000,
     "unmuteOnGettingOnline": true,
-    "pingHistoryTimeLimitMINS": 360,
-    "miniGraphShowLimitMINS": 5,
-    "savePingHistoryToConfig": false,
+    "pingHistoryTimeLimitMINS": 60,
+    "miniGraphShowLimitMINS": 60,
+    "savePingHistoryToConfig": true,
     "logSettings": {
         "logChanges": false,
-        "defaultLogName": "",
+        "defaultLogName": "123",
         "newLogNameEveryday": true,
         "timeToLogStatusChangeMS": 10000
     },
-    "__keyForTesting": 169346
+    "__keyForTesting": 529575
 }
