@@ -3,7 +3,7 @@ import { BrowserWindow,dialog } from "electron"
 const pingMonitor = ()=>{
   const version = process.env.npm_package_version?process.env.npm_package_version:'1.4.0'
   const lang = process.env.LANG
-  const dev = false
+  const dev = (process.env.npm_lifecycle_event === 'tstart')
   const prefix = process.env.npm_lifecycle_event !== 'tstart'?'../../':'./'
   const { app,dialog } = require('electron')
   const actionTypes = require(prefix+'components/actionTypes')
@@ -12,44 +12,70 @@ const pingMonitor = ()=>{
   const loger = require(prefix+'components/loger')
   const pinger = require(prefix+'components/pinger')
   const stateManager = require(prefix+'components/stateManager')
-  const store = new stateManager({version:version,dialog:dialog})
+  const store = new stateManager({
+    version:version,
+    dialog:dialog,
+    fileManager,
+    actionTypes,
+    loger,
+    config,
+    pinger
+  })
   const comunicatorCore = require(prefix+'components/comunicatorCore')
   const comunicator = new comunicatorCore()
 
   var windows:object = {}
-  var timeOfStart = 0
   var dontQuitApp = false
+  var lastAutosave = new Date().getTime()
 
-  const pingCheck = (_coreState:any,_resolve:any)=>{
-    _coreState.monitors.forEach(_mon=>{
-      // for(every monitor & every row)
+  const pingCheck = async (_coreState:any,_resolve:any)=>{
+    const timeNow = new Date().getTime()
+    _coreState.monitors.forEach(async (_mon) => {
+      // for(every mo nitor & every row)
       //ITS MIGHT BE QUITE EXPENCIVE!!
-      
-      _mon.rows.forEach(_rowStr=>{
-        if(_rowStr.indexOf(`"isBusy":false`)>-1 && _rowStr.indexOf(`"isPaused":false`)>-1){
-          let _rowObj = JSON.parse(_rowStr)
-          // if(not paused and not busy) then timeout pingProbe(monitor,row,ip)
-          setTimeout(async ({_store,_actionTypes})=>{
-            let pingResult = await pinger.probe({address:_rowObj.ipAddress,rowId:_rowObj.rowId})
-            if(pingResult.success){
-              // dispach(rowId,pingReport)
-              await _store.dispach({
-                action:_actionTypes.ROW_SUBMIT_PING_PROBE,
-                payload:JSON.stringify(pingResult.payload)
-              })
+
+      //if not busy
+          //if not paused
+            //set busy and mark timer
+        //if busy
+          //if not paused
+            //if time has passed < do it with stringify, not json.parse
+            //await probe
+            //query probe result
+          //else if paused < even if time is not passed 
+            //cancel busy
+      _mon.rows.forEach( async (_rowStr) => {
+        if(!_resolve.set){
+          const isPaused = _rowStr.includes(`"isPaused":true`)
+          if(!_rowStr.includes(`"isBusy":true`)){
+            if(!isPaused){
+              const _rowObj = JSON.parse(_rowStr)
+              _resolve = {
+                set:true,
+                action:actionTypes.ROW_SET_PROP,
+                payload:`{"rowId":${_rowObj.rowId},"key":"isBusy","value":true}`
+              }
+            }//end is paused
+          }else{//it is busy
+            const _rowObj = JSON.parse(_rowStr)
+            if(!isPaused){
+              //check time
+              if(_rowObj.lastPinged +  _rowObj.updateTimeMS < timeNow){
+                _resolve = {
+                  set:true,
+                  action:actionTypes.ROW_SUBMIT_PING_PROBE,
+                  payload:JSON.stringify({rowId: _rowObj.rowId})
+                }
+              }
             }else{
-              loger.out(`Unsuccessfull ping probe! Error: ${pingResult.errorMessage}. Row:id:${_rowObj.rowId} ip:${_rowObj.ipAddress}`)
+              _resolve = {
+                set:true,
+                action:actionTypes.ROW_SET_PROP,
+                payload:`{"rowId":${_rowObj.rowId},"key":"isBusy","value":false}`
+              }
             }
-          },_rowObj.updateTimeMS,{_store:store,_actionTypes:actionTypes})
-          _resolve.set === false? _resolve = {set:true, action:actionTypes.ROW_SET_PROP,payload:JSON.stringify(
-            {
-              rowId:_rowObj.rowId,
-              key:'isBusy',
-              value:true
-            })
-          }:0;
-          
-        }
+          }
+        }//end is resolve.set
       })
     })
     return _resolve;
@@ -86,7 +112,7 @@ const pingMonitor = ()=>{
     }
     let findAllUnwindowedMonitors = (_state,_monIds:number[],_subKeys:number[])=>{
       let _monitArr = []
-      _coreState.monitors.forEach(_mon=>{
+      _state.monitors.forEach(_mon=>{
         if(!_subKeys.includes(_mon.monitorId)){
           _monitArr.push(_mon)
         }
@@ -110,6 +136,13 @@ const pingMonitor = ()=>{
         action:actionTypes.REMOVE_WINDOW_BY_ID,
         //selecting only first element in case if difference is more then one window
         payload:JSON.parse(_extraWindowsStrArr[0]).winId.toString()
+      }
+    }
+    if(!monitorsIds.length){
+      _resolve = {
+        set:true,
+        action:actionTypes.ADD_NEW_MONITOR,
+        payload:''
       }
     }
 
@@ -143,7 +176,7 @@ const pingMonitor = ()=>{
       return _ret
     }
     // do we need to add new browser window
-    let uncreatedBrowserWIndowsF = (_state)=>{
+    let uncreatedBrowserWindowsF = (_state)=>{
       let _ret:string[] = []
       _state.windows.forEach(_wStr=>{
         let _wObj = JSON.parse(_wStr)
@@ -163,22 +196,24 @@ const pingMonitor = ()=>{
       })
       return _ret
     }
-    let uncreatedBrowserWIndows = uncreatedBrowserWIndowsF(_coreState)
+    let uncreatedBrowserWIndows = uncreatedBrowserWindowsF(_coreState)
     let undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState)
-    
     if(uncreatedBrowserWIndows.length){
       let _configData = await config.getState()
       uncreatedBrowserWIndows.forEach(async _winId => {
+        
         windows[_winId] = await getNormalWindow()
         windows[_winId].loadFile('pm.html');
         // windows[_winId].removeMenu();
         windows[_winId].setBackgroundColor('#222222');
-        windows[_winId].on('close',async (e)=>{
-          await store.dispach({
+
+        //this events are not async!
+        windows[_winId].on('close', async (e)=>{
+          store.queue({action: actionTypes.MONITOR_AUTOSAVE, payload:''})
+          store.queue({
             action:'removeWindowById',
             payload:JSON.stringify({winId:_winId})
           })
-          e.returnValue = false;
         })
         windows[_winId].on('ready-to-show',async ()=>{
           await comunicator.send({
@@ -195,11 +230,15 @@ const pingMonitor = ()=>{
       });
     }
     if(undelitedBrowserWindows.length){
+      if (store.__lastSave + 60 * 1000 < new Date().getTime()) {
+       return _resolve = {
+         action: actionTypes.MONITOR_AUTOSAVE,
+         payload:''
+       }
+      }
       undelitedBrowserWindows.forEach(_winId => {
-        if(Object.keys(windows).length==1){
-        }
-          windows[_winId].destroy()
-          delete windows[_winId]
+        windows[_winId].destroy()
+        delete windows[_winId]
       })
     }
     
@@ -207,26 +246,21 @@ const pingMonitor = ()=>{
       return _resolve
     }
     let checkFullDifference = (_obj1:object,_obj2:object)=>{
-      let checkDiffStr = (_one:string,_two:string)=>{
-        let _strdiffret = '';
-        let aArr = _one.split('');
-        let bArr = _two.split('');
-        aArr.forEach((letter,i)=>{
-          if(aArr[i] != bArr[i]){
-            _strdiffret += aArr[i]
-          }
-        })
-        return _strdiffret
+      let checkDiffStr = (_one:string,_two:string) => {
+        if(!_two){
+          return true
+        }
+        return _one !== _two
       }
       let _ret:any = {}
 
       //we expect two objects to have the same scheme to minimize computation time
       Object.entries(_obj1).forEach(([_k,_v])=>{
-        if(typeof _obj1[_k] != 'object'){
+        if(typeof _obj1[_k] != 'object'){//its a string or a number
           if(typeof _obj2 != 'undefined'){
             if(typeof _obj2[_k] != 'undefined'){
               let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
-              if(strDiff.length>0){
+              if(strDiff){
                 _ret[_k] = _obj1[_k]
               }
             }else{
@@ -235,10 +269,21 @@ const pingMonitor = ()=>{
           }else{
             _ret = _obj1//added new element
           }
-        }else{
-          if(typeof _obj2[_k] != 'undefined'){
-            _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
-          }else{
+        }else{//its an object
+          if(typeof _obj2[_k] != 'undefined'){//prev obj have it, so its not new
+            if(Array.isArray(_obj1[_k])){//its an array
+              _obj1[_k].forEach((_obj1El,__obj1ElIndex) => {//for each element in array
+                if(checkDiffStr(_obj1El.toString(), _obj2[_k]?.[__obj1ElIndex]?.toString())){
+                  if(!_ret[_k]){
+                    _ret[_k] = []
+                  }
+                  _ret[_k].push(_obj1El)
+                }
+              })
+            }else{//its an object
+              _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
+            }
+          }else{//its new, add it
             _ret[_k] = _obj1[_k]
           }
         }
@@ -247,11 +292,11 @@ const pingMonitor = ()=>{
     }
     if(typeof _coreState.monitors != 'undefined'){
       let differenceObject:any = checkFullDifference(_coreState.monitors,_prevState.monitors)
-      Object.entries(differenceObject).forEach(async ([_monInd,_monVal])=>{
-        let targetId = _coreState.monitors[_monInd].monitorId
-        _coreState.windows.forEach(async _winStr=>{
+      Object.entries(differenceObject).forEach(async ([_monInd,_monVal]) => {
+        const targetId = _coreState.monitors[_monInd].monitorId
+        _coreState.windows.forEach(async _winStr => {
           //for ease window where subscriptionKey in the list of changed monitors
-          if(_winStr.indexOf(`"subscriptionKey":"${targetId}"`) > -1){
+          if(_winStr.includes(`"subscriptionKey":"${targetId}"`)){
             let _winObj:any = JSON.parse(_winStr)
             //copying monitor state to send row data to the window
             _winObj.monitor = _coreState.monitors[_monInd]
@@ -276,7 +321,7 @@ const pingMonitor = ()=>{
     }
     try{
       if(!_resolve.set){
-        _resolve = pingCheck(_coreState,_resolve)
+        _resolve = await pingCheck(_coreState,_resolve)
       }
       if(!_resolve.set){
         _resolve = await windowCheck(_coreState,_prevState,_resolve)
@@ -285,10 +330,33 @@ const pingMonitor = ()=>{
         _resolve = monitorCheck(_coreState,_prevState,_resolve)
       }
       if(!_resolve.set){
-
-      }else{
+        const time = new Date().getTime()
+        if(lastAutosave + (60 * 1000) < time){
+          lastAutosave = time
+          _resolve = {
+            set: true,
+            action:actionTypes.MONITOR_AUTOSAVE,
+            payload:''
+          }
+        }
+      }
+      if(_resolve.set){
         dev?console.debug('Computed with action:',_resolve.action,_resolve.payload):0
-        await store.dispach({action:_resolve.action,payload:_resolve.payload})
+        store.queue({action:_resolve.action,payload:_resolve.payload})
+      }else{//if no resolve
+        let busyRows = 0
+        _coreState.monitors.forEach(_monitor => {
+          _monitor.rows.forEach(_rowStr => {
+            if(_rowStr.includes(`"isBusy":true`)){
+              busyRows++
+            }
+          })
+        }) 
+        if(busyRows){
+          setTimeout(()=>{
+            store.queue({action:'setPropertyForTesting',payload:Math.round((Math.random()*1000)*1000)})
+          },500)
+        }
       }
     }catch(err){
       dialog.showErrorBox('Error',`Unable to compute\nError:${err}`)
@@ -303,60 +371,43 @@ const pingMonitor = ()=>{
         _wv.setOpacity(_newConfigObj.alwaysShowOnTop?0.9:1)
       })
     }
-    
   }
   store.subscribe(compute)//execute compute on any state change
   comunicator.subscribe({
     channel:'window',
-    commandListString:'dispachAction',
-    callback: async (_pl)=>{
-      try{
-        dev?console.debug('resived action',_pl):0
-        let _plObj = JSON.parse(_pl.payload)
+    commandListString:'dispachAction, getConfigData, configSetProp, configRestoreDefaults',
+    callback: async ({command, payload})=>{
+      const dispachAction = async (payload) => {
+        dev?console.debug('resived action',payload):null
+        let _plObj = JSON.parse(payload)
         if(_plObj.action == 'monitorImportConfig'){
           dontQuitApp = true
         }
-        // let startTime = new Date().getTime()
-        let actionResult = await store.dispach({action:_plObj.action,payload:_plObj.payload})
-        // let endTime = new Date().getTime()
-        // console.debug(`Time to dispach user action ${endTime - startTime}ms`)
+        let startTime = new Date().getTime()
+        let actionResult = store.queue({action:_plObj.action,payload:_plObj.payload})
+        let endTime = new Date().getTime()
+        dev?console.debug(`Time to queue user action ${endTime - startTime}ms`):0
         if(actionResult && _plObj.action == 'monitorImportConfig'){
           setTimeout(()=>{
             if(dontQuitApp){
               dontQuitApp = false
             }
-          },15000)
+          },30000)
         }
-      }catch(err){
-        dialog.showErrorBox('Error',`Unable to dispach action that was recived from a window\nPayload:${_pl}\nError:${err}`)
       }
-    }
-  })
-  comunicator.subscribe({
-    channel:'window',
-    commandListString:'getConfigData',
-    callback: async (_pl)=>{
-      try{
-        dev?console.debug('resived request for config',_pl):0
-        let _plObj = JSON.parse(_pl.payload)
+      const getConfigData = async (payload) => {
+        dev?console.debug('resived request for config',payload):0
+        let _plObj = JSON.parse(payload)
         let _configData = await config.getState()
         await comunicator.send({
           window:windows[_plObj],
           command:'sendConfig',
           payload:_configData
         })
-      }catch(err){
-        dialog.showErrorBox('Error',`Unable to get config data that was requested by a window\nPayload:${_pl}\nError:${err}`)
       }
-    }
-  })
-  comunicator.subscribe({
-    channel:'window',
-    commandListString:'configSetProp',
-    callback: async (_pl)=>{
-      try{
-        dev?console.debug('resived request to change config',_pl):0
-        let _plObj = JSON.parse(_pl.payload)
+      const configSetProp = async (payload) => {
+        dev?console.debug('resived request to change config',payload):0
+        let _plObj = JSON.parse(payload)
         let _configSetResult = await config.setParam({key:_plObj.key,value:_plObj.value})
         if(_configSetResult.success == false){
           return 0;
@@ -372,19 +423,11 @@ const pingMonitor = ()=>{
           })
         })
         if(_plObj.key == 'langCode'){
-          await store.dispach({action:'writeNewLangWords',payload:_plObj.value})
+          await store.queue({action:'writeNewLangWords',payload:_plObj.value})
         }
-      }catch(err){
-        dialog.showErrorBox('Error',`Unable to set config prop that was requested by window\nPayload:${_pl}\nError:${err}`)
       }
-    }
-  })
-  comunicator.subscribe({
-    channel:'window',
-    commandListString:'configRestoreDefaults',
-    callback: async (_pl)=>{
-      try{
-        dev?console.debug('resived request to restore defaults of config',_pl):0
+      const configRestoreDefaults = async (payload) => {
+        dev?console.debug('resived request to restore defaults of config',payload):0
         let _configSetResult = await config.restoreDefault()
         if(_configSetResult.success == false){
           return 0;
@@ -398,33 +441,67 @@ const pingMonitor = ()=>{
               payload:_configData
             })
         })
-      }catch(err){
-        dialog.showErrorBox('Error',`Unable to set config defaults that was requested by window\nPayload:${_pl}\nError:${err}`)
+      }
+      switch(command){
+        case 'dispachAction':
+          try{
+            await dispachAction(payload)
+          }catch(err){
+            dialog.showErrorBox('Error',`Unable to dispach action that was recived from a window\nPayload:${payload}\nError:${err}`)
+          }
+        break;
+        case 'getConfigData':
+          try{
+            await getConfigData(payload)
+          }catch(err){
+            dialog.showErrorBox('Error',`Unable to get config data that was requested by a window\nPayload:${payload}\nError:${err}`)
+          }
+        break;
+        case 'configSetProp':
+          try{
+            await configSetProp(payload)
+          }catch(err){
+            dialog.showErrorBox('Error',`Unable to set config prop that was requested by window\nPayload:${payload}\nError:${err}`)
+          }
+        break;
+        case 'configRestoreDefaults':
+          try{
+            await configRestoreDefaults(payload)
+          }catch(err){
+            dialog.showErrorBox('Error',`Unable to set config defaults that was requested by window\nPayload:${payload}\nError:${err}`)
+          }
+        break;
       }
     }
   })
+  
   app.whenReady().then( async function(){
-
-    timeOfStart  = new Date().getTime()
     try{
-      await store.dispach({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})
+      //execute compute on any state change
+      //await store.dispach({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})//to create initial window
+      await store.queue({action: actionTypes.MONITOR_AUTOOPEN, payload:''})//to load last autosaved state
     }catch(err){
       dialog.showErrorBox('Error',`Unable to start Ping Monitor\nError:${err}`)
     }
-    if(dev){
-      testComponents(fileManager,config,loger,pinger,store)
-    }
+    // if(dev){
+    //   testComponents(fileManager,config,loger,pinger,store)
+    // }
     
   })
   app.on('second-instance', async (event, commandLine, workingDirectory) => {
-    await store.dispach({
+    await store.queue({
       action:'addMonitor',
       payload:JSON.stringify({})
     })
   })
-  app.on('window-all-closed', function () {
+  app.on('window-all-closed', () => {
     if(!dontQuitApp){
-      if (process.platform !== 'darwin') app.quit()
+      //this horrable timeout os for autosave to be able to save in time
+      //because close event is not async and will not wait for fileSystem
+      dev?console.debug('waiting to close app'):0
+      setTimeout(()=>{
+        if (process.platform !== 'darwin') app.quit()
+      }, 4000)
     }else{
       console.debug('will not close all windows')
     }
@@ -481,17 +558,11 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
 
   let valueForTesting = Math.round((Math.random()*1000)*1000)
   let stateManagerTestResult = false
-  await store.dispach({action:'setPropertyForTesting',payload:valueForTesting})
-  await store.dispach({action:'setPropertyForTesting',payload:42})
-  let undo = await store.undo()
+  store.queue({action:'setPropertyForTesting',payload:valueForTesting})
+  store.queue({action:'setPropertyForTesting',payload:42})
+  // let undo = await store.undo()
   let recivedQuery = await store.__stateNow();
   let recivedValue = recivedQuery.propertyForTesting;
-
-  if(undo){
-    if(recivedValue == valueForTesting){
-      stateManagerTestResult = true
-    }
-  }
   if(stateManagerTestResult){
     console.debug('[PASS] test 5 stateManager!')
   }else{

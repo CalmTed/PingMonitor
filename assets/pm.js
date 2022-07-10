@@ -37,29 +37,41 @@ var Page = function (_winId) {
                 var _newRows = _newStateIds.filter(function (_nr) { return _oldStateIds.filter(function (_or) { return _or[0] == _nr[0]; }).length == 0; });
                 var _removedRows = _oldStateIds.filter(function (_or) { return _newStateIds.filter(function (_nr) { return _nr[0] == _or[0]; }).length == 0; });
                 _newRows.forEach(function (_nr) {
-                    _rowChangesList.push({ selector: 'list', key: 'new_row', value: _stateNew.monitor.rows.find(function (_mr) { return _mr.indexOf("\"rowId\":".concat(_nr[0])) > -1; }) });
+                    _rowChangesList.push({ selector: 'list', key: 'new_row', value: _stateNew.monitor.rows.find(function (_mr) { return _mr.includes("\"rowId\":".concat(_nr[0])); }) });
                 });
                 _removedRows.forEach(function (_rr) {
-                    _rowChangesList.push({ selector: 'list', key: 'remove_row', value: _stateOld.monitor.rows.find(function (_mr) { return _mr.indexOf("\"rowId\":".concat(_rr[0])) > -1; }) });
+                    _rowChangesList.push({ selector: 'list', key: 'remove_row', value: _stateOld.monitor.rows.find(function (_mr) { return _mr.includes("\"rowId\":".concat(_rr[0])); }) });
                 });
                 _stateNew.monitor.rows.forEach(function (_row, _i) {
-                    var _rowObjNew = JSON.parse(_stateNew.monitor.rows[_i]);
-                    if (typeof _stateOld.monitor.rows.find(function (_mr) { return _mr.indexOf("\"rowId\":".concat(_rowObjNew.rowId)) > -1; }) != 'undefined') {
+                    var _rowObjNew = JSON.parse(_row);
+                    //if not new row
+                    if (_stateOld.monitor.rows.find(function (_mr) { return _mr.includes("\"rowId\":".concat(_rowObjNew.rowId)); })) {
                         var _rowObjOld_1 = JSON.parse(_stateOld.monitor.rows[_i]);
                         Object.keys(_rowObjNew).forEach(function (_key) {
                             if (typeof _rowObjNew[_key] != 'object') {
-                                if (_rowObjNew[_key] != _rowObjOld_1[_key]) {
+                                if (_rowObjNew[_key] !== _rowObjOld_1[_key]) {
                                     _rowChangesList.push({ selector: 'row', id: _rowObjNew.rowId, key: _key, value: _rowObjNew[_key] });
                                 }
                             }
                             else {
-                                if (_key == 'history') {
-                                    //what if they are the same length but diff 
-                                    if (_rowObjNew[_key].length > 0 && _rowObjOld_1[_key].length > 0) {
-                                        var _lastElementOfNewHist = _rowObjNew[_key][_rowObjNew[_key].length - 1];
-                                        var _lastElementOfOldHist = _rowObjOld_1[_key][_rowObjOld_1[_key].length - 1];
-                                        if (_lastElementOfNewHist.timestamp != _lastElementOfOldHist.timestamp) {
-                                            _lastElementOfNewHist.quality = Math.round(100 / _rowObjNew[_key].length * _rowObjNew[_key].reduce(function (ps, a) { return (a.status == 'online' ? ps + 1 : ps + 0); }, 0));
+                                if (_key === 'history') {
+                                    var _oldHistory = _rowObjOld_1[_key];
+                                    var _newHistory = _rowObjNew[_key];
+                                    var getQuality = function (histList) {
+                                        return (100 / histList.length) * histList.reduce(function (ps, a) { return (a.s == 'online' ? ps + 1 : ps + 0); }, 0) << 0; // rounding
+                                    };
+                                    if (!!_newHistory.length && !!_oldHistory.length) {
+                                        var _lastElementOfNewHist = _newHistory.pop();
+                                        var _lastElementOfOldHist = _oldHistory.pop();
+                                        if (_lastElementOfNewHist.t != _lastElementOfOldHist.t) {
+                                            _lastElementOfNewHist.quality = getQuality(_newHistory.slice(0, 300)); //last 5 minutes
+                                            _rowChangesList.push({ selector: 'row', id: _rowObjNew.rowId, key: _key, value: _lastElementOfNewHist });
+                                        }
+                                    }
+                                    else {
+                                        if (!!_newHistory.length) {
+                                            var _lastElementOfNewHist = _newHistory.pop();
+                                            _lastElementOfNewHist.quality = getQuality(_newHistory.slice(0, 300)); //last 5 minutes
                                             _rowChangesList.push({ selector: 'row', id: _rowObjNew.rowId, key: _key, value: _lastElementOfNewHist });
                                         }
                                     }
@@ -100,7 +112,6 @@ var Page = function (_winId) {
         var _ret = word;
         var _langSet = _this.state.langWords;
         if (typeof _langSet[word] == 'undefined') {
-            // console.log(`"${word}":""`)
             return _ret;
         }
         if (_langSet[word].length == 0 || word.length == 0) {
@@ -157,29 +168,29 @@ var Page = function (_winId) {
                 var _widthMargin = _heightMargin;
                 var dataLenghtLimit = length * 60 * 1000;
                 var timeOfBegining = new Date().getTime() - dataLenghtLimit; //cut to last N min
-                var dataTrimmed = dataArray.filter(function (dot) { return dot.timestamp >= timeOfBegining; });
+                var dataTrimmed = dataArray.filter(function (dot) { return dot.t >= timeOfBegining; });
                 var widthKoof = (100 - (_widthMargin * 2));
                 if (dataTrimmed.length > 1) {
-                    if (dataTrimmed[dataTrimmed.length - 1].time - dataTrimmed[0].timestamp > dataLenghtLimit) {
-                        widthKoof = (_canvasWidth - (_widthMargin * 2)) / (dataTrimmed[dataTrimmed.length - 1].timestamp - dataTrimmed[0].timestamp);
+                    if (dataTrimmed[dataTrimmed.length - 1].t - dataTrimmed[0].t > dataLenghtLimit) {
+                        widthKoof = (_canvasWidth - (_widthMargin * 2)) / (dataTrimmed[dataTrimmed.length - 1].t - dataTrimmed[0].t);
                     }
                     else {
                         widthKoof = (_canvasWidth - (_widthMargin * 2)) / (dataLenghtLimit);
                     }
                 }
-                var maxDellay = Math.max.apply(Math, dataTrimmed.map(function (dot) { return dot.dellayMS; }));
+                var maxDellay = Math.max.apply(Math, dataTrimmed.map(function (dot) { return dot.d; }));
                 var _map = function (val, start1, stop1, start2, stop2) {
                     var __a = (val - start1) / (stop1 - start1) * (stop2 - start2) + start2;
                     return start2 < stop2 ? Math.round(Math.max(Math.min(__a, stop2), start2) * 10) / 10 : Math.round(Math.max(Math.min(__a, start2), stop2) * 10) / 10;
                 };
                 if (dataTrimmed.length > 0) {
-                    _ret += "M".concat(_widthMargin, " ").concat(_map(dataTrimmed[0].dellayMS, maxDellay, 0, _heightMargin, _canvasHeight - _heightMargin));
-                    var _firstTime_1 = dataTrimmed[0].timestamp;
+                    _ret += "M".concat(_widthMargin, " ").concat(_map(dataTrimmed[0].d, maxDellay, 0, _heightMargin, _canvasHeight - _heightMargin));
+                    var _firstTime_1 = dataTrimmed[0].t;
                     dataTrimmed.forEach(function (dot, i) {
                         if (i > 0) {
-                            var _x = Math.round((_widthMargin + (dot.timestamp - _firstTime_1) * widthKoof) * 100) / 100;
-                            var _y = _map(dot.dellayMS, maxDellay, 0, _heightMargin, _canvasHeight - _heightMargin);
-                            if (dot.status == 'offline' || dot.status == 'timeout' || dot.status == 'error') {
+                            var _x = Math.round((_widthMargin + (dot.t - _firstTime_1) * widthKoof) * 100) / 100;
+                            var _y = _map(dot.d, maxDellay, 0, _heightMargin, _canvasHeight - _heightMargin);
+                            if (dot.s == 'offline' || dot.s == 'timeout' || dot.s == 'error') {
                                 _ret += "M".concat(_x, " ").concat(_y);
                             }
                             else {
@@ -206,29 +217,29 @@ var Page = function (_winId) {
                     var _tempStatus;
                     var _startTime;
                     history.forEach(function (_b, _i) {
-                        var status = _b.status, timestamp = _b.timestamp;
+                        var s = _b.s, t = _b.t;
                         if (!_tempStatus) {
-                            _tempStatus = status;
+                            _tempStatus = s;
                         }
                         if (!_tempBeginigTime) {
-                            _tempBeginigTime = timestamp;
-                            _startTime = timestamp;
+                            _tempBeginigTime = t;
+                            _startTime = t;
                         }
-                        if (_tempStatus != status) {
+                        if (_tempStatus != s) {
                             _ret.push({
-                                status: status,
+                                status: s,
                                 prevStatus: _tempStatus,
-                                duration: Math.abs(timestamp - _tempBeginigTime),
-                                from: timestamp,
+                                duration: Math.abs(t - _tempBeginigTime),
+                                from: t,
                                 until: _tempBeginigTime
                             });
-                            _tempStatus = status;
-                            _tempBeginigTime = timestamp;
+                            _tempStatus = s;
+                            _tempBeginigTime = t;
                         }
                         else { //same status but the end of history
                             if (_ret.length > 0) {
-                                _ret[_ret.length - 1].duration = Math.abs(timestamp - _tempBeginigTime);
-                                _ret[_ret.length - 1].until = timestamp;
+                                _ret[_ret.length - 1].duration = Math.abs(t - _tempBeginigTime);
+                                _ret[_ret.length - 1].until = t;
                             }
                         }
                     });
@@ -239,8 +250,8 @@ var Page = function (_winId) {
                     if (__changesList.length == 0) {
                         if (history.length > 0) {
                             _ret.push({
-                                status: history[history.length - 1].status,
-                                duration: Math.abs(history[history.length - 1].timestamp - history[0].timestamp),
+                                status: history[history.length - 1].s,
+                                duration: Math.abs(history[history.length - 1].t - history[0].t),
                                 changesNum: 0
                             });
                         }
@@ -249,13 +260,11 @@ var Page = function (_winId) {
                         __changesList.forEach(function (_chLEl) {
                             if (_ret.length == 0) {
                                 //adding status before first change
-                                console.log(_chLEl.duration, _chLEl.from, history[0].timestamp);
                                 _ret.push({
                                     status: _chLEl.prevStatus,
-                                    duration: Math.abs(_chLEl.from - history[0].timestamp),
+                                    duration: Math.abs(_chLEl.from - history[0].t),
                                     changesNum: 1
                                 });
-                                console.log('updated 1');
                             }
                             if (!_ret.find(function (_slEl) { return _slEl.status == _chLEl.status; })) {
                                 _ret.push({
@@ -263,7 +272,6 @@ var Page = function (_winId) {
                                     duration: _chLEl.duration,
                                     changesNum: 1
                                 });
-                                console.log('updated 2');
                             }
                             else {
                                 var _index = _ret.indexOf(_ret.find(function (_slEl) { return _slEl.status == _chLEl.status; }));
@@ -274,8 +282,8 @@ var Page = function (_winId) {
                     }
                     return _ret;
                 };
-                var initialStatus = history[0].status;
-                var initialTime = history[0].timestamp;
+                var initialStatus = history[0].s;
+                var initialTime = history[0].t;
                 var addStatusIfNeeded = function (__statusList, __status, __duration) {
                     if (!__statusList.find(function (_slEl) { return _slEl.status == __status; })) {
                         __statusList.push({
@@ -292,34 +300,32 @@ var Page = function (_winId) {
                     return __statusList;
                 };
                 history.forEach(function (_moment, _i) {
-                    var duration = _moment.timestamp - initialTime;
-                    if (_moment.status !== initialStatus) {
+                    var duration = _moment.t - initialTime;
+                    if (_moment.s !== initialStatus) {
                         //changes
                         _changesList.push({
-                            status: _moment.status,
+                            status: _moment.s,
                             prevStatus: initialStatus,
                             duration: duration,
                             from: initialTime,
-                            until: _moment.timestamp
+                            until: _moment.t
                         });
                         //status
                         _statusList = addStatusIfNeeded(_statusList, initialStatus, duration);
-                        initialStatus = _moment.status;
-                        initialTime = _moment.timestamp;
+                        initialStatus = _moment.s;
+                        initialTime = _moment.t;
                     }
                     else if (_i == history.length - 1) {
                         _changesList.push({
-                            status: _moment.status,
+                            status: _moment.s,
                             prevStatus: initialStatus,
                             duration: duration,
                             from: initialTime,
-                            until: _moment.timestamp
+                            until: _moment.t
                         });
                         _statusList = addStatusIfNeeded(_statusList, initialStatus, duration);
                     }
                 });
-                console.log(_changesList);
-                console.log(_statusList);
                 return {
                     changesList: _changesList.reverse(),
                     statusList: _statusList
@@ -503,7 +509,7 @@ var Page = function (_winId) {
                     if (_options === void 0) { _options = ['no options']; }
                     var _ret = [];
                     var _parent = '';
-                    if (_name.indexOf('_') > -1) {
+                    if (_name.includes('_')) {
                         _parent = _name.split('_').filter(function (_n, _i, _a) { return _i < _a.length - 1; }).join('_');
                         _name = _name.split('_').filter(function (_n, _i, _a) { return _i == _a.length - 1; }).toString();
                     }
@@ -1143,14 +1149,14 @@ var Page = function (_winId) {
                 return _col1Content;
             };
             var _getCol2Content_1 = function (history, updateTimeMS, rowId) {
-                var _knownHistory = { status: 'unknown', dellayMS: 0 };
+                var _knownHistory = { s: 'unknown', d: 0 };
                 var _knownQuality = 0;
                 if (history.length > 0) {
                     _knownHistory = history[history.length - 1];
-                    _knownQuality = Math.round(100 / history.length * history.reduce(function (ps, a) { return (a.status == 'online' ? ps + 1 : ps + 0); }, 0));
+                    _knownQuality = Math.round(100 / history.length * history.reduce(function (ps, a) { return (a.s == 'online' ? ps + 1 : ps + 0); }, 0));
                 }
-                var status = _knownHistory.status;
-                var dellayMS = _knownHistory.dellayMS;
+                var status = _knownHistory.s;
+                var dellayMS = _knownHistory.d;
                 var quality = _knownQuality;
                 var _col2Content = document.createElement('col2');
                 //status
@@ -1250,11 +1256,11 @@ var Page = function (_winId) {
             var _createRowDOM_1 = function (_b) {
                 var rowId = _b.rowId, name = _b.name, imageLink = _b.imageLink, ipAddress = _b.ipAddress, isBusy = _b.isBusy, isPaused = _b.isPaused, isMuted = _b.isMuted, isAlarmed = _b.isAlarmed, size = _b.size, isSelected = _b.isSelected, history = _b.history, updateTimeMS = _b.updateTimeMS;
                 var _rowDOM = document.createElement('row');
-                var _knownHistory = { status: 'unknown', dellayMS: 0 };
+                var _knownHistory = { s: 'unknown', d: 0 };
                 if (history.length > 0) {
                     _knownHistory = history[history.length - 1];
                 }
-                var status = _knownHistory.status;
+                var status = _knownHistory.s;
                 _rowDOM.setAttribute('id', rowId);
                 _rowDOM.setAttribute('busy', isBusy);
                 _rowDOM.setAttribute('paused', isPaused);
@@ -1300,7 +1306,7 @@ var Page = function (_winId) {
                         contextMenu.show(_e);
                     }
                     if (_e.key == ' ') {
-                        _e.preventDefault();
+                        _e.preventDefault(); //to not to scroll
                         _e.target.click();
                     }
                     if (_e.key == 'ArrowRight') {
@@ -1344,7 +1350,7 @@ var Page = function (_winId) {
                         action: 'rowPauseAllActive',
                         payload: JSON.stringify({ monitorId: Number(_state.subscriptionKey) })
                     },
-                    hidden: _state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isPaused\":false") > -1; }).length > 0 ? false : true
+                    hidden: _state.monitor.rows.filter(function (_r) { return _r.includes("\"isPaused\":false"); }).length > 0 ? false : true
                 });
                 var toolFullScreen = _createTool_1({
                     tagName: 'toolfullscreen',
@@ -1363,7 +1369,7 @@ var Page = function (_winId) {
                         action: 'winUnalarmAllRows',
                         payload: JSON.stringify({ monitorId: Number(_state.subscriptionKey) })
                     },
-                    hidden: _state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isAlarmed\":true") > -1; }).length > 0 ? false : true
+                    hidden: _state.monitor.rows.filter(function (_r) { return _r.includes("\"isAlarmed\":true"); }).length > 0 ? false : true
                 });
                 _toolsDOM.append(toolMenu);
                 _toolsDOM.append(toolNewRow);
@@ -1410,7 +1416,7 @@ var Page = function (_winId) {
                     //if clicked not on row
                     if (_e.path.filter(function (_el) { return _el.tagName == 'ROW'; }).length == 0) {
                         contextMenu.hideContextMenu();
-                        var _selectedRows = _this.state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isSelected\":true") > -1; }).map(function (_r) { return JSON.parse(_r); });
+                        var _selectedRows = _this.state.monitor.rows.filter(function (_r) { return _r.includes("\"isSelected\":true"); }).map(function (_r) { return JSON.parse(_r); });
                         if (_selectedRows.length > 0) {
                             var comunicator = Comunicator();
                             comunicator.send({
@@ -1564,7 +1570,7 @@ var Page = function (_winId) {
                     if (_focus === void 0) { _focus = 'all'; }
                     //hiding if paused
                     if (['all', 'pause'].includes(_focus)) {
-                        var _unpausedRows = _state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isPaused\":false") > -1; });
+                        var _unpausedRows = _state.monitor.rows.filter(function (_r) { return _r.includes("\"isPaused\":false"); });
                         if (typeof _unpausedRows == "undefined") {
                             return 0;
                         }
@@ -1577,7 +1583,7 @@ var Page = function (_winId) {
                     }
                     //hiding unalarm button
                     if (['all', 'alarm'].includes(_focus)) {
-                        var _alarmedRows = _state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isAlarmed\":true") > -1; });
+                        var _alarmedRows = _state.monitor.rows.filter(function (_r) { return _r.includes("\"isAlarmed\":true"); });
                         if (typeof _alarmedRows == "undefined") {
                             return 0;
                         }
@@ -1623,7 +1629,7 @@ var Page = function (_winId) {
                             if (!diffUnit.value) {
                                 break;
                             }
-                            var _targetRowObj = _state.monitor.rows.find(function (_r) { return _r.indexOf("\"fieldEditing\":\"image\"") > -1; });
+                            var _targetRowObj = _state.monitor.rows.find(function (_r) { return _r.includes("\"fieldEditing\":\"image\""); });
                             if (typeof _targetRowObj != 'undefined') {
                                 var _targetRowId = JSON.parse(_targetRowObj).rowId;
                                 document.querySelector('imgpickermodal').setAttribute('targetRow', _targetRowId);
@@ -1689,7 +1695,7 @@ var Page = function (_winId) {
                 };
                 var _renderRowGroup_1 = function (diffUnit) {
                     var targetRowDom = document.querySelector("row[id=\"".concat(diffUnit.id, "\"]"));
-                    var targetRowObj = JSON.parse(_state.monitor.rows.find(function (_r) { return _r.indexOf("\"rowId\":".concat(diffUnit.id)) > -1; }));
+                    var targetRowObj = JSON.parse(_state.monitor.rows.find(function (_r) { return _r.includes("\"rowId\":".concat(diffUnit.id)); }));
                     var _updateInputElement = function (_b) {
                         var _selector = _b._selector, _value = _b._value;
                         var _newInputValue = _value;
@@ -1811,11 +1817,20 @@ var Page = function (_winId) {
                         _renderCol4({ diffUnit: diffUnit }); //statistics
                     }
                     if (diffUnit.key == 'history') {
-                        //status, dellay, quality, graph
-                        var status_1 = diffUnit.value.status;
+                        var status_1 = diffUnit.value.s;
                         document.querySelector("row[id=\"".concat(diffUnit.id, "\"]")).setAttribute('status', status_1);
+                        var rowDomElement = document.querySelector("row[id=\"".concat(diffUnit.id, "\"]"));
+                        // console.log('rendering '+ diffUnit.id);
+                        !targetRowObj.isPaused ? rowDomElement.animate([
+                            { borderColor: 'var(--row-status)' },
+                            { borderColor: 'var(--background)' },
+                            { borderColor: 'var(--row-status)' },
+                        ], {
+                            duration: 400,
+                            iterations: 1
+                        }) : 0;
                         if (targetRowObj.size != '1Little') {
-                            var dellayMS = diffUnit.value.dellayMS;
+                            var dellayMS = diffUnit.value.d;
                             var quality = diffUnit.value.quality;
                             _changeHtmlIfNedded_1("row[id=\"".concat(diffUnit.id, "\"] col2 status"), _this.t(status_1));
                             _changeHtmlIfNedded_1("row[id=\"".concat(diffUnit.id, "\"] col2 trio triodelay"), "".concat(dellayMS).concat(_this.t('ms')));
@@ -1874,7 +1889,7 @@ var Page = function (_winId) {
                     }
                 });
             }
-            if (_state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isAlarmed\":true") > -1; }).length > 0) {
+            if (_state.monitor.rows.filter(function (_r) { return _r.includes("\"isAlarmed\":true"); }).length > 0) {
                 _this.siren.start();
             }
             else {
@@ -1915,7 +1930,7 @@ var Siren = function () {
     _this.start = function () {
         if (_this.isProduction) {
             var _link = _this.dom.getAttribute('src');
-            if (_link.indexOf('../../') == -1) {
+            if (!_link.includes('../../')) {
                 _this.dom.setAttribute("src", "../../".concat(_link));
             }
         }
@@ -1977,7 +1992,7 @@ var ContextMenu = function () {
                 var _setEventListener = function (_domEl, _action) {
                     _domEl.onclick = function () {
                         var comunicator = Comunicator();
-                        var _selectedRows = _this.state.monitor.rows.filter(function (_r) { return _r.indexOf("\"isSelected\":true") > -1; }).map(function (_r) { return JSON.parse(_r); });
+                        var _selectedRows = _this.state.monitor.rows.filter(function (_r) { return _r.includes("\"isSelected\":true"); }).map(function (_r) { return JSON.parse(_r); });
                         if (_selectedRows.length > 0) {
                             _selectedRows.forEach(function (_sr) {
                                 if (typeof _action.rowId != undefined) {
@@ -2143,7 +2158,6 @@ var ContextMenu = function () {
             }
         }
         catch (err) {
-            console.log("Cant render contextMenu", _param);
             alert("Cant render contextMenu ".concat(_param));
         }
     };
@@ -2174,6 +2188,7 @@ var pageStart = function () {
     var comunicator = Comunicator();
     contextMenu = ContextMenu();
     comunicator.subscribe(function (_message) {
+        console.log(_message.command);
         if (_message.command == 'sendInitData') {
             var _plObj = JSON.parse(_message.payload);
             var _winId = _plObj.winId;

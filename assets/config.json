@@ -1,13 +1,13 @@
 {
     "langCode": "ua",
-    "colorMode": "system",
+    "colorMode": "dark",
     "alwaysShowOnTop": false,
     "hideTitleBar": false,
     "initialRows": [
         {
             "address": "localhost",
-            "updateTimeMS": 3000,
-            "size": "1Little",
+            "updateTimeMS": 10000,
+            "size": "2Small",
             "name": "Initial row 1",
             "pictureLink": "0 PingMonitor.png",
             "isPaused": true,
@@ -16,29 +16,29 @@
     ],
     "defaultNewRow": {
         "address": "localhost",
-        "size": "1Little",
-        "updateTimeMS": 3000,
+        "size": "2Small",
+        "updateTimeMS": 10000,
         "name": "Default row",
         "pictureLink": "0 PingMonitor.png",
         "isPaused": true,
         "isMuted": false
     },
     "defaultPingTimeStrategy": {
-        "online": 5000,
+        "online": 10000,
         "error": 2000,
         "timeout": 2000
     },
     "newRowRule": "copyPrev",
     "timeToAlarmMS": 10000,
     "unmuteOnGettingOnline": true,
-    "pingHistoryTimeLimitMINS": 60,
-    "miniGraphShowLimitMINS": 60,
+    "pingHistoryTimeLimitMINS": 360,
+    "miniGraphShowLimitMINS": 5,
     "savePingHistoryToConfig": true,
     "logSettings": {
         "logChanges": false,
-        "defaultLogName": "123",
+        "defaultLogName": "",
         "newLogNameEveryday": true,
         "timeToLogStatusChangeMS": 10000
     },
-    "__keyForTesting": 529575
+    "__keyForTesting": 169346
 }

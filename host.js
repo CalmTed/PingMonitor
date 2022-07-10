@@ -40,7 +40,7 @@ var electron_1 = require("electron");
 var pingMonitor = function () {
     var version = process.env.npm_package_version ? process.env.npm_package_version : '1.4.0';
     var lang = process.env.LANG;
-    var dev = false;
+    var dev = (process.env.npm_lifecycle_event === 'tstart');
     var prefix = process.env.npm_lifecycle_event !== 'tstart' ? '../../' : './';
     var _a = require('electron'), app = _a.app, dialog = _a.dialog;
     var actionTypes = require(prefix + 'components/actionTypes');
@@ -49,58 +49,72 @@ var pingMonitor = function () {
     var loger = require(prefix + 'components/loger');
     var pinger = require(prefix + 'components/pinger');
     var stateManager = require(prefix + 'components/stateManager');
-    var store = new stateManager({ version: version, dialog: dialog });
+    var store = new stateManager({
+        version: version,
+        dialog: dialog,
+        fileManager: fileManager,
+        actionTypes: actionTypes,
+        loger: loger,
+        config: config,
+        pinger: pinger
+    });
     var comunicatorCore = require(prefix + 'components/comunicatorCore');
     var comunicator = new comunicatorCore();
     var windows = {};
-    var timeOfStart = 0;
     var dontQuitApp = false;
-    var pingCheck = function (_coreState, _resolve) {
-        _coreState.monitors.forEach(function (_mon) {
-            // for(every monitor & every row)
-            //ITS MIGHT BE QUITE EXPENCIVE!!
-            _mon.rows.forEach(function (_rowStr) {
-                if (_rowStr.indexOf("\"isBusy\":false") > -1 && _rowStr.indexOf("\"isPaused\":false") > -1) {
-                    var _rowObj_1 = JSON.parse(_rowStr);
-                    // if(not paused and not busy) then timeout pingProbe(monitor,row,ip)
-                    setTimeout(function (_a) {
-                        var _store = _a._store, _actionTypes = _a._actionTypes;
-                        return __awaiter(void 0, void 0, void 0, function () {
-                            var pingResult;
-                            return __generator(this, function (_b) {
-                                switch (_b.label) {
-                                    case 0: return [4 /*yield*/, pinger.probe({ address: _rowObj_1.ipAddress, rowId: _rowObj_1.rowId })];
-                                    case 1:
-                                        pingResult = _b.sent();
-                                        if (!pingResult.success) return [3 /*break*/, 3];
-                                        // dispach(rowId,pingReport)
-                                        return [4 /*yield*/, _store.dispach({
-                                                action: _actionTypes.ROW_SUBMIT_PING_PROBE,
-                                                payload: JSON.stringify(pingResult.payload)
-                                            })];
-                                    case 2:
-                                        // dispach(rowId,pingReport)
-                                        _b.sent();
-                                        return [3 /*break*/, 4];
-                                    case 3:
-                                        loger.out("Unsuccessfull ping probe! Error: ".concat(pingResult.errorMessage, ". Row:id:").concat(_rowObj_1.rowId, " ip:").concat(_rowObj_1.ipAddress));
-                                        _b.label = 4;
-                                    case 4: return [2 /*return*/];
+    var lastAutosave = new Date().getTime();
+    var pingCheck = function (_coreState, _resolve) { return __awaiter(void 0, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            _coreState.monitors.forEach(function (_mon) { return __awaiter(void 0, void 0, void 0, function () {
+                var timeNow;
+                return __generator(this, function (_a) {
+                    timeNow = new Date().getTime();
+                    _mon.rows.forEach(function (_rowStr) { return __awaiter(void 0, void 0, void 0, function () {
+                        var isBusy, isPaused, _rowObj, _rowObj;
+                        return __generator(this, function (_a) {
+                            if (!_resolve.set) {
+                                isBusy = _rowStr.includes("\"isBusy\":true");
+                                isPaused = _rowStr.includes("\"isPaused\":true");
+                                if (!isBusy) {
+                                    if (!isPaused) {
+                                        _rowObj = JSON.parse(_rowStr);
+                                        _resolve = {
+                                            set: true,
+                                            action: actionTypes.ROW_SET_PROP,
+                                            payload: "{\"rowId\":".concat(_rowObj.rowId, ",\"key\":\"isBusy\",\"value\":true}")
+                                        };
+                                    } //end is paused
                                 }
-                            });
+                                else { //it is busy
+                                    _rowObj = JSON.parse(_rowStr);
+                                    if (!isPaused) {
+                                        //check time
+                                        if (_rowObj.lastPinged + _rowObj.updateTimeMS < timeNow) {
+                                            _resolve = {
+                                                set: true,
+                                                action: actionTypes.ROW_SUBMIT_PING_PROBE,
+                                                payload: JSON.stringify({ rowId: _rowObj.rowId })
+                                            };
+                                        }
+                                    }
+                                    else {
+                                        _resolve = {
+                                            set: true,
+                                            action: actionTypes.ROW_SET_PROP,
+                                            payload: "{\"rowId\":".concat(_rowObj.rowId, ",\"key\":\"isBusy\",\"value\":false}")
+                                        };
+                                    }
+                                }
+                            } //end is resolve.set
+                            return [2 /*return*/];
                         });
-                    }, _rowObj_1.updateTimeMS, { _store: store, _actionTypes: actionTypes });
-                    _resolve.set === false ? _resolve = { set: true, action: actionTypes.ROW_SET_PROP, payload: JSON.stringify({
-                            rowId: _rowObj_1.rowId,
-                            key: 'isBusy',
-                            value: true
-                        })
-                    } : 0;
-                }
-            });
+                    }); });
+                    return [2 /*return*/];
+                });
+            }); });
+            return [2 /*return*/, _resolve];
         });
-        return _resolve;
-    };
+    }); };
     var monitorCheck = function (_coreState, _prevState, _resolve) {
         // if number on wins is not the same then  addWindow|removeWindow
         var monitorsIds = function (_state) {
@@ -133,7 +147,7 @@ var pingMonitor = function () {
         };
         var findAllUnwindowedMonitors = function (_state, _monIds, _subKeys) {
             var _monitArr = [];
-            _coreState.monitors.forEach(function (_mon) {
+            _state.monitors.forEach(function (_mon) {
                 if (!_subKeys.includes(_mon.monitorId)) {
                     _monitArr.push(_mon);
                 }
@@ -160,10 +174,17 @@ var pingMonitor = function () {
                 payload: JSON.parse(_extraWindowsStrArr[0]).winId.toString()
             };
         }
+        if (!monitorsIds.length) {
+            _resolve = {
+                set: true,
+                action: actionTypes.ADD_NEW_MONITOR,
+                payload: ''
+            };
+        }
         return _resolve;
     };
     var windowCheck = function (_coreState, _prevState, _resolve) { return __awaiter(void 0, void 0, void 0, function () {
-        var getNormalWindow, uncreatedBrowserWIndowsF, undelitedBrowserWindowsF, uncreatedBrowserWIndows, undelitedBrowserWindows, _configData_1, checkFullDifference, differenceObject;
+        var getNormalWindow, uncreatedBrowserWindowsF, undelitedBrowserWindowsF, uncreatedBrowserWIndows, undelitedBrowserWindows, _configData_1, checkFullDifference, differenceObject;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -206,7 +227,7 @@ var pingMonitor = function () {
                             });
                         });
                     };
-                    uncreatedBrowserWIndowsF = function (_state) {
+                    uncreatedBrowserWindowsF = function (_state) {
                         var _ret = [];
                         _state.windows.forEach(function (_wStr) {
                             var _wObj = JSON.parse(_wStr);
@@ -225,7 +246,7 @@ var pingMonitor = function () {
                         });
                         return _ret;
                     };
-                    uncreatedBrowserWIndows = uncreatedBrowserWIndowsF(_coreState);
+                    uncreatedBrowserWIndows = uncreatedBrowserWindowsF(_coreState);
                     undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState);
                     if (!uncreatedBrowserWIndows.length) return [3 /*break*/, 2];
                     return [4 /*yield*/, config.getState()];
@@ -244,18 +265,15 @@ var pingMonitor = function () {
                                     windows[_winId].loadFile('pm.html');
                                     // windows[_winId].removeMenu();
                                     windows[_winId].setBackgroundColor('#222222');
+                                    //this events are not async!
                                     windows[_winId].on('close', function (e) { return __awaiter(void 0, void 0, void 0, function () {
                                         return __generator(this, function (_a) {
-                                            switch (_a.label) {
-                                                case 0: return [4 /*yield*/, store.dispach({
-                                                        action: 'removeWindowById',
-                                                        payload: JSON.stringify({ winId: _winId })
-                                                    })];
-                                                case 1:
-                                                    _a.sent();
-                                                    e.returnValue = false;
-                                                    return [2 /*return*/];
-                                            }
+                                            store.queue({ action: actionTypes.MONITOR_AUTOSAVE, payload: '' });
+                                            store.queue({
+                                                action: 'removeWindowById',
+                                                payload: JSON.stringify({ winId: _winId })
+                                            });
+                                            return [2 /*return*/];
                                         });
                                     }); });
                                     windows[_winId].on('ready-to-show', function () { return __awaiter(void 0, void 0, void 0, function () {
@@ -283,9 +301,13 @@ var pingMonitor = function () {
                     _a.label = 2;
                 case 2:
                     if (undelitedBrowserWindows.length) {
+                        if (store.__lastSave + 60 * 1000 < new Date().getTime()) {
+                            return [2 /*return*/, _resolve = {
+                                    action: actionTypes.MONITOR_AUTOSAVE,
+                                    payload: ''
+                                }];
+                        }
                         undelitedBrowserWindows.forEach(function (_winId) {
-                            if (Object.keys(windows).length == 1) {
-                            }
                             windows[_winId].destroy();
                             delete windows[_winId];
                         });
@@ -295,25 +317,20 @@ var pingMonitor = function () {
                     }
                     checkFullDifference = function (_obj1, _obj2) {
                         var checkDiffStr = function (_one, _two) {
-                            var _strdiffret = '';
-                            var aArr = _one.split('');
-                            var bArr = _two.split('');
-                            aArr.forEach(function (letter, i) {
-                                if (aArr[i] != bArr[i]) {
-                                    _strdiffret += aArr[i];
-                                }
-                            });
-                            return _strdiffret;
+                            if (!_two) {
+                                return true;
+                            }
+                            return _one !== _two;
                         };
                         var _ret = {};
                         //we expect two objects to have the same scheme to minimize computation time
                         Object.entries(_obj1).forEach(function (_a) {
                             var _k = _a[0], _v = _a[1];
-                            if (typeof _obj1[_k] != 'object') {
+                            if (typeof _obj1[_k] != 'object') { //its a string or a number
                                 if (typeof _obj2 != 'undefined') {
                                     if (typeof _obj2[_k] != 'undefined') {
                                         var strDiff = checkDiffStr(_obj1[_k].toString(), _obj2[_k].toString());
-                                        if (strDiff.length > 0) {
+                                        if (strDiff) {
                                             _ret[_k] = _obj1[_k];
                                         }
                                     }
@@ -325,11 +342,24 @@ var pingMonitor = function () {
                                     _ret = _obj1; //added new element
                                 }
                             }
-                            else {
-                                if (typeof _obj2[_k] != 'undefined') {
-                                    _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
+                            else { //its an object
+                                if (typeof _obj2[_k] != 'undefined') { //prev obj have it, so its not new
+                                    if (Array.isArray(_obj1[_k])) { //its an array
+                                        _obj1[_k].forEach(function (_obj1El, __obj1ElIndex) {
+                                            var _a, _b;
+                                            if (checkDiffStr(_obj1El.toString(), (_b = (_a = _obj2[_k]) === null || _a === void 0 ? void 0 : _a[__obj1ElIndex]) === null || _b === void 0 ? void 0 : _b.toString())) {
+                                                if (!_ret[_k]) {
+                                                    _ret[_k] = [];
+                                                }
+                                                _ret[_k].push(_obj1El);
+                                            }
+                                        });
+                                    }
+                                    else { //its an object
+                                        _ret[_k] = checkFullDifference(_obj1[_k], _obj2[_k]);
+                                    }
                                 }
-                                else {
+                                else { //its new, add it
                                     _ret[_k] = _obj1[_k];
                                 }
                             }
@@ -349,7 +379,7 @@ var pingMonitor = function () {
                                         return __generator(this, function (_a) {
                                             switch (_a.label) {
                                                 case 0:
-                                                    if (!(_winStr.indexOf("\"subscriptionKey\":\"".concat(targetId, "\"")) > -1)) return [3 /*break*/, 2];
+                                                    if (!_winStr.includes("\"subscriptionKey\":\"".concat(targetId, "\""))) return [3 /*break*/, 2];
                                                     _winObj = JSON.parse(_winStr);
                                                     //copying monitor state to send row data to the window
                                                     _winObj.monitor = _coreState.monitors[_monInd];
@@ -377,7 +407,7 @@ var pingMonitor = function () {
         });
     }); };
     var compute = function (_coreState, _prevState) { return __awaiter(void 0, void 0, void 0, function () {
-        var _resolve, err_1;
+        var _resolve, time, busyRows_1, err_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -389,33 +419,61 @@ var pingMonitor = function () {
                     };
                     _a.label = 1;
                 case 1:
-                    _a.trys.push([1, 7, , 8]);
-                    if (!_resolve.set) {
-                        _resolve = pingCheck(_coreState, _resolve);
-                    }
+                    _a.trys.push([1, 6, , 7]);
                     if (!!_resolve.set) return [3 /*break*/, 3];
-                    return [4 /*yield*/, windowCheck(_coreState, _prevState, _resolve)];
+                    return [4 /*yield*/, pingCheck(_coreState, _resolve)];
                 case 2:
                     _resolve = _a.sent();
                     _a.label = 3;
                 case 3:
+                    if (!!_resolve.set) return [3 /*break*/, 5];
+                    return [4 /*yield*/, windowCheck(_coreState, _prevState, _resolve)];
+                case 4:
+                    _resolve = _a.sent();
+                    _a.label = 5;
+                case 5:
                     if (!_resolve.set) {
                         _resolve = monitorCheck(_coreState, _prevState, _resolve);
                     }
-                    if (!!_resolve.set) return [3 /*break*/, 4];
-                    return [3 /*break*/, 6];
-                case 4:
-                    dev ? console.debug('Computed with action:', _resolve.action, _resolve.payload) : 0;
-                    return [4 /*yield*/, store.dispach({ action: _resolve.action, payload: _resolve.payload })];
-                case 5:
-                    _a.sent();
-                    _a.label = 6;
-                case 6: return [3 /*break*/, 8];
-                case 7:
+                    if (!_resolve.set) {
+                        time = new Date().getTime();
+                        if (lastAutosave + (60 * 1000) < time) {
+                            lastAutosave = time;
+                            _resolve = {
+                                set: true,
+                                action: actionTypes.MONITOR_AUTOSAVE,
+                                payload: ''
+                            };
+                        }
+                    }
+                    if (_resolve.set) {
+                        dev ? console.debug('Computed with action:', _resolve.action, _resolve.payload) : 0;
+                        store.queue({ action: _resolve.action, payload: _resolve.payload });
+                    }
+                    else { //if no resolve
+                        busyRows_1 = 0;
+                        _coreState.monitors.forEach(function (_monitor) {
+                            _monitor.rows.forEach(function (_rowStr) {
+                                if (_rowStr.includes("\"isBusy\":true")) {
+                                    busyRows_1++;
+                                }
+                            });
+                        });
+                        if (busyRows_1) {
+                            setTimeout(function () {
+                                store.queue({ action: 'setPropertyForTesting', payload: Math.round((Math.random() * 1000) * 1000) });
+                                // compute(_coreState,_prevState)
+                            }, 500);
+                        }
+                        //if there are some busy rows 
+                        //set timeout of 1000 to continue computing
+                    }
+                    return [3 /*break*/, 7];
+                case 6:
                     err_1 = _a.sent();
                     dialog.showErrorBox('Error', "Unable to compute\nError:".concat(err_1));
-                    return [3 /*break*/, 8];
-                case 8: return [2 /*return*/];
+                    return [3 /*break*/, 7];
+                case 7: return [2 /*return*/];
             }
         });
     }); };
@@ -430,177 +488,198 @@ var pingMonitor = function () {
             });
         }
     };
-    store.subscribe(compute); //execute compute on any state change
+    store.subscribe(compute);
     comunicator.subscribe({
         channel: 'window',
-        commandListString: 'dispachAction',
-        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _plObj, actionResult, err_2;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        dev ? console.debug('resived action', _pl) : 0;
-                        _plObj = JSON.parse(_pl.payload);
-                        if (_plObj.action == 'monitorImportConfig') {
-                            dontQuitApp = true;
-                        }
-                        return [4 /*yield*/, store.dispach({ action: _plObj.action, payload: _plObj.payload })
-                            // let endTime = new Date().getTime()
-                            // console.debug(`Time to dispach user action ${endTime - startTime}ms`)
-                        ];
-                    case 1:
-                        actionResult = _a.sent();
-                        // let endTime = new Date().getTime()
-                        // console.debug(`Time to dispach user action ${endTime - startTime}ms`)
-                        if (actionResult && _plObj.action == 'monitorImportConfig') {
-                            setTimeout(function () {
-                                if (dontQuitApp) {
-                                    dontQuitApp = false;
-                                }
-                            }, 15000);
-                        }
-                        return [3 /*break*/, 3];
-                    case 2:
-                        err_2 = _a.sent();
-                        dialog.showErrorBox('Error', "Unable to dispach action that was recived from a window\nPayload:".concat(_pl, "\nError:").concat(err_2));
-                        return [3 /*break*/, 3];
-                    case 3: return [2 /*return*/];
-                }
-            });
-        }); }
-    });
-    comunicator.subscribe({
-        channel: 'window',
-        commandListString: 'getConfigData',
-        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _plObj, _configData, err_3;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 3, , 4]);
-                        dev ? console.debug('resived request for config', _pl) : 0;
-                        _plObj = JSON.parse(_pl.payload);
-                        return [4 /*yield*/, config.getState()];
-                    case 1:
-                        _configData = _a.sent();
-                        return [4 /*yield*/, comunicator.send({
-                                window: windows[_plObj],
-                                command: 'sendConfig',
-                                payload: _configData
-                            })];
-                    case 2:
-                        _a.sent();
-                        return [3 /*break*/, 4];
-                    case 3:
-                        err_3 = _a.sent();
-                        dialog.showErrorBox('Error', "Unable to get config data that was requested by a window\nPayload:".concat(_pl, "\nError:").concat(err_3));
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
-                }
-            });
-        }); }
-    });
-    comunicator.subscribe({
-        channel: 'window',
-        commandListString: 'configSetProp',
-        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _plObj, _configSetResult, _configData_2, err_4;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 5, , 6]);
-                        dev ? console.debug('resived request to change config', _pl) : 0;
-                        _plObj = JSON.parse(_pl.payload);
-                        return [4 /*yield*/, config.setParam({ key: _plObj.key, value: _plObj.value })];
-                    case 1:
-                        _configSetResult = _a.sent();
-                        if (_configSetResult.success == false) {
-                            return [2 /*return*/, 0];
-                        }
-                        return [4 /*yield*/, config.getState()];
-                    case 2:
-                        _configData_2 = _a.sent();
-                        renderConfig(_configData_2, windows); //updating window visibility
-                        //sending new config
-                        Object.entries(windows).forEach(function (_a) {
-                            var _winId = _a[0], _winObj = _a[1];
-                            return __awaiter(void 0, void 0, void 0, function () {
-                                return __generator(this, function (_b) {
-                                    switch (_b.label) {
-                                        case 0: return [4 /*yield*/, comunicator.send({
-                                                window: _winObj,
-                                                command: 'sendConfig',
-                                                payload: _configData_2
-                                            })];
+        commandListString: 'dispachAction, getConfigData, configSetProp, configRestoreDefaults',
+        callback: function (_a) {
+            var command = _a.command, payload = _a.payload;
+            return __awaiter(void 0, void 0, void 0, function () {
+                var dispachAction, getConfigData, configSetProp, configRestoreDefaults, _b, err_2, err_3, err_4, err_5;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
+                        case 0:
+                            dispachAction = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+                                var _plObj, startTime, actionResult, endTime;
+                                return __generator(this, function (_a) {
+                                    dev ? console.debug('resived action', payload) : null;
+                                    _plObj = JSON.parse(payload);
+                                    if (_plObj.action == 'monitorImportConfig') {
+                                        dontQuitApp = true;
+                                    }
+                                    startTime = new Date().getTime();
+                                    actionResult = store.queue({ action: _plObj.action, payload: _plObj.payload });
+                                    endTime = new Date().getTime();
+                                    dev ? console.debug("Time to queue user action ".concat(endTime - startTime, "ms")) : 0;
+                                    if (actionResult && _plObj.action == 'monitorImportConfig') {
+                                        setTimeout(function () {
+                                            if (dontQuitApp) {
+                                                dontQuitApp = false;
+                                            }
+                                        }, 30000);
+                                    }
+                                    return [2 /*return*/];
+                                });
+                            }); };
+                            getConfigData = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+                                var _plObj, _configData;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0:
+                                            dev ? console.debug('resived request for config', payload) : 0;
+                                            _plObj = JSON.parse(payload);
+                                            return [4 /*yield*/, config.getState()];
                                         case 1:
-                                            _b.sent();
+                                            _configData = _a.sent();
+                                            return [4 /*yield*/, comunicator.send({
+                                                    window: windows[_plObj],
+                                                    command: 'sendConfig',
+                                                    payload: _configData
+                                                })];
+                                        case 2:
+                                            _a.sent();
                                             return [2 /*return*/];
                                     }
                                 });
-                            });
-                        });
-                        if (!(_plObj.key == 'langCode')) return [3 /*break*/, 4];
-                        return [4 /*yield*/, store.dispach({ action: 'writeNewLangWords', payload: _plObj.value })];
-                    case 3:
-                        _a.sent();
-                        _a.label = 4;
-                    case 4: return [3 /*break*/, 6];
-                    case 5:
-                        err_4 = _a.sent();
-                        dialog.showErrorBox('Error', "Unable to set config prop that was requested by window\nPayload:".concat(_pl, "\nError:").concat(err_4));
-                        return [3 /*break*/, 6];
-                    case 6: return [2 /*return*/];
-                }
-            });
-        }); }
-    });
-    comunicator.subscribe({
-        channel: 'window',
-        commandListString: 'configRestoreDefaults',
-        callback: function (_pl) { return __awaiter(void 0, void 0, void 0, function () {
-            var _configSetResult, _configData_3, err_5;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 3, , 4]);
-                        dev ? console.debug('resived request to restore defaults of config', _pl) : 0;
-                        return [4 /*yield*/, config.restoreDefault()];
-                    case 1:
-                        _configSetResult = _a.sent();
-                        if (_configSetResult.success == false) {
-                            return [2 /*return*/, 0];
-                        }
-                        return [4 /*yield*/, config.getState()];
-                    case 2:
-                        _configData_3 = _a.sent();
-                        renderConfig(_configData_3, windows);
-                        Object.entries(windows).forEach(function (_a) {
-                            var _winId = _a[0], _winObj = _a[1];
-                            return __awaiter(void 0, void 0, void 0, function () {
-                                return __generator(this, function (_b) {
-                                    switch (_b.label) {
-                                        case 0: return [4 /*yield*/, comunicator.send({
-                                                window: _winObj,
-                                                command: 'sendConfig',
-                                                payload: _configData_3
-                                            })];
+                            }); };
+                            configSetProp = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+                                var _plObj, _configSetResult, _configData;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0:
+                                            dev ? console.debug('resived request to change config', payload) : 0;
+                                            _plObj = JSON.parse(payload);
+                                            return [4 /*yield*/, config.setParam({ key: _plObj.key, value: _plObj.value })];
                                         case 1:
-                                            _b.sent();
+                                            _configSetResult = _a.sent();
+                                            if (_configSetResult.success == false) {
+                                                return [2 /*return*/, 0];
+                                            }
+                                            return [4 /*yield*/, config.getState()];
+                                        case 2:
+                                            _configData = _a.sent();
+                                            renderConfig(_configData, windows); //updating window visibility
+                                            //sending new config
+                                            Object.entries(windows).forEach(function (_a) {
+                                                var _winId = _a[0], _winObj = _a[1];
+                                                return __awaiter(void 0, void 0, void 0, function () {
+                                                    return __generator(this, function (_b) {
+                                                        switch (_b.label) {
+                                                            case 0: return [4 /*yield*/, comunicator.send({
+                                                                    window: _winObj,
+                                                                    command: 'sendConfig',
+                                                                    payload: _configData
+                                                                })];
+                                                            case 1:
+                                                                _b.sent();
+                                                                return [2 /*return*/];
+                                                        }
+                                                    });
+                                                });
+                                            });
+                                            if (!(_plObj.key == 'langCode')) return [3 /*break*/, 4];
+                                            return [4 /*yield*/, store.queue({ action: 'writeNewLangWords', payload: _plObj.value })];
+                                        case 3:
+                                            _a.sent();
+                                            _a.label = 4;
+                                        case 4: return [2 /*return*/];
+                                    }
+                                });
+                            }); };
+                            configRestoreDefaults = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+                                var _configSetResult, _configData;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0:
+                                            dev ? console.debug('resived request to restore defaults of config', payload) : 0;
+                                            return [4 /*yield*/, config.restoreDefault()];
+                                        case 1:
+                                            _configSetResult = _a.sent();
+                                            if (_configSetResult.success == false) {
+                                                return [2 /*return*/, 0];
+                                            }
+                                            return [4 /*yield*/, config.getState()];
+                                        case 2:
+                                            _configData = _a.sent();
+                                            renderConfig(_configData, windows);
+                                            Object.entries(windows).forEach(function (_a) {
+                                                var _winId = _a[0], _winObj = _a[1];
+                                                return __awaiter(void 0, void 0, void 0, function () {
+                                                    return __generator(this, function (_b) {
+                                                        switch (_b.label) {
+                                                            case 0: return [4 /*yield*/, comunicator.send({
+                                                                    window: _winObj,
+                                                                    command: 'sendConfig',
+                                                                    payload: _configData
+                                                                })];
+                                                            case 1:
+                                                                _b.sent();
+                                                                return [2 /*return*/];
+                                                        }
+                                                    });
+                                                });
+                                            });
                                             return [2 /*return*/];
                                     }
                                 });
-                            });
-                        });
-                        return [3 /*break*/, 4];
-                    case 3:
-                        err_5 = _a.sent();
-                        dialog.showErrorBox('Error', "Unable to set config defaults that was requested by window\nPayload:".concat(_pl, "\nError:").concat(err_5));
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
-                }
+                            }); };
+                            _b = command;
+                            switch (_b) {
+                                case 'dispachAction': return [3 /*break*/, 1];
+                                case 'getConfigData': return [3 /*break*/, 5];
+                                case 'configSetProp': return [3 /*break*/, 9];
+                                case 'configRestoreDefaults': return [3 /*break*/, 13];
+                            }
+                            return [3 /*break*/, 17];
+                        case 1:
+                            _c.trys.push([1, 3, , 4]);
+                            return [4 /*yield*/, dispachAction(payload)];
+                        case 2:
+                            _c.sent();
+                            return [3 /*break*/, 4];
+                        case 3:
+                            err_2 = _c.sent();
+                            dialog.showErrorBox('Error', "Unable to dispach action that was recived from a window\nPayload:".concat(payload, "\nError:").concat(err_2));
+                            return [3 /*break*/, 4];
+                        case 4: return [3 /*break*/, 17];
+                        case 5:
+                            _c.trys.push([5, 7, , 8]);
+                            return [4 /*yield*/, getConfigData(payload)];
+                        case 6:
+                            _c.sent();
+                            return [3 /*break*/, 8];
+                        case 7:
+                            err_3 = _c.sent();
+                            dialog.showErrorBox('Error', "Unable to get config data that was requested by a window\nPayload:".concat(payload, "\nError:").concat(err_3));
+                            return [3 /*break*/, 8];
+                        case 8: return [3 /*break*/, 17];
+                        case 9:
+                            _c.trys.push([9, 11, , 12]);
+                            return [4 /*yield*/, configSetProp(payload)];
+                        case 10:
+                            _c.sent();
+                            return [3 /*break*/, 12];
+                        case 11:
+                            err_4 = _c.sent();
+                            dialog.showErrorBox('Error', "Unable to set config prop that was requested by window\nPayload:".concat(payload, "\nError:").concat(err_4));
+                            return [3 /*break*/, 12];
+                        case 12: return [3 /*break*/, 17];
+                        case 13:
+                            _c.trys.push([13, 15, , 16]);
+                            return [4 /*yield*/, configRestoreDefaults(payload)];
+                        case 14:
+                            _c.sent();
+                            return [3 /*break*/, 16];
+                        case 15:
+                            err_5 = _c.sent();
+                            dialog.showErrorBox('Error', "Unable to set config defaults that was requested by window\nPayload:".concat(payload, "\nError:").concat(err_5));
+                            return [3 /*break*/, 16];
+                        case 16: return [3 /*break*/, 17];
+                        case 17: return [2 /*return*/];
+                    }
+                });
             });
-        }); }
+        }
     });
     app.whenReady().then(function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -608,23 +687,20 @@ var pingMonitor = function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        timeOfStart = new Date().getTime();
-                        _a.label = 1;
+                        _a.trys.push([0, 2, , 3]);
+                        //execute compute on any state change
+                        //await store.dispach({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})//to create initial window
+                        return [4 /*yield*/, store.queue({ action: actionTypes.MONITOR_AUTOOPEN, payload: '' })]; //to load last autosaved state
                     case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        return [4 /*yield*/, store.dispach({ action: actionTypes.SET_PROPERTY_FOR_TESTING, payload: 42 })];
+                        //execute compute on any state change
+                        //await store.dispach({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})//to create initial window
+                        _a.sent(); //to load last autosaved state
+                        return [3 /*break*/, 3];
                     case 2:
-                        _a.sent();
-                        return [3 /*break*/, 4];
-                    case 3:
                         err_6 = _a.sent();
                         dialog.showErrorBox('Error', "Unable to start Ping Monitor\nError:".concat(err_6));
-                        return [3 /*break*/, 4];
-                    case 4:
-                        if (dev) {
-                            testComponents(fileManager, config, loger, pinger, store);
-                        }
-                        return [2 /*return*/];
+                        return [3 /*break*/, 3];
+                    case 3: return [2 /*return*/];
                 }
             });
         });
@@ -632,7 +708,7 @@ var pingMonitor = function () {
     app.on('second-instance', function (event, commandLine, workingDirectory) { return __awaiter(void 0, void 0, void 0, function () {
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, store.dispach({
+                case 0: return [4 /*yield*/, store.queue({
                         action: 'addMonitor',
                         payload: JSON.stringify({})
                     })];
@@ -644,8 +720,13 @@ var pingMonitor = function () {
     }); });
     app.on('window-all-closed', function () {
         if (!dontQuitApp) {
-            if (process.platform !== 'darwin')
-                app.quit();
+            //this horrable timeout os for autosave to be able to save in time
+            //because close event is not async and will not wait for fileSystem
+            dev ? console.debug('waiting to close app') : 0;
+            setTimeout(function () {
+                if (process.platform !== 'darwin')
+                    app.quit();
+            }, 4000);
         }
         else {
             console.debug('will not close all windows');
@@ -659,7 +740,7 @@ catch (err) {
     electron_1.dialog.showErrorBox('Error', "cant start an app\n".concat(err));
 }
 var testComponents = function (fileManager, config, loger, pinger, store) { return __awaiter(void 0, void 0, void 0, function () {
-    var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, undo, recivedQuery, recivedValue;
+    var testFileName, fileContent, wasDeleted, testConfigValue, setResult, testValueResult, pingResult, valueForTesting, stateManagerTestResult, recivedQuery, recivedValue;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -716,24 +797,23 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 }
                 valueForTesting = Math.round((Math.random() * 1000) * 1000);
                 stateManagerTestResult = false;
-                return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: valueForTesting })];
+                return [4 /*yield*/, store.queue({ action: 'setPropertyForTesting', payload: valueForTesting })];
             case 7:
                 _a.sent();
-                return [4 /*yield*/, store.dispach({ action: 'setPropertyForTesting', payload: 42 })];
+                return [4 /*yield*/, store.queue({ action: 'setPropertyForTesting', payload: 42 })
+                    // let undo = await store.undo()
+                ];
             case 8:
                 _a.sent();
-                return [4 /*yield*/, store.undo()];
-            case 9:
-                undo = _a.sent();
                 return [4 /*yield*/, store.__stateNow()];
-            case 10:
+            case 9:
                 recivedQuery = _a.sent();
                 recivedValue = recivedQuery.propertyForTesting;
-                if (undo) {
-                    if (recivedValue == valueForTesting) {
-                        stateManagerTestResult = true;
-                    }
-                }
+                // if(undo){
+                // if(recivedValue == valueForTesting){
+                // stateManagerTestResult = true
+                // }
+                // }
                 if (stateManagerTestResult) {
                     console.debug('[PASS] test 5 stateManager!');
                 }

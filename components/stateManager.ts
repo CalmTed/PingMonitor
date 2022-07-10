@@ -6,14 +6,14 @@ interface rowState {
     updateTimeMS: number
     name: string
     imageLink: string
+    lastPinged: number
     history: {
-        timestamp:number
-        time:Date
-        status:string
-        dellayMS:number 
-        ttl:number
-        fullResponce:string
-    }[] 
+        t:number
+        s:string
+        d:number 
+        tl:number
+        // fullResponce:string
+    }[]
     pingTimeStrategy: {
         updateTimeMS:number
         conditions:object
@@ -69,14 +69,24 @@ class stateManager {
     __state:coreState
     __subscribers = []
     __history = []
-    __fileManager = require('./fileManager')
-    __actionTypes = require('./actionTypes')
-    __loger = require('./loger')
-    __config = require('./config')
+    __fileManager
+    __actionTypes
+    __loger
+    __config
+    __pinger
+    __lastSave = new Date().getTime()
+    __queue:actionType[] = []
+    __queueBusy = false
     dialog:any
     constructor (data:any){
         this.__appVersion = data.version
         this.dialog = data.dialog
+        this.__lastSave = new Date().getTime()
+        this.__fileManager = data.fileManager
+        this.__actionTypes = data.actionTypes
+        this.__loger = data.loger
+        this.__config = data.config
+        this.__pinger = data.pinger
     }
     __genId(target:'monitor'|'window'|'row'){
         let _ret = -1;
@@ -92,7 +102,6 @@ class stateManager {
         return this.__appVersion
     }
     __getLangCode = async ()=>{
-        //TODO make it async
         if(typeof this.__langCode == 'undefined'){
 
             let _LCRequest = await this.__config.getParam('langCode')
@@ -100,7 +109,7 @@ class stateManager {
         }
         return this.__langCode
     }
-    __getImagesList = async ()=>{
+    __getImagesList = async () => {
         let _imgNames:any
         _imgNames = await this.__fileManager.getNames({path:'assets/icons',typeFilter:[{name:'*',extensions:['.png']}]})
         if(_imgNames.success){
@@ -134,6 +143,7 @@ class stateManager {
             updateTimeMS: _updateTimeMS,
             name: _name,
             imageLink: _imageLink,
+            lastPinged: 0,
             history: [],
             pingTimeStrategy: await this.__getInitialPingTimeStrategy(),
             isBusy:false,
@@ -160,7 +170,7 @@ class stateManager {
         return {}
     }
     __getInitialWindow =  async (_appVersion:string,_appLangCode:string,_parameters:object={})=>{
-        let _winData = {
+        const _winData = {
             version: _appVersion,
             langCode: _appLangCode,
             langWords: await this.__getAllWords(_appLangCode),
@@ -290,14 +300,14 @@ class stateManager {
                     }
                 default:
                     //getting from config
-                    let _defaultRowDataRwquest = _configState.defaultNewRow
-                    _name = _defaultRowDataRwquest.name
-                    _updateTimeMS = _defaultRowDataRwquest.updateTimeMS
-                    _ipAddress = _defaultRowDataRwquest.address
-                    _size = _defaultRowDataRwquest.size
-                    _imageLink = _defaultRowDataRwquest.pictureLink
-                    _isPaused = _defaultRowDataRwquest.isPaused
-                    _isMuted = _defaultRowDataRwquest.isMuted
+                    let _defaultRowDataRequest = _configState.defaultNewRow
+                    _name = _defaultRowDataRequest.name
+                    _updateTimeMS = _defaultRowDataRequest.updateTimeMS
+                    _ipAddress = _defaultRowDataRequest.address
+                    _size = _defaultRowDataRequest.size
+                    _imageLink = _defaultRowDataRequest.pictureLink
+                    _isPaused = _defaultRowDataRequest.isPaused
+                    _isMuted = _defaultRowDataRequest.isMuted
                     break;
             }
             return this.__getInitialRowState({
@@ -363,6 +373,7 @@ class stateManager {
         let _newWindowsObj:any;
         let _neededWindowIndex:number;
         let _payloadObj:any;
+        const _reduceTime = new Date().getTime()
         switch(action.action){
             case this.__actionTypes.SET_PROPERTY_FOR_TESTING:
                _state = {..._state,propertyForTesting:action.payload}
@@ -379,21 +390,27 @@ class stateManager {
                 _state = {..._state,monitors:_newMonitors}
                 break;
             case this.__actionTypes.MONITOR_EXPORT_CONFIG:
+            case this.__actionTypes.MONITOR_AUTOSAVE:
+                const isAutoSave = action.action === this.__actionTypes.MONITOR_AUTOSAVE
+                if(isAutoSave && _state.monitors.length == 0){
+                    return _state
+                }
                 let _dateNow = new Date();
                 let _exportTimeStamp = `${_dateNow.getFullYear()}-${_dateNow.getMonth()+1}-${_dateNow.getDate()} ${_dateNow.getHours()+1}-${_dateNow.getMinutes()}-${_dateNow.getSeconds()}`;
-                let _initialState = {..._state}
-                let _modifiedState = JSON.parse(JSON.stringify(_initialState))
+                isAutoSave ? _exportTimeStamp = 'Autosave' : null
+                let _modifiedState = JSON.parse(JSON.stringify(_state))
                 let _savePingHistory = false
                 let _savePingHistoryRequest = _configState.savePingHistoryToConfig
                 _savePingHistoryRequest?_savePingHistory = _savePingHistoryRequest:0;
-                _initialState.monitors.forEach((_monit,_monitIndex)=>{
+                _modifiedState.monitors.forEach((_monit,_monitIndex)=>{
                     _monit.rows.forEach((_rowStr,_rowIndex)=>{
                         let _rowObg = JSON.parse(_rowStr)
                         let _modRowObg = {}
                         Object.entries(_rowObg).forEach(([_rok,_rov])=>{
                             if(!_savePingHistory && _rok=='history'){
                                 _modRowObg[_rok] = []
-                            }if(_rok=='isBusy'){
+                            }
+                            if(_rok=='isBusy'){
                                 _modRowObg[_rok] = false
                             }else{
                                 _modRowObg[_rok] = _rov
@@ -404,7 +421,7 @@ class stateManager {
                 })
                 let _exportContent = JSON.stringify(_modifiedState,undefined,4);
                 let _exportResult = await this.__fileManager.write({
-                    openDialog:true,
+                    openDialog: !isAutoSave,
                     path:`PM Config ${_exportTimeStamp}.pm`,
                     dialogTile:`Save config`,
                     content:_exportContent
@@ -416,12 +433,13 @@ class stateManager {
                 }
                 break;
             case this.__actionTypes.MONITOR_IMPORT_CONFIG:
+            case this.__actionTypes.MONITOR_AUTOOPEN:
                 _newMonitors = [..._state.monitors.filter(_m=>_m.monitorId != action.payload)]
-                let _importContent = ``;
+                const isAutoOpen = action.action === this.__actionTypes.MONITOR_AUTOOPEN
                 let _importResult = await this.__fileManager.read({
-                    openDialog:true,
-                    dialogTile:`Save config`,
-                    content:_importContent
+                    openDialog: !isAutoOpen,
+                    dialogTile:'Save config',
+                    path: isAutoOpen ? 'PM ConFig Autosave.pm' : ''
                 })
                 if(_importResult.success){
                     let _openedStateStr = _importResult.payload.content
@@ -429,6 +447,8 @@ class stateManager {
                     if(_openedStateObj.version == _state.version){
                         _state = {..._openedStateObj}
                     }
+                }else if (isAutoOpen && _importResult.errorMessage.includes('File is not exists at')) {
+                    break;
                 }else{
                     this.__loger.out(`Reducer error:MONITOR_IMPORT_CONFIG unable to read config ${_importResult}`)
                 }
@@ -440,10 +460,9 @@ class stateManager {
                     break;
                 }
                 let _langCode = await this.__getLangCode()
-                let _oneNewWindowStr = await this.__getInitialWindow(this.__getAppVersion(), _langCode,{subscriptionKey:action.payload})
-                _newWindowsStr = [..._state.windows,_oneNewWindowStr]
-                
-                _state = {..._state,windows:_newWindowsStr}
+                let _oneNewWindowStr = await this.__getInitialWindow(this.__getAppVersion(), _langCode, {subscriptionKey:action.payload})
+                _newWindowsStr = [..._state.windows, _oneNewWindowStr]
+                _state = {..._state, windows:_newWindowsStr}
                 break;
             case this.__actionTypes.REMOVE_WINDOW_BY_ID:
                 if(typeof action.payload != 'string'){
@@ -497,12 +516,14 @@ class stateManager {
                 _newWindowsStr = [..._state.windows]
                 _payloadObj = JSON.parse(action.payload)
                 _neededWindowIndex = _newWindowsStr.map((_w)=>{
-                    return _w.indexOf(`"winId":${_payloadObj.winId}`) >-1
+                    return _w.includes(`"winId":${_payloadObj.winId}`)
                 }).indexOf(true)
-                _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex])
-                _newWindowsObj[_payloadObj.key] = !_newWindowsObj[_payloadObj.key]
-                _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
-                _state = {..._state,windows:_newWindowsStr}
+                if(_neededWindowIndex > -1){
+                    _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex])
+                    _newWindowsObj[_payloadObj.key] = !_newWindowsObj[_payloadObj.key]
+                    _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj)
+                    _state = {..._state,windows:_newWindowsStr}
+                }
                 break;
             case this.__actionTypes.WIN_SET_IMAGE_PICKER_OPEN:
                 if(!__validateInputs(action.payload,['rowId','winId','value'])){
@@ -572,8 +593,8 @@ class stateManager {
                 _state = {..._state,monitors:_newMonitors}
                 break;
             case this.__actionTypes.ROW_SUBMIT_PING_PROBE:
-                if(!__validateInputs(action.payload,['rowId','status','dellay','packetLoss','ttl','fullResponce'])){
-                    this.__loger.out(`ROW_SUBMIT_PING_PROBE Error: expected to recive rowId,status,dellay,packetLoss,ttl,fullResponce`)
+                if(!__validateInputs(action.payload,['rowId'])){
+                    this.__loger.out(`ROW_SUBMIT_PING_PROBE Error: expected to recive rowId`)
                     break;
                 }
                 _newMonitors = [..._state.monitors]
@@ -582,22 +603,32 @@ class stateManager {
                     this.__loger.out(`ROW_SET_PROP Error: row was not found`)
                     break;
                 }
+                if(!_rowInfo.rowObj.isBusy){
+                    break;
+                }
+                const probeDetails = await this.__pinger.probe({address:_rowInfo.rowObj.ipAddress,rowId:_rowInfo.rowObj.rowId})
+                _payloadObj = {}
+                _payloadObj.status = probeDetails.payload.status
+                _payloadObj.dellay = probeDetails.payload.dellay
+                _payloadObj.ttl = probeDetails.payload.ttl
                 _rowInfo.rowObj.isBusy = false
-                _payloadObj = JSON.parse(action.payload)
+                _rowInfo.rowObj.lastPinged = _reduceTime
                 _rowInfo.rowObj.history.push({
-                    timestamp: new Date().getTime(),
-                    time: new Date(),
-                    status:_payloadObj.status,
-                    dellayMS:_payloadObj.dellay,
-                    ttl:_payloadObj.ttl,
-                    fullResponce:_payloadObj.fillResponce
+                    t: _reduceTime,
+                    s:_payloadObj.status,
+                    d:_payloadObj.dellay,
+                    tl:_payloadObj.ttl,
                 })
                 let pingHistoryTimeLimitMINS = _configState.pingHistoryTimeLimitMINS
-                if((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp)>pingHistoryTimeLimitMINS*60*1000){
+                if((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS*60000){
                     _rowInfo.rowObj.history.shift()
-                    //this duplication is for deliting speed faster than adding, if there is too much history
-                    if((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp)>pingHistoryTimeLimitMINS*60*1000){
-                        _rowInfo.rowObj.history.shift()
+                    //this duplication is for deliting faster than adding, if there is too much history
+                    if((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS*60000){
+                        let whileLimit = 10000
+                        while((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS*60000 && whileLimit > 0){
+                            _rowInfo.rowObj.history.shift()
+                            whileLimit--
+                        }
                     }
                 }
                 try{
@@ -613,15 +644,15 @@ class stateManager {
                     this.__loger.out(`Reducer error: Unable to check update time conditions. Action: ${action.action}`)
                 }
                 //do we need to turn on alarm
-                if(_payloadObj.status != 'online' && _rowInfo.rowObj.isMuted == false && _rowInfo.rowObj.isPaused == false){
+                if(_payloadObj.status != 'online' && _rowInfo.rowObj.isMuted === false && _rowInfo.rowObj.isPaused === false){
                     let lastNotOnlineProbeTime:number
                     let i = _rowInfo.rowObj.history.length-1;
-                    while(_rowInfo.rowObj.history[i].status != 'online' && i>0){
-                            lastNotOnlineProbeTime = _rowInfo.rowObj.history[i].timestamp
+                    while(_rowInfo.rowObj.history[i].s != 'online' && i>0){
+                            lastNotOnlineProbeTime = _rowInfo.rowObj.history[i].t
                         i--
                     }
                     let timeToAlarmMS = _configState.timeToAlarmMS
-                    if(new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].status != 'online'){
+                    if(_reduceTime - lastNotOnlineProbeTime >= timeToAlarmMS && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].s != 'online'){
                         _rowInfo.rowObj.isAlarmed = true
                     }
                 }
@@ -647,9 +678,12 @@ class stateManager {
                         //do we need to check for change -> get time from last change
                         let _lastChangeData = _getTimeOfLastChange(_rowInfo.rowObj.history)
                         if(Object.keys(_lastChangeData).length!=0){
-                            let _prevUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.from.status).updateTimeMS
-                            let _currUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.to.status).updateTimeMS
-                            let _upperLimit = _prevUpdateTime>_currUpdateTime?_prevUpdateTime+1000:_currUpdateTime+1000
+                            let _upperLimit = _rowInfo.rowObj.updateTimeMS
+                            try{
+                                let _prevUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.from.status).updateTimeMS
+                                let _currUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _lastChangeData.to.status).updateTimeMS
+                                _upperLimit = _prevUpdateTime>_currUpdateTime?_prevUpdateTime+1000:_currUpdateTime+1000
+                            }catch(e){}
                             //does this time with in time limits range
                             if(_lastChangeData.time > _userLoggerRequest.timeToLogStatusChangeMS && 
                                 _lastChangeData.time < _userLoggerRequest.timeToLogStatusChangeMS + _upperLimit){//to not to emit writing twise
@@ -666,7 +700,7 @@ class stateManager {
                 }
                 //do we need to unmute
                 if(_rowInfo.rowObj.history.length>1){
-                    if(_payloadObj.status == 'online' && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-2].status != 'online'){
+                    if(_payloadObj.status == 'online' && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-2].s != 'online'){
                         let unmuteOnGettingOnline = _configState.unmuteOnGettingOnline
                         if(unmuteOnGettingOnline && _rowInfo.rowObj.isMuted){
                             _rowInfo.rowObj.isMuted = false
@@ -685,6 +719,10 @@ class stateManager {
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
+
+                if(typeof _rowInfo.rowObj == 'undefined'){
+                    break;
+                }
                 if(typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined'){
                     this.__loger.out(`ROW_SET_PROP error unknown key of the row. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
@@ -710,7 +748,7 @@ class stateManager {
                         } 
                         try{
                             //try to change PTS of the row
-                            let _actualStatus = _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].status
+                            let _actualStatus = _rowInfo.rowObj.history[_rowInfo.rowObj.history.length-1].s
                             _rowInfo.rowObj.pingTimeStrategy.find(_pts=>{return _pts.conditions.status == _actualStatus}).updateTimeMS = _rowInfo.payloadObj.value
                         }catch(e){
                             this.__loger.out(`ROW_SET_PROP unable to write PTS Key:${_rowInfo.payloadObj.key} Values:${_rowInfo.rowObj[_rowInfo.payloadObj.key]}>>${_rowInfo.payloadObj.value} RowId:${_rowInfo.payloadObj.rowId}`)
@@ -729,7 +767,7 @@ class stateManager {
                 }
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
-                if(typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined'){
+                if(typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] === 'undefined'){
                     this.__loger.out(`ROW_TOGGLE_PROP error unknown key of the row. Key:${_rowInfo.payloadObj.key} RowId:${_rowInfo.payloadObj.rowId}`)
                     break;
                 }
@@ -884,50 +922,6 @@ class stateManager {
         _state = JSON.parse(JSON.stringify(_state))
         let _prevState = {...await this.__stateNow()}
         this.__state = {..._state}
-
-        // let checkFullDifference = (_obj1:object,_obj2:object)=>{
-        //     //TODO make this work properly
-        //     let checkDiffStr = (_one,_two)=>{
-        //       let _strdiffret = '';
-        //       let aArr = _one.split('');
-        //       let bArr = _two.split('');
-        //       aArr.forEach((letter,i)=>{
-        //         if(aArr[i] != bArr[i]){
-        //           _strdiffret += aArr[i]
-        //         }
-        //       })
-        //       return _strdiffret
-        //     }
-        //     let _ret:any = {}
-        //     //we expect two objects to have the same scheme to minimize computation time
-        //     Object.entries(_obj1).forEach(([_k,_v])=>{
-        //       if(typeof _obj1[_k] != 'object'){
-        //         let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
-        //         if(strDiff.length > 0){
-        //           _ret[_k] = _v
-        //         }
-        //       }else{
-        //         _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
-        //       }
-        //     })
-        //     return _ret
-        //   }
-        // if(typeof _state.monitors > 'undefined'){
-        //     let _fullMonotorDifference = checkFullDifference(_state.monitors,_prevState.monitors)
-        // }
-          
-
-
-        //TODO we need to save history only on user inputs not background services like ping report
-        // but how cat we get list of changed parameters?
-        // if([].indexOf() != -1){
-        // }
-        //limit to 20 elements
-        if(this.__history.length>=20){
-            // removes first element of the array: [1,2,3] > [2,3]
-            this.__history.shift()
-        }
-        this.__history.push(_state)
         return this.__notifySubscribers(_state,_prevState) ? true : false;
     }
     __notifySubscribers = (_state:coreState,_prevState:coreState)=>{
@@ -942,23 +936,36 @@ class stateManager {
     }
 
     //PUBLIC METHODS
-    undo = async ()=>{
-        let _ret = false
-        if(this.__history.length>0){
-            this.__history.pop()//removes current
-            if( await this.__setState(this.__history.pop())){//setts second instnce from the end
-                _ret = true;
-            }
-        }
-        return _ret;
-    }
     dispach = async (action:actionType)=>{
         try{
-            let _newState = await this.__reduce( await this.__stateNow(),action)
+            let _newState = await this.__reduce( await this.__stateNow(), action )
             return await this.__setState(_newState) ? true : false;
         }catch(err){
             this.dialog.showErrorBox('Error',`Unable to dispach action\nAction:${JSON.stringify(action)}\nError:${err}`)
             return false
+        }
+    }
+    queue = (action: actionType) => {
+        const maxSize = 100
+        if(this.__queue.length < maxSize ){
+            //if there are no exact copies already in the queue
+            if(!this.__queue.filter(_action => _action.payload === action.payload && _action.action === action.action).length){
+                this.__queue.push(action)
+                this.checkqueue()
+            }
+        }
+    }
+    checkqueue = async () => {
+        //console.debug(this.__queue.length,': ',this.__queue.map(action => action.action))
+        if(this.__queue.length>0 && !this.__queueBusy){
+            this.__queueBusy = true;
+            await this.dispach(this.__queue[0]).then( async ()=>{
+                this.__queue.shift()
+                this.__queueBusy = false;
+                if(this.__queue.length>0){
+                    await this.checkqueue()
+                }
+            })
         }
     }
     subscribe = (_callback:any)=>{

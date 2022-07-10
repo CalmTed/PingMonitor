@@ -4,6 +4,8 @@ var actionTypes = {
     REMOVE_MONITOR_BY_ID: "removeMonitorById",
     MONITOR_EXPORT_CONFIG: "monitorExportConfig",
     MONITOR_IMPORT_CONFIG: "monitorImportConfig",
+    MONITOR_AUTOSAVE: "monitorAutoSave",
+    MONITOR_AUTOOPEN: "monitorAutoOpen",
     ADD_NEW_WINDOW_BY_SUBKEY: 'addNewWindowBySubKey',
     REMOVE_WINDOW_BY_ID: 'removeWindowById',
     WIN_SET_PROP: 'winSetProp',

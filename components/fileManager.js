@@ -38,58 +38,78 @@ var _this = this;
 var fileManager = {};
 var dialog = require('electron').dialog;
 var fs = require("fs");
-fileManager.read = function (message) { return __awaiter(_this, void 0, void 0, function () {
-    var reply, filepathArray, fileContent;
+var checkFileExists = function (path) { return __awaiter(_this, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        filepathArray = [];
-        if (message.openDialog) {
-            filepathArray = dialog.showOpenDialogSync({
-                filters: typeof message.typeFilter != 'undefined' ? message.typeFilter : [],
-                title: typeof message.dialogTitle != 'undefined' ? message.dialogTitle : 'Open file...',
-                properties: ['openFile']
-            });
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, fs.promises.access(path, fs.constants.F_OK)
+                    .then(function () { return true; })["catch"](function (e) { return e; })];
+            case 1: return [2 /*return*/, _a.sent()];
         }
-        else {
-            if (typeof message.path != 'undefined') {
-                filepathArray[0] = message.path;
-            }
-            if (typeof message.name != 'undefined') {
-                filepathArray[0] = filepathArray[0] += message.name;
-            }
-        }
-        if (filepathArray[0] != 'undefined') {
-            fileContent = fs.readFileSync(filepathArray[0], typeof message.encoding != 'undefined' ? message.encoding : 'utf-8', function (err, text) {
-                if (!err) {
-                    return text;
+    });
+}); };
+fileManager.read = function (message) { return __awaiter(_this, void 0, void 0, function () {
+    var reply, filepathArray, fileExists, fileContent;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                filepathArray = [];
+                if (message.openDialog) {
+                    filepathArray = dialog.showOpenDialogSync({
+                        filters: typeof message.typeFilter != 'undefined' ? message.typeFilter : [],
+                        title: typeof message.dialogTitle != 'undefined' ? message.dialogTitle : 'Open file...',
+                        properties: ['openFile']
+                    });
                 }
                 else {
-                    return false;
-                }
-            });
-            if (fileContent) {
-                reply = {
-                    success: true,
-                    payload: {
-                        content: fileContent
+                    if (typeof message.path != 'undefined') {
+                        filepathArray[0] = message.path;
                     }
-                };
-            }
-            else {
+                    if (typeof message.name != 'undefined') {
+                        filepathArray[0] = filepathArray[0] += message.name;
+                    }
+                }
+                if (!(typeof filepathArray[0] !== 'undefined')) return [3 /*break*/, 2];
+                return [4 /*yield*/, checkFileExists(filepathArray[0])];
+            case 1:
+                fileExists = _a.sent();
+                if (fileExists !== true) {
+                    return [2 /*return*/, reply = {
+                            success: false,
+                            errorMessage: 'File is not exists at ' + filepathArray[0]
+                        }];
+                }
+                fileContent = fs.readFileSync(filepathArray[0], typeof message.encoding != 'undefined' ? message.encoding : 'utf-8', function (err, text) {
+                    if (!err) {
+                        return text;
+                    }
+                    else {
+                        return false;
+                    }
+                });
+                if (fileContent) {
+                    reply = {
+                        success: true,
+                        payload: {
+                            content: fileContent
+                        }
+                    };
+                }
+                else {
+                    reply = {
+                        success: false,
+                        errorMessage: 'Unable to read file at ' + filepathArray[0]
+                    };
+                    // loger.out(reply.errorMessage)
+                }
+                return [3 /*break*/, 3];
+            case 2:
                 reply = {
                     success: false,
-                    errorMessage: 'Unable to read file at ' + filepathArray[0]
+                    errorMessage: 'No file paths were entered to read'
                 };
-                // loger.out(reply.errorMessage)
-            }
+                _a.label = 3;
+            case 3: return [2 /*return*/, reply];
         }
-        else {
-            reply = {
-                success: false,
-                errorMessage: 'No file paths were entered to read'
-            };
-            // loger.out(reply.errorMessage)
-        }
-        return [2 /*return*/, reply];
     });
 }); };
 fileManager.write = function (message) { return __awaiter(_this, void 0, void 0, function () {

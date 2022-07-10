@@ -10,7 +10,10 @@
     "tstart": "npm run tcompile && electron host.js",
     "pack": "electron-packager ./ PingMonitor",
     "build": "npm run tcompile && electron-builder --dir",
-    "build_portable": "npm run tcompile && electron-builder --win portable"
+    "build_portable": "npm run tcompile && electron-builder --win portable",
+    "build_mac": "npm run tcompile && electron-builder --mac",
+    "build_linux": "npm run tcompile && electron-builder --linux",
+    "build_all": "npm run tcompile && electron-builder -mwl"
   },
   "build": {
     "appId": "ping.monitor",

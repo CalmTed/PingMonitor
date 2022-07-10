@@ -42,35 +42,45 @@ const Page = (_winId)=>{
                 let _newRows = _newStateIds.filter(_nr=>_oldStateIds.filter(_or=>_or[0] == _nr[0]).length == 0)
                 let _removedRows = _oldStateIds.filter(_or=>_newStateIds.filter(_nr=>_nr[0] == _or[0]).length == 0)
                 _newRows.forEach(_nr=>{
-                    _rowChangesList.push({selector:'list',key:'new_row',value:_stateNew.monitor.rows.find(_mr=>_mr.indexOf(`"rowId":${_nr[0]}`)>-1)})
+                    _rowChangesList.push({selector:'list',key:'new_row',value:_stateNew.monitor.rows.find(_mr=>_mr.includes(`"rowId":${_nr[0]}`))})
                 })
                 _removedRows.forEach(_rr=>{
-                    _rowChangesList.push({selector:'list',key:'remove_row',value:_stateOld.monitor.rows.find(_mr=>_mr.indexOf(`"rowId":${_rr[0]}`)>-1)})
+                    _rowChangesList.push({selector:'list',key:'remove_row',value:_stateOld.monitor.rows.find(_mr=>_mr.includes(`"rowId":${_rr[0]}`))})
                 })
                 _stateNew.monitor.rows.forEach((_row,_i)=>{
-                    let _rowObjNew = JSON.parse(_stateNew.monitor.rows[_i])
-                    if(typeof _stateOld.monitor.rows.find(_mr=>_mr.indexOf(`"rowId":${_rowObjNew.rowId}`)>-1) != 'undefined'){
-                        let _rowObjOld = JSON.parse(_stateOld.monitor.rows[_i])
-                        Object.keys(_rowObjNew).forEach(_key=>{
+                    const _rowObjNew = JSON.parse(_row)
+                    //if not new row
+                    if(_stateOld.monitor.rows.find(_mr => _mr.includes(`"rowId":${_rowObjNew.rowId}`))){
+                        const _rowObjOld = JSON.parse(_stateOld.monitor.rows[_i])
+                        Object.keys(_rowObjNew).forEach(_key => {
                             if(typeof _rowObjNew[_key] != 'object'){
-                                if(_rowObjNew[_key] != _rowObjOld[_key]){
+                                if(_rowObjNew[_key] !== _rowObjOld[_key]){
                                     _rowChangesList.push({selector:'row',id:_rowObjNew.rowId,key:_key,value:_rowObjNew[_key]})
                                 }
                             }else{
-                                if(_key == 'history'){
-                                    //what if they are the same length but diff 
-                                    if(_rowObjNew[_key].length>0 && _rowObjOld[_key].length>0){
-                                        var _lastElementOfNewHist = _rowObjNew[_key][_rowObjNew[_key].length-1]
-                                        var _lastElementOfOldHist = _rowObjOld[_key][_rowObjOld[_key].length-1]
-                                        if(_lastElementOfNewHist.timestamp != _lastElementOfOldHist.timestamp){
-                                            _lastElementOfNewHist.quality = Math.round(100/_rowObjNew[_key].length*_rowObjNew[_key].reduce((ps,a)=>(a.status == 'online'? ps+1:ps+0),0))
+                                if(_key === 'history'){
+                                    const _oldHistory = _rowObjOld[_key];
+                                    const _newHistory = _rowObjNew[_key];
+                                    const getQuality = (histList) => {
+                                        return (100 / histList.length) * histList.reduce((ps,a)=>(a.s == 'online' ? ps+1 : ps+0), 0) << 0// rounding
+                                    }
+                                    if (!!_newHistory.length && !!_oldHistory.length) {
+                                        const _lastElementOfNewHist = _newHistory.pop()
+                                        const _lastElementOfOldHist = _oldHistory.pop()
+                                        if(_lastElementOfNewHist.t != _lastElementOfOldHist.t){
+                                            _lastElementOfNewHist.quality = getQuality(_newHistory.slice(0, 300))//last 5 minutes
+                                            _rowChangesList.push({selector: 'row', id: _rowObjNew.rowId, key: _key, value: _lastElementOfNewHist})
+                                        }
+                                    }else{
+                                        if(!!_newHistory.length){
+                                            const _lastElementOfNewHist = _newHistory.pop()
+                                            _lastElementOfNewHist.quality = getQuality(_newHistory.slice(0, 300))//last 5 minutes
                                             _rowChangesList.push({selector:'row',id:_rowObjNew.rowId,key:_key,value:_lastElementOfNewHist})
                                         }
                                     }
                                 }
                             }
                         })
-                        
                     }
                     
                 })
@@ -87,8 +97,6 @@ const Page = (_winId)=>{
                         })
                         return swapped
                     }
-
-
                     let isSwapped = _checkOfSwaped(_newStateIds,_oldStateIds)
                     if(isSwapped){
                         _rowChangesList.push({selector:'list',key:'recreateByPosition',value:_stateNew.monitor.rows})   
@@ -108,7 +116,6 @@ const Page = (_winId)=>{
         let _ret = word
         let _langSet = this.state.langWords
         if(typeof _langSet[word] == 'undefined'){
-            // console.log(`"${word}":""`)
             return _ret
         }
         if(_langSet[word].length == 0 || word.length == 0){
@@ -162,28 +169,28 @@ const Page = (_winId)=>{
             let _widthMargin = _heightMargin;
             let dataLenghtLimit = length*60*1000;
             let timeOfBegining = new Date().getTime() - dataLenghtLimit;//cut to last N min
-            let dataTrimmed = dataArray.filter(dot=>{return dot.timestamp >= timeOfBegining})
+            let dataTrimmed = dataArray.filter(dot=>{return dot.t >= timeOfBegining})
             let widthKoof = (100-(_widthMargin*2));
             if(dataTrimmed.length>1){
-              if(dataTrimmed[dataTrimmed.length-1].time - dataTrimmed[0].timestamp > dataLenghtLimit){
-                 widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataTrimmed[dataTrimmed.length-1].timestamp - dataTrimmed[0].timestamp)
+              if(dataTrimmed[dataTrimmed.length-1].t - dataTrimmed[0].t > dataLenghtLimit){
+                 widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataTrimmed[dataTrimmed.length-1].t - dataTrimmed[0].t)
               }else{
                 widthKoof = (_canvasWidth -(_widthMargin*2)) / (dataLenghtLimit)
               }
             }
-            let maxDellay = Math.max(...dataTrimmed.map(dot=>{return dot.dellayMS}));
+            let maxDellay = Math.max(...dataTrimmed.map(dot=>{return dot.d}));
             let _map = (val,start1,stop1,start2,stop2)=>{
               let __a = (val-start1)/(stop1-start1)*(stop2-start2)+start2;
               return start2 < stop2 ? Math.round(Math.max(Math.min(__a, stop2), start2)*10)/10 : Math.round(Math.max(Math.min(__a, start2), stop2)*10)/10;
             }
             if(dataTrimmed.length>0){
-              _ret += `M${_widthMargin} ${_map(dataTrimmed[0].dellayMS,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin)}`
-              let _firstTime = dataTrimmed[0].timestamp;
+              _ret += `M${_widthMargin} ${_map(dataTrimmed[0].d,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin)}`
+              let _firstTime = dataTrimmed[0].t;
               dataTrimmed.forEach((dot,i)=>{
                 if(i>0){
-                  let _x = Math.round((_widthMargin+(dot.timestamp - _firstTime)*widthKoof)*100)/100;
-                  let _y = _map(dot.dellayMS,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin);
-                  if(dot.status == 'offline' ||dot.status == 'timeout'||dot.status == 'error'){
+                  let _x = Math.round((_widthMargin+(dot.t - _firstTime)*widthKoof)*100)/100;
+                  let _y = _map(dot.d,maxDellay,0,_heightMargin,_canvasHeight-_heightMargin);
+                  if(dot.s == 'offline' ||dot.s == 'timeout'||dot.s == 'error'){
                     _ret += `M${_x} ${_y}`;
                   }else{
                     _ret += `L${_x} ${_y}`;
@@ -218,23 +225,23 @@ const Page = (_winId)=>{
                 let _tempBeginigTime
                 let _tempStatus
                 let _startTime
-                history.forEach(({status,timestamp},_i)=>{
-                    if(!_tempStatus){_tempStatus = status}
-                    if(!_tempBeginigTime){_tempBeginigTime = timestamp;_startTime = timestamp}
-                    if(_tempStatus != status){
+                history.forEach(({s,t},_i)=>{
+                    if(!_tempStatus){_tempStatus = s}
+                    if(!_tempBeginigTime){_tempBeginigTime = t;_startTime = t}
+                    if(_tempStatus != s){
                         _ret.push({
-                            status:status,
+                            status:s,
                             prevStatus:_tempStatus,
-                            duration:Math.abs(timestamp - _tempBeginigTime),
-                            from:timestamp,
+                            duration:Math.abs(t - _tempBeginigTime),
+                            from:t,
                             until:_tempBeginigTime
                         })
-                        _tempStatus = status;
-                        _tempBeginigTime = timestamp;
+                        _tempStatus = s;
+                        _tempBeginigTime = t;
                     }else{//same status but the end of history
                         if(_ret.length>0){
-                            _ret[_ret.length-1].duration = Math.abs(timestamp - _tempBeginigTime)
-                            _ret[_ret.length-1].until = timestamp
+                            _ret[_ret.length-1].duration = Math.abs(t - _tempBeginigTime)
+                            _ret[_ret.length-1].until = t
                         }
                     }
                 })
@@ -245,8 +252,8 @@ const Page = (_winId)=>{
                 if(__changesList.length == 0){
                     if(history.length>0){
                         _ret.push({
-                            status:history[history.length-1].status,
-                            duration:Math.abs(history[history.length-1].timestamp - history[0].timestamp),
+                            status:history[history.length-1].s,
+                            duration:Math.abs(history[history.length-1].t - history[0].t),
                             changesNum:0
                         })
                     }
@@ -254,13 +261,11 @@ const Page = (_winId)=>{
                     __changesList.forEach(_chLEl=>{
                         if(_ret.length == 0){
                             //adding status before first change
-                            console.log(_chLEl.duration,_chLEl.from,history[0].timestamp)
                             _ret.push({
                                 status:_chLEl.prevStatus,
-                                duration:Math.abs(_chLEl.from - history[0].timestamp),
+                                duration:Math.abs(_chLEl.from - history[0].t),
                                 changesNum:1
-                            })
-                            console.log('updated 1')   
+                            })  
                         }
                         if(!_ret.find(_slEl=>{return _slEl.status == _chLEl.status})){
                             _ret.push({
@@ -268,7 +273,6 @@ const Page = (_winId)=>{
                                 duration:_chLEl.duration,
                                 changesNum:1
                             })
-                            console.log('updated 2')
                         }else{
                             let _index = _ret.indexOf(_ret.find(_slEl=>{return _slEl.status == _chLEl.status}))
                             _ret[_index].duration += _chLEl.duration
@@ -278,8 +282,8 @@ const Page = (_winId)=>{
                 }
                 return _ret
             }
-            let initialStatus = history[0].status
-            let initialTime = history[0].timestamp
+            let initialStatus = history[0].s
+            let initialTime = history[0].t
             let addStatusIfNeeded = (__statusList,__status,__duration)=>{
                 if(!__statusList.find(_slEl=>{return _slEl.status == __status})){
                     __statusList.push({
@@ -295,33 +299,31 @@ const Page = (_winId)=>{
                 return __statusList
             }
             history.forEach((_moment,_i)=>{
-                let duration = _moment.timestamp - initialTime
-                if(_moment.status !== initialStatus){
+                let duration = _moment.t - initialTime
+                if(_moment.s !== initialStatus){
                     //changes
                     _changesList.push({
-                        status:_moment.status,
+                        status:_moment.s,
                         prevStatus:initialStatus,
                         duration:duration,
                         from:initialTime,
-                        until:_moment.timestamp 
+                        until:_moment.t 
                     })
                     //status
                     _statusList = addStatusIfNeeded(_statusList,initialStatus,duration)
-                    initialStatus = _moment.status
-                    initialTime = _moment.timestamp
+                    initialStatus = _moment.s
+                    initialTime = _moment.t
                 }else if(_i == history.length-1){
                     _changesList.push({
-                        status:_moment.status,
+                        status:_moment.s,
                         prevStatus:initialStatus,
                         duration:duration,
                         from:initialTime,
-                        until:_moment.timestamp 
+                        until:_moment.t 
                     })
                     _statusList = addStatusIfNeeded(_statusList,initialStatus,duration)
                 } 
             })
-            console.log(_changesList)
-            console.log(_statusList )
             return {
                 changesList:_changesList.reverse(),
                 statusList:_statusList
@@ -503,7 +505,7 @@ const Page = (_winId)=>{
             let _getInputContent = (_type,_name,_value,_options=['no options'])=>{
                 let _ret = []
                 let _parent = ''
-                if(_name.indexOf('_')>-1){
+                if(_name.includes('_')){
                     _parent = _name.split('_').filter((_n,_i,_a)=>{return _i<_a.length-1}).join('_')
                     _name = _name.split('_').filter((_n,_i,_a)=>{return _i==_a.length-1}).toString()
                 }
@@ -1108,14 +1110,14 @@ const Page = (_winId)=>{
             return _col1Content
         }
         let _getCol2Content = (history,updateTimeMS,rowId)=>{
-            let _knownHistory = {status:'unknown',dellayMS:0}
+            let _knownHistory = {s:'unknown',d:0}
             let _knownQuality = 0
             if(history.length>0){
                 _knownHistory = history[history.length-1]
-                _knownQuality = Math.round(100/history.length*history.reduce((ps,a)=>(a.status == 'online'? ps+1:ps+0),0))
+                _knownQuality = Math.round(100/history.length*history.reduce((ps,a)=>(a.s == 'online'? ps+1:ps+0),0))
             }
-            let status = _knownHistory.status
-            let dellayMS = _knownHistory.dellayMS
+            let status = _knownHistory.s
+            let dellayMS = _knownHistory.d
             let quality = _knownQuality
             let _col2Content = document.createElement('col2')
             //status
@@ -1213,11 +1215,11 @@ const Page = (_winId)=>{
         }
         let _createRowDOM = ({rowId,name,imageLink,ipAddress,isBusy,isPaused,isMuted,isAlarmed,size,isSelected,history,updateTimeMS})=>{
             let _rowDOM = document.createElement('row')
-            let _knownHistory = {status:'unknown',dellayMS:0}
+            let _knownHistory = {s:'unknown',d:0}
             if(history.length>0){
                 _knownHistory = history[history.length-1]
             }
-            let status = _knownHistory.status
+            let status = _knownHistory.s
             _rowDOM.setAttribute('id',rowId)
             _rowDOM.setAttribute('busy',isBusy)
             _rowDOM.setAttribute('paused',isPaused)
@@ -1264,7 +1266,7 @@ const Page = (_winId)=>{
                     contextMenu.show(_e)
                 }
                 if(_e.key == ' '){
-                    _e.preventDefault()
+                    _e.preventDefault()//to not to scroll
                     _e.target.click()
                 }
                 if(_e.key == 'ArrowRight'){
@@ -1309,7 +1311,7 @@ const Page = (_winId)=>{
                     action:'rowPauseAllActive',
                     payload:JSON.stringify({monitorId:Number(_state.subscriptionKey)})
                 },
-                hidden:_state.monitor.rows.filter(_r=>{return _r.indexOf(`"isPaused":false`)>-1}).length>0?false:true
+                hidden:_state.monitor.rows.filter(_r=>{return _r.includes(`"isPaused":false`)}).length>0?false:true
             })
             let toolFullScreen = _createTool({
                 tagName:'toolfullscreen',
@@ -1328,7 +1330,7 @@ const Page = (_winId)=>{
                     action:'winUnalarmAllRows',
                     payload:JSON.stringify({monitorId:Number(_state.subscriptionKey)})
                 },
-                hidden:_state.monitor.rows.filter(_r=>{return _r.indexOf(`"isAlarmed":true`)>-1}).length>0?false:true
+                hidden:_state.monitor.rows.filter(_r=>{return _r.includes(`"isAlarmed":true`)}).length>0?false:true
             })
             _toolsDOM.append(toolMenu)
             _toolsDOM.append(toolNewRow)
@@ -1377,7 +1379,7 @@ const Page = (_winId)=>{
                 //if clicked not on row
                 if(_e.path.filter(_el=>{return _el.tagName == 'ROW'}).length == 0){
                     contextMenu.hideContextMenu()
-                    let _selectedRows = this.state.monitor.rows.filter(_r=>_r.indexOf(`"isSelected":true`)>-1).map(_r=>JSON.parse(_r))
+                    let _selectedRows = this.state.monitor.rows.filter(_r=>_r.includes(`"isSelected":true`)).map(_r=>JSON.parse(_r))
                     if(_selectedRows.length>0){
                         let comunicator = Comunicator()
                         comunicator.send({
@@ -1480,9 +1482,7 @@ const Page = (_winId)=>{
                             })
                         }
                         break;
-                    
                 }
-                
             }
             document.body.onwheel = (_e:any)=>{
                 if(_e.ctrlKey){
@@ -1511,7 +1511,7 @@ const Page = (_winId)=>{
             let _checkToolButtons = (_focus = 'all')=>{
                 //hiding if paused
                 if(['all','pause'].includes(_focus)){
-                    let _unpausedRows = _state.monitor.rows.filter(_r=>{return _r.indexOf(`"isPaused":false`)>-1})
+                    let _unpausedRows = _state.monitor.rows.filter(_r=>{return _r.includes(`"isPaused":false`)})
                     if(typeof _unpausedRows == "undefined"){
                         return 0;
                     }
@@ -1523,7 +1523,7 @@ const Page = (_winId)=>{
                 }
                 //hiding unalarm button
                 if(['all','alarm'].includes(_focus)){
-                    let _alarmedRows = _state.monitor.rows.filter(_r=>{return _r.indexOf(`"isAlarmed":true`)>-1})
+                    let _alarmedRows = _state.monitor.rows.filter(_r=>{return _r.includes(`"isAlarmed":true`)})
                     if(typeof _alarmedRows == "undefined"){
                         return 0;
                     }
@@ -1567,7 +1567,7 @@ const Page = (_winId)=>{
                         if(!diffUnit.value){
                             break;
                         }
-                        let _targetRowObj = _state.monitor.rows.find(_r=>_r.indexOf(`"fieldEditing":"image"`)>-1)
+                        let _targetRowObj = _state.monitor.rows.find(_r=>_r.includes(`"fieldEditing":"image"`))
                         if(typeof _targetRowObj != 'undefined'){
                             let _targetRowId = JSON.parse(_targetRowObj).rowId
                             document.querySelector('imgpickermodal').setAttribute('targetRow',_targetRowId)
@@ -1633,7 +1633,7 @@ const Page = (_winId)=>{
             }
             let _renderRowGroup = (diffUnit)=>{
                 let targetRowDom = document.querySelector(`row[id="${diffUnit.id}"]`)
-                let targetRowObj = JSON.parse(_state.monitor.rows.find(_r=>{return _r.indexOf(`"rowId":${diffUnit.id}`) >-1}))
+                let targetRowObj = JSON.parse(_state.monitor.rows.find(_r=>{return _r.includes(`"rowId":${diffUnit.id}`)}))
                 let _updateInputElement = ({_selector,_value})=>{
                     let _newInputValue = _value
                     let _inputTarget = document.querySelector(`row[id="${diffUnit.id}"] ${_selector}`) as HTMLInputElement
@@ -1743,11 +1743,21 @@ const Page = (_winId)=>{
                     _renderCol4({diffUnit:diffUnit})//statistics
                 }
                 if(diffUnit.key == 'history'){
-                    //status, dellay, quality, graph
-                    let status = diffUnit.value.status
+
+                    const status = diffUnit.value.s
                     document.querySelector(`row[id="${diffUnit.id}"]`).setAttribute('status',status)
+                    const rowDomElement = document.querySelector(`row[id="${diffUnit.id}"]`) as HTMLElement
+                    // console.log('rendering '+ diffUnit.id);
+                    !targetRowObj.isPaused?rowDomElement.animate([
+                        {borderColor: 'var(--row-status)'},
+                        {borderColor: 'var(--background)'},
+                        {borderColor: 'var(--row-status)'},
+                    ], {
+                        duration: 400,
+                        iterations: 1
+                    }):0
                     if(targetRowObj.size != '1Little'){
-                        let dellayMS = diffUnit.value.dellayMS
+                        let dellayMS = diffUnit.value.d
                         let quality = diffUnit.value.quality
                         _changeHtmlIfNedded(`row[id="${diffUnit.id}"] col2 status`,this.t(status))
                         _changeHtmlIfNedded(`row[id="${diffUnit.id}"] col2 trio triodelay`,`${dellayMS}${this.t('ms')}`)
@@ -1807,7 +1817,7 @@ const Page = (_winId)=>{
             })
             
         }
-        if(_state.monitor.rows.filter(_r=>_r.indexOf(`"isAlarmed":true`)>-1).length>0){
+        if(_state.monitor.rows.filter(_r=>_r.includes(`"isAlarmed":true`)).length>0){
             this.siren.start()
         }else{
             this.siren.stop()
@@ -1843,7 +1853,7 @@ const Siren = ()=>{
     this.start = ()=>{
         if(this.isProduction){
             let _link = this.dom.getAttribute('src')
-            if(_link.indexOf('../../') == -1){
+            if(!_link.includes('../../')){
                 this.dom.setAttribute(`src`,`../../${_link}`)
             }
         }
@@ -1905,7 +1915,7 @@ const ContextMenu = ()=>{
             let _setEventListener = (_domEl,_action)=>{
                 _domEl.onclick = ()=>{
                     let comunicator = Comunicator()
-                    let _selectedRows = this.state.monitor.rows.filter(_r=>_r.indexOf(`"isSelected":true`)>-1).map(_r=>JSON.parse(_r))
+                    let _selectedRows = this.state.monitor.rows.filter(_r=>_r.includes(`"isSelected":true`)).map(_r=>JSON.parse(_r))
                     if(_selectedRows.length>0){
                         _selectedRows.forEach(_sr=>{
                             if(typeof _action.rowId != undefined){
@@ -2068,7 +2078,6 @@ const ContextMenu = ()=>{
             break;
         }
         }catch(err){
-            console.log(`Cant render contextMenu`,_param)
             alert(`Cant render contextMenu ${_param}`)
         }   
     }
@@ -2098,6 +2107,7 @@ const pageStart = ()=>{
     var comunicator = Comunicator()
     contextMenu = ContextMenu()
     comunicator.subscribe((_message:comunicatorMessage)=>{
+        console.debug(_message.command)
         if(_message.command == 'sendInitData'){
             let _plObj = JSON.parse(_message.payload)
             let _winId = _plObj.winId

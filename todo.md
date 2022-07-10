@@ -398,9 +398,10 @@ TODO
   - [+] less calls to fileManager
   - [+] less loop operations
 - [+] second entity
+- [] time range in the user log
+- [] auto open last save
+- [] save window size, position and scale to window state
 - [] more scalable settigs parameters adding
 - [] swap rows with drag&drop
 - [] stats preview without changeon to 6x size
 - [] auto fit button
-- [] auto open last save
-- [] save window size, position and scale to window state

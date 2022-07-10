@@ -22,6 +22,11 @@ interface fileManagerReply {
 const fileManager:any = {}
 const {dialog} = require('electron')
 const fs = require("fs")
+const checkFileExists = async (path: string) => {
+  return await fs.promises.access(path, fs.constants.F_OK)
+           .then(() => true)
+           .catch((e) => e)
+}
 fileManager.read = async (message:fileManagerMessage)=>{
   let reply:fileManagerReply
   let filepathArray = [];
@@ -39,7 +44,14 @@ fileManager.read = async (message:fileManagerMessage)=>{
       filepathArray[0] = filepathArray[0]+=message.name
     }
   }
-  if(filepathArray[0] != 'undefined'){
+  if(typeof filepathArray[0] !== 'undefined'){
+    const fileExists = await checkFileExists(filepathArray[0])
+    if(fileExists !== true){
+      return reply = {
+        success:false,
+        errorMessage:'File is not exists at ' + filepathArray[0]
+      }
+    }
     let fileContent = fs.readFileSync(filepathArray[0], typeof message.encoding != 'undefined' ? message.encoding : 'utf-8', (err, text) => {
       if(!err){
         return text;

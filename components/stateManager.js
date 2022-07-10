@@ -59,10 +59,9 @@ var stateManager = /** @class */ (function () {
         var _this = this;
         this.__subscribers = [];
         this.__history = [];
-        this.__fileManager = require('./fileManager');
-        this.__actionTypes = require('./actionTypes');
-        this.__loger = require('./loger');
-        this.__config = require('./config');
+        this.__lastSave = new Date().getTime();
+        this.__queue = [];
+        this.__queueBusy = false;
         this.__getAppVersion = function () {
             return _this.__appVersion;
         };
@@ -138,6 +137,7 @@ var stateManager = /** @class */ (function () {
                                 updateTimeMS: _updateTimeMS,
                                 name: _name,
                                 imageLink: _imageLink,
+                                lastPinged: 0,
                                 history: []
                             };
                             return [4 /*yield*/, this.__getInitialPingTimeStrategy()];
@@ -331,7 +331,7 @@ var stateManager = /** @class */ (function () {
             });
         };
         this.__reduce = function (_state, action) { return __awaiter(_this, void 0, void 0, function () {
-            var _configState, __newRow, __newMonitor, __validateInputs, __getRow, _rowInfo, _newMonitors, _neededMonitorIndex, _newWindowsStr, _newWindowsObj, _neededWindowIndex, _payloadObj, _b, _newMon, _dateNow, _exportTimeStamp, _initialState, _modifiedState_1, _savePingHistory_1, _savePingHistoryRequest, _exportContent, _exportResult, _importContent, _importResult, _openedStateStr, _openedStateObj, _langCode, _oneNewWindowStr, _winId_1, _newWords_1, _newWindows_1, _newRowElement, pingHistoryTimeLimitMINS, _ptsNeededStatus, lastNotOnlineProbeTime, i, timeToAlarmMS, _userLoggerRequest, _getTimeOfLastChange, _lastChangeData_1, _prevUpdateTime, _currUpdateTime, _upperLimit, _dateNow_1, _logNameDate, _logName, _logText, _logIndent, unmuteOnGettingOnline, _actualStatus_1, _unpausedIndexes_1;
+            var _configState, __newRow, __newMonitor, __validateInputs, __getRow, _rowInfo, _newMonitors, _neededMonitorIndex, _newWindowsStr, _newWindowsObj, _neededWindowIndex, _payloadObj, _reduceTime, _b, _newMon, isAutoSave, _dateNow, _exportTimeStamp, _modifiedState_1, _savePingHistory_1, _savePingHistoryRequest, _exportContent, _exportResult, isAutoOpen, _importResult, _openedStateStr, _openedStateObj, _langCode, _oneNewWindowStr, _winId_1, _newWords_1, _newWindows_1, _newRowElement, probeDetails, pingHistoryTimeLimitMINS, _ptsNeededStatus, lastNotOnlineProbeTime, i, timeToAlarmMS, _userLoggerRequest, _getTimeOfLastChange, _lastChangeData_1, _upperLimit, _prevUpdateTime, _currUpdateTime, _dateNow_1, _logNameDate, _logName, _logText, _logIndent, unmuteOnGettingOnline, _actualStatus_1, _unpausedIndexes_1;
             var _this = this;
             return __generator(this, function (_c) {
                 switch (_c.label) {
@@ -341,7 +341,7 @@ var stateManager = /** @class */ (function () {
                         __newRow = function (_b /* MAY BE THERE SHOULD BE CUSTOM VALUES*/) {
                             var _state = _b._state, _monitorId = _b._monitorId, _c = _b._position, _position = _c === void 0 ? 0 : _c;
                             return __awaiter(_this, void 0, void 0, function () {
-                                var _newRowRuleRequest, _name, _updateTimeMS, _ipAddress, _size, _imageLink, _isPaused, _isMuted, _targetMonitor, _lastRowDataArr, _lastRowDataObj, _defaultRowDataRwquest;
+                                var _newRowRuleRequest, _name, _updateTimeMS, _ipAddress, _size, _imageLink, _isPaused, _isMuted, _targetMonitor, _lastRowDataArr, _lastRowDataObj, _defaultRowDataRequest;
                                 return __generator(this, function (_d) {
                                     _newRowRuleRequest = _configState.newRowRule;
                                     switch (_newRowRuleRequest) {
@@ -365,14 +365,14 @@ var stateManager = /** @class */ (function () {
                                                 }
                                             }
                                         default:
-                                            _defaultRowDataRwquest = _configState.defaultNewRow;
-                                            _name = _defaultRowDataRwquest.name;
-                                            _updateTimeMS = _defaultRowDataRwquest.updateTimeMS;
-                                            _ipAddress = _defaultRowDataRwquest.address;
-                                            _size = _defaultRowDataRwquest.size;
-                                            _imageLink = _defaultRowDataRwquest.pictureLink;
-                                            _isPaused = _defaultRowDataRwquest.isPaused;
-                                            _isMuted = _defaultRowDataRwquest.isMuted;
+                                            _defaultRowDataRequest = _configState.defaultNewRow;
+                                            _name = _defaultRowDataRequest.name;
+                                            _updateTimeMS = _defaultRowDataRequest.updateTimeMS;
+                                            _ipAddress = _defaultRowDataRequest.address;
+                                            _size = _defaultRowDataRequest.size;
+                                            _imageLink = _defaultRowDataRequest.pictureLink;
+                                            _isPaused = _defaultRowDataRequest.isPaused;
+                                            _isMuted = _defaultRowDataRequest.isMuted;
                                             break;
                                     }
                                     return [2 /*return*/, this.__getInitialRowState({
@@ -442,13 +442,16 @@ var stateManager = /** @class */ (function () {
                                 rowObj: _rwObj
                             };
                         };
+                        _reduceTime = new Date().getTime();
                         _b = action.action;
                         switch (_b) {
                             case this.__actionTypes.SET_PROPERTY_FOR_TESTING: return [3 /*break*/, 2];
                             case this.__actionTypes.ADD_NEW_MONITOR: return [3 /*break*/, 3];
                             case this.__actionTypes.REMOVE_MONITOR_BY_ID: return [3 /*break*/, 5];
                             case this.__actionTypes.MONITOR_EXPORT_CONFIG: return [3 /*break*/, 6];
+                            case this.__actionTypes.MONITOR_AUTOSAVE: return [3 /*break*/, 6];
                             case this.__actionTypes.MONITOR_IMPORT_CONFIG: return [3 /*break*/, 8];
+                            case this.__actionTypes.MONITOR_AUTOOPEN: return [3 /*break*/, 8];
                             case this.__actionTypes.ADD_NEW_WINDOW_BY_SUBKEY: return [3 /*break*/, 10];
                             case this.__actionTypes.REMOVE_WINDOW_BY_ID: return [3 /*break*/, 13];
                             case this.__actionTypes.WIN_SET_PROP: return [3 /*break*/, 14];
@@ -458,19 +461,19 @@ var stateManager = /** @class */ (function () {
                             case this.__actionTypes.ADD_ROW: return [3 /*break*/, 19];
                             case this.__actionTypes.REMOVE_ROW: return [3 /*break*/, 21];
                             case this.__actionTypes.ROW_SUBMIT_PING_PROBE: return [3 /*break*/, 22];
-                            case this.__actionTypes.ROW_SET_PROP: return [3 /*break*/, 25];
-                            case this.__actionTypes.ROW_TOGGLE_PROP: return [3 /*break*/, 26];
-                            case this.__actionTypes.ROW_CLEAR_ALL_HISTORY: return [3 /*break*/, 27];
-                            case this.__actionTypes.ROW_EDIT_PROP_SET: return [3 /*break*/, 28];
-                            case this.__actionTypes.ROW_EDIT_PROP_REMOVE: return [3 /*break*/, 29];
-                            case this.__actionTypes.ROW_PAUSE_ALL: return [3 /*break*/, 30];
-                            case this.__actionTypes.ROW_UNALARM_ALL: return [3 /*break*/, 31];
-                            case this.__actionTypes.ROW_UNSELECT_ALL: return [3 /*break*/, 32];
+                            case this.__actionTypes.ROW_SET_PROP: return [3 /*break*/, 26];
+                            case this.__actionTypes.ROW_TOGGLE_PROP: return [3 /*break*/, 27];
+                            case this.__actionTypes.ROW_CLEAR_ALL_HISTORY: return [3 /*break*/, 28];
+                            case this.__actionTypes.ROW_EDIT_PROP_SET: return [3 /*break*/, 29];
+                            case this.__actionTypes.ROW_EDIT_PROP_REMOVE: return [3 /*break*/, 30];
+                            case this.__actionTypes.ROW_PAUSE_ALL: return [3 /*break*/, 31];
+                            case this.__actionTypes.ROW_UNALARM_ALL: return [3 /*break*/, 32];
+                            case this.__actionTypes.ROW_UNSELECT_ALL: return [3 /*break*/, 33];
                         }
-                        return [3 /*break*/, 33];
+                        return [3 /*break*/, 34];
                     case 2:
                         _state = __assign(__assign({}, _state), { propertyForTesting: action.payload });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 3:
                         _newMonitors = JSON.parse(JSON.stringify(_state.monitors));
                         return [4 /*yield*/, __newMonitor()];
@@ -478,20 +481,24 @@ var stateManager = /** @class */ (function () {
                         _newMon = _c.sent();
                         _newMonitors.push(_newMon);
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 5:
                         _newMonitors = __spreadArray([], _state.monitors.filter(function (_m) { return _m.monitorId != action.payload; }), true);
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 6:
+                        isAutoSave = action.action === this.__actionTypes.MONITOR_AUTOSAVE;
+                        if (isAutoSave && _state.monitors.length == 0) {
+                            return [2 /*return*/, _state];
+                        }
                         _dateNow = new Date();
                         _exportTimeStamp = "".concat(_dateNow.getFullYear(), "-").concat(_dateNow.getMonth() + 1, "-").concat(_dateNow.getDate(), " ").concat(_dateNow.getHours() + 1, "-").concat(_dateNow.getMinutes(), "-").concat(_dateNow.getSeconds());
-                        _initialState = __assign({}, _state);
-                        _modifiedState_1 = JSON.parse(JSON.stringify(_initialState));
+                        isAutoSave ? _exportTimeStamp = 'Autosave' : null;
+                        _modifiedState_1 = JSON.parse(JSON.stringify(_state));
                         _savePingHistory_1 = false;
                         _savePingHistoryRequest = _configState.savePingHistoryToConfig;
                         _savePingHistoryRequest ? _savePingHistory_1 = _savePingHistoryRequest : 0;
-                        _initialState.monitors.forEach(function (_monit, _monitIndex) {
+                        _modifiedState_1.monitors.forEach(function (_monit, _monitIndex) {
                             _monit.rows.forEach(function (_rowStr, _rowIndex) {
                                 var _rowObg = JSON.parse(_rowStr);
                                 var _modRowObg = {};
@@ -500,8 +507,10 @@ var stateManager = /** @class */ (function () {
                                     if (!_savePingHistory_1 && _rok == 'history') {
                                         _modRowObg[_rok] = [];
                                     }
-                                    if (_rok == 'isBusy') {
+                                    else if (_rok == 'isBusy') {
                                         _modRowObg[_rok] = false;
+                                        // }else if(_rok=='isPaused'){
+                                        //     _modRowObg[_rok] = true
                                     }
                                     else {
                                         _modRowObg[_rok] = _rov;
@@ -512,7 +521,7 @@ var stateManager = /** @class */ (function () {
                         });
                         _exportContent = JSON.stringify(_modifiedState_1, undefined, 4);
                         return [4 /*yield*/, this.__fileManager.write({
-                                openDialog: true,
+                                openDialog: !isAutoSave,
                                 path: "PM Config ".concat(_exportTimeStamp, ".pm"),
                                 dialogTile: "Save config",
                                 content: _exportContent
@@ -525,14 +534,14 @@ var stateManager = /** @class */ (function () {
                         else {
                             this.__loger.out("Reducer error:MONITOR_EXPORT_CONFIG unable to write config ".concat(_exportResult));
                         }
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 8:
                         _newMonitors = __spreadArray([], _state.monitors.filter(function (_m) { return _m.monitorId != action.payload; }), true);
-                        _importContent = "";
+                        isAutoOpen = action.action === this.__actionTypes.MONITOR_AUTOOPEN;
                         return [4 /*yield*/, this.__fileManager.read({
-                                openDialog: true,
-                                dialogTile: "Save config",
-                                content: _importContent
+                                openDialog: !isAutoOpen,
+                                dialogTile: 'Save config',
+                                path: isAutoOpen ? 'PM ConFig Autosave.pm' : ''
                             })];
                     case 9:
                         _importResult = _c.sent();
@@ -543,14 +552,17 @@ var stateManager = /** @class */ (function () {
                                 _state = __assign({}, _openedStateObj);
                             }
                         }
+                        else if (isAutoOpen && _importResult.errorMessage.includes('File is not exists at')) {
+                            return [3 /*break*/, 35];
+                        }
                         else {
                             this.__loger.out("Reducer error:MONITOR_IMPORT_CONFIG unable to read config ".concat(_importResult));
                         }
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 10:
                         if (typeof action.payload != 'string') {
                             this.__loger.out("Reducer error:".concat(action.action, " expected to recive subscriptionKey:string"));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         return [4 /*yield*/, this.__getLangCode()];
                     case 11:
@@ -560,11 +572,11 @@ var stateManager = /** @class */ (function () {
                         _oneNewWindowStr = _c.sent();
                         _newWindowsStr = __spreadArray(__spreadArray([], _state.windows, true), [_oneNewWindowStr], false);
                         _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 13:
                         if (typeof action.payload != 'string') {
                             this.__loger.out("Reducer error:".concat(action.action, " expected to recive winId:string in JSON format"));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _winId_1 = JSON.parse(action.payload).winId;
                         //going lazy way without parsing json string
@@ -580,11 +592,11 @@ var stateManager = /** @class */ (function () {
                             return _ret;
                         });
                         _state = __assign(__assign({}, _state), { windows: _newWindowsStr, monitors: _newMonitors });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 14:
                         if (typeof action.payload != 'string') {
                             this.__loger.out("Reducer error:".concat(action.action, " expected to recive winId:string,key:string,value:string"));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newWindowsStr = __spreadArray([], _state.windows, true);
                         _payloadObj = JSON.parse(action.payload);
@@ -593,35 +605,37 @@ var stateManager = /** @class */ (function () {
                         }).indexOf(true);
                         if (_neededWindowIndex == -1) {
                             this.__loger.out("Reducer error:".concat(action.action, " window with entered winId is not found"));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex]);
                         if (_newWindowsObj[_payloadObj.key] == _payloadObj.value) { // limits at least some duplicate values
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newWindowsObj[_payloadObj.key] = _payloadObj.value;
                         _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj);
                         _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 15:
                         if (typeof action.payload != 'string') {
                             this.__loger.out("Reducer error:".concat(action.action, " expected to recive winId:string,key:string"));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newWindowsStr = __spreadArray([], _state.windows, true);
                         _payloadObj = JSON.parse(action.payload);
                         _neededWindowIndex = _newWindowsStr.map(function (_w) {
-                            return _w.indexOf("\"winId\":".concat(_payloadObj.winId)) > -1;
+                            return _w.includes("\"winId\":".concat(_payloadObj.winId));
                         }).indexOf(true);
-                        _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex]);
-                        _newWindowsObj[_payloadObj.key] = !_newWindowsObj[_payloadObj.key];
-                        _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj);
-                        _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
-                        return [3 /*break*/, 34];
+                        if (_neededWindowIndex > -1) {
+                            _newWindowsObj = JSON.parse(_newWindowsStr[_neededWindowIndex]);
+                            _newWindowsObj[_payloadObj.key] = !_newWindowsObj[_payloadObj.key];
+                            _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj);
+                            _state = __assign(__assign({}, _state), { windows: _newWindowsStr });
+                        }
+                        return [3 /*break*/, 35];
                     case 16:
                         if (!__validateInputs(action.payload, ['rowId', 'winId', 'value'])) {
                             this.__loger.out("WIN_SET_IMAGE_PICKER_OPEN Error: expected to recive rowId,winId,value");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         //get window
@@ -644,7 +658,7 @@ var stateManager = /** @class */ (function () {
                         _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                         _newWindowsStr[_neededWindowIndex] = JSON.stringify(_newWindowsObj);
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors, windows: _newWindowsStr });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 17: return [4 /*yield*/, this.__getAllWords(action.payload)];
                     case 18:
                         _newWords_1 = _c.sent();
@@ -656,11 +670,11 @@ var stateManager = /** @class */ (function () {
                             _newWindows_1[_wi] = JSON.stringify(_wObj);
                         });
                         _state = __assign(__assign({}, _state), { windows: _newWindows_1 });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 19:
                         if (!__validateInputs(action.payload, ['monitorId'])) {
                             this.__loger.out("ADD_ROW Error: expected to recive monitorId");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
@@ -672,11 +686,11 @@ var stateManager = /** @class */ (function () {
                         _newRowElement = _c.sent();
                         _newMonitors[_neededMonitorIndex].rows.push(_newRowElement);
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 21:
                         if (!__validateInputs(action.payload, ['rowId'])) {
                             this.__loger.out("REMOVE_ROW Error: expected to recive rowId");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
@@ -685,33 +699,43 @@ var stateManager = /** @class */ (function () {
                         }).indexOf(true);
                         _newMonitors[_neededMonitorIndex].rows = _newMonitors[_neededMonitorIndex].rows.filter(function (_rwStr) { return _rwStr.indexOf("\"rowId\":".concat(_payloadObj.rowId)) == -1; });
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
+                        return [3 /*break*/, 35];
                     case 22:
-                        if (!__validateInputs(action.payload, ['rowId', 'status', 'dellay', 'packetLoss', 'ttl', 'fullResponce'])) {
-                            this.__loger.out("ROW_SUBMIT_PING_PROBE Error: expected to recive rowId,status,dellay,packetLoss,ttl,fullResponce");
-                            return [3 /*break*/, 34];
+                        if (!__validateInputs(action.payload, ['rowId'])) {
+                            this.__loger.out("ROW_SUBMIT_PING_PROBE Error: expected to recive rowId");
+                            return [3 /*break*/, 35];
                         }
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _rowInfo = __getRow(action.payload, _newMonitors);
                         if (!_rowInfo.success) {
                             this.__loger.out("ROW_SET_PROP Error: row was not found");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
+                        if (!_rowInfo.rowObj.isBusy) {
+                            return [3 /*break*/, 35];
+                        }
+                        return [4 /*yield*/, this.__pinger.probe({ address: _rowInfo.rowObj.ipAddress, rowId: _rowInfo.rowObj.rowId })];
+                    case 23:
+                        probeDetails = _c.sent();
+                        _payloadObj = {};
+                        _payloadObj.status = probeDetails.payload.status;
+                        _payloadObj.dellay = probeDetails.payload.dellay;
+                        _payloadObj.ttl = probeDetails.payload.ttl;
                         _rowInfo.rowObj.isBusy = false;
-                        _payloadObj = JSON.parse(action.payload);
+                        _rowInfo.rowObj.lastPinged = _reduceTime;
+                        // _payloadObj = JSON.parse(action.payload)
                         _rowInfo.rowObj.history.push({
-                            timestamp: new Date().getTime(),
-                            time: new Date(),
-                            status: _payloadObj.status,
-                            dellayMS: _payloadObj.dellay,
-                            ttl: _payloadObj.ttl,
-                            fullResponce: _payloadObj.fillResponce
+                            t: _reduceTime,
+                            s: _payloadObj.status,
+                            d: _payloadObj.dellay,
+                            tl: _payloadObj.ttl
                         });
                         pingHistoryTimeLimitMINS = _configState.pingHistoryTimeLimitMINS;
-                        if ((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp) > pingHistoryTimeLimitMINS * 60 * 1000) {
+                        if ((_reduceTime - _rowInfo.rowObj.history[0].t) > pingHistoryTimeLimitMINS * 60 * 1000) {
                             _rowInfo.rowObj.history.shift();
                             //this duplication is for deliting speed faster than adding, if there is too much history
-                            if ((new Date().getTime() - _rowInfo.rowObj.history[0].timestamp) > pingHistoryTimeLimitMINS * 60 * 1000) {
+                            //TODO clear all trash in one probe, not two by one
+                            if ((_reduceTime - _rowInfo.rowObj.history[0].t) > pingHistoryTimeLimitMINS * 60 * 1000) {
                                 _rowInfo.rowObj.history.shift();
                             }
                         }
@@ -730,21 +754,21 @@ var stateManager = /** @class */ (function () {
                             this.__loger.out("Reducer error: Unable to check update time conditions. Action: ".concat(action.action));
                         }
                         //do we need to turn on alarm
-                        if (_payloadObj.status != 'online' && _rowInfo.rowObj.isMuted == false && _rowInfo.rowObj.isPaused == false) {
+                        if (_payloadObj.status != 'online' && _rowInfo.rowObj.isMuted === false && _rowInfo.rowObj.isPaused === false) {
                             lastNotOnlineProbeTime = void 0;
                             i = _rowInfo.rowObj.history.length - 1;
-                            while (_rowInfo.rowObj.history[i].status != 'online' && i > 0) {
-                                lastNotOnlineProbeTime = _rowInfo.rowObj.history[i].timestamp;
+                            while (_rowInfo.rowObj.history[i].s != 'online' && i > 0) {
+                                lastNotOnlineProbeTime = _rowInfo.rowObj.history[i].t;
                                 i--;
                             }
                             timeToAlarmMS = _configState.timeToAlarmMS;
-                            if (new Date().getTime() - lastNotOnlineProbeTime >= timeToAlarmMS && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 1].status != 'online') {
+                            if (_reduceTime - lastNotOnlineProbeTime >= timeToAlarmMS && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 1].s != 'online') {
                                 _rowInfo.rowObj.isAlarmed = true;
                             }
                         }
-                        if (!(_rowInfo.rowObj.history.length > 1)) return [3 /*break*/, 24];
+                        if (!(_rowInfo.rowObj.history.length > 1)) return [3 /*break*/, 25];
                         _userLoggerRequest = _configState.logSettings;
-                        if (!_userLoggerRequest.logChanges) return [3 /*break*/, 24];
+                        if (!_userLoggerRequest.logChanges) return [3 /*break*/, 25];
                         _getTimeOfLastChange = function (_hist) {
                             var _ret = {};
                             var _i = _hist.length - 1;
@@ -760,25 +784,29 @@ var stateManager = /** @class */ (function () {
                             return _ret;
                         };
                         _lastChangeData_1 = _getTimeOfLastChange(_rowInfo.rowObj.history);
-                        if (!(Object.keys(_lastChangeData_1).length != 0)) return [3 /*break*/, 24];
-                        _prevUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _lastChangeData_1.from.status; }).updateTimeMS;
-                        _currUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _lastChangeData_1.to.status; }).updateTimeMS;
-                        _upperLimit = _prevUpdateTime > _currUpdateTime ? _prevUpdateTime + 1000 : _currUpdateTime + 1000;
+                        if (!(Object.keys(_lastChangeData_1).length != 0)) return [3 /*break*/, 25];
+                        _upperLimit = _rowInfo.rowObj.updateTimeMS;
+                        try {
+                            _prevUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _lastChangeData_1.from.status; }).updateTimeMS;
+                            _currUpdateTime = _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _lastChangeData_1.to.status; }).updateTimeMS;
+                            _upperLimit = _prevUpdateTime > _currUpdateTime ? _prevUpdateTime + 1000 : _currUpdateTime + 1000;
+                        }
+                        catch (e) { }
                         if (!(_lastChangeData_1.time > _userLoggerRequest.timeToLogStatusChangeMS &&
-                            _lastChangeData_1.time < _userLoggerRequest.timeToLogStatusChangeMS + _upperLimit)) return [3 /*break*/, 24];
+                            _lastChangeData_1.time < _userLoggerRequest.timeToLogStatusChangeMS + _upperLimit)) return [3 /*break*/, 25];
                         _dateNow_1 = new Date();
                         _logNameDate = _userLoggerRequest.newLogNameEveryday ? "".concat(_dateNow_1.getFullYear(), "-").concat(_dateNow_1.getMonth() + 1, "-").concat(_dateNow_1.getDate()) : " ";
                         _logName = "".concat(_userLoggerRequest.defaultLogName, " ").concat(_logNameDate);
                         _logText = "".concat(_rowInfo.rowObj.name, " ").concat(_lastChangeData_1.from.status, ">").concat(_lastChangeData_1.to.status);
                         _logIndent = _rowInfo.rowObj.position;
                         return [4 /*yield*/, this.__userLogger({ name: _logName, text: _logText, indent: _logIndent })];
-                    case 23:
-                        _c.sent();
-                        _c.label = 24;
                     case 24:
+                        _c.sent();
+                        _c.label = 25;
+                    case 25:
                         //do we need to unmute
                         if (_rowInfo.rowObj.history.length > 1) {
-                            if (_payloadObj.status == 'online' && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 2].status != 'online') {
+                            if (_payloadObj.status == 'online' && _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 2].s != 'online') {
                                 unmuteOnGettingOnline = _configState.unmuteOnGettingOnline;
                                 if (unmuteOnGettingOnline && _rowInfo.rowObj.isMuted) {
                                     _rowInfo.rowObj.isMuted = false;
@@ -789,39 +817,42 @@ var stateManager = /** @class */ (function () {
                         _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
                         _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                         _state = __assign({}, _state);
-                        return [3 /*break*/, 34];
-                    case 25:
+                        return [3 /*break*/, 35];
+                    case 26:
                         if (!__validateInputs(action.payload, ['rowId', 'key', 'value'])) {
                             this.__loger.out("ROW_SET_PROP Error: expected to recive rowId,key and value");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _rowInfo = __getRow(action.payload, _newMonitors);
+                        if (typeof _rowInfo.rowObj == 'undefined') {
+                            return [3 /*break*/, 35];
+                        }
                         if (typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined') {
                             this.__loger.out("ROW_SET_PROP error unknown key of the row. Key:".concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         if (_rowInfo.rowObj[_rowInfo.payloadObj.key] === _rowInfo.payloadObj.value) {
                             this.__loger.out("ROW_SET_PROP warn value is already set. Key:".concat(_rowInfo.payloadObj.key, " Values:").concat(_rowInfo.rowObj[_rowInfo.payloadObj.key], ">>").concat(_rowInfo.payloadObj.value, " RowId:").concat(_rowInfo.payloadObj.rowId));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         if (['name', 'address', 'updateTimeMS'].includes(_rowInfo.payloadObj.key)) {
                             if (_rowInfo.payloadObj.key == 'name') {
                                 if (_rowInfo.payloadObj.value.length < 1 || _rowInfo.payloadObj.value.length > 20) {
-                                    return [3 /*break*/, 34];
+                                    return [3 /*break*/, 35];
                                 }
                             }
                             if (_rowInfo.payloadObj.key == 'address') {
                                 if (_rowInfo.payloadObj.value.length < 1 || _rowInfo.payloadObj.value.length > 50) {
-                                    return [3 /*break*/, 34];
+                                    return [3 /*break*/, 35];
                                 }
                             }
                             if (_rowInfo.payloadObj.key == 'updateTimeMS') {
                                 if (_rowInfo.payloadObj.value < 1000 || _rowInfo.payloadObj.value > 300000) {
-                                    return [3 /*break*/, 34];
+                                    return [3 /*break*/, 35];
                                 }
                                 try {
-                                    _actualStatus_1 = _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 1].status;
+                                    _actualStatus_1 = _rowInfo.rowObj.history[_rowInfo.rowObj.history.length - 1].s;
                                     _rowInfo.rowObj.pingTimeStrategy.find(function (_pts) { return _pts.conditions.status == _actualStatus_1; }).updateTimeMS = _rowInfo.payloadObj.value;
                                 }
                                 catch (e) {
@@ -833,27 +864,27 @@ var stateManager = /** @class */ (function () {
                         _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
                         _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
-                    case 26:
+                        return [3 /*break*/, 35];
+                    case 27:
                         if (!__validateInputs(action.payload, ['rowId', 'key'])) {
                             this.__loger.out("ROW_TOGGLE_PROP Error: expected to recive rowId and key");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _rowInfo = __getRow(action.payload, _newMonitors);
-                        if (typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] == 'undefined') {
+                        if (typeof _rowInfo.rowObj[_rowInfo.payloadObj.key] === 'undefined') {
                             this.__loger.out("ROW_TOGGLE_PROP error unknown key of the row. Key:".concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _rowInfo.rowObj[_rowInfo.payloadObj.key] = !_rowInfo.rowObj[_rowInfo.payloadObj.key];
                         _rowInfo.rowStr = JSON.stringify(_rowInfo.rowObj);
                         _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
-                    case 27:
+                        return [3 /*break*/, 35];
+                    case 28:
                         if (!__validateInputs(action.payload, ['monitorId'])) {
                             this.__loger.out("ROW_CLEAR_ALL_HISTORY Error: expected to recive monitorId");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
@@ -868,17 +899,17 @@ var stateManager = /** @class */ (function () {
                             }
                         });
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
-                    case 28:
+                        return [3 /*break*/, 35];
+                    case 29:
                         if (!__validateInputs(action.payload, ['rowId', 'key'])) {
                             this.__loger.out("ROW_EDIT_PROP_SET Error: expected to recive rowId,key");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _rowInfo = __getRow(action.payload, _newMonitors);
                         if (!['name', 'address', 'updatetime', 'image'].includes(_rowInfo.payloadObj.key)) {
                             this.__loger.out("ROW_EDIT_PROP_SET error unknown key(".concat(_rowInfo.payloadObj.key, "). Key:").concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         if (!_rowInfo.rowObj['isEditing']) {
                             _rowInfo.rowObj['isEditing'] = true;
@@ -887,17 +918,17 @@ var stateManager = /** @class */ (function () {
                             _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                             _state = __assign(__assign({}, _state), { monitors: _newMonitors });
                         }
-                        return [3 /*break*/, 34];
-                    case 29:
+                        return [3 /*break*/, 35];
+                    case 30:
                         if (!__validateInputs(action.payload, ['rowId', 'key'])) {
                             this.__loger.out("ROW_EDIT_PROP_REMOVE Error: expected to recive rowId,key");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _newMonitors = __spreadArray([], _state.monitors, true);
                         _rowInfo = __getRow(action.payload, _newMonitors);
                         if (!['name', 'address', 'updatetime', 'image'].includes(_rowInfo.payloadObj.key)) {
                             this.__loger.out("ROW_EDIT_PROP_REMOVE error unknown key(".concat(_rowInfo.payloadObj.key, "). Key:").concat(_rowInfo.payloadObj.key, " RowId:").concat(_rowInfo.payloadObj.rowId));
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         if (_rowInfo.rowObj['isEditing']) {
                             _rowInfo.rowObj['isEditing'] = false;
@@ -906,11 +937,11 @@ var stateManager = /** @class */ (function () {
                             _newMonitors[_rowInfo.monitorIndex].rows[_rowInfo.rowIndex] = _rowInfo.rowStr;
                             _state = __assign(__assign({}, _state), { monitors: _newMonitors });
                         }
-                        return [3 /*break*/, 34];
-                    case 30:
+                        return [3 /*break*/, 35];
+                    case 31:
                         if (!__validateInputs(action.payload, ['monitorId'])) {
                             this.__loger.out("ROW_PAUSE_ALL Error: expected to recive monitorId");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
@@ -941,11 +972,11 @@ var stateManager = /** @class */ (function () {
                             });
                         }
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
-                    case 31:
+                        return [3 /*break*/, 35];
+                    case 32:
                         if (!__validateInputs(action.payload, ['monitorId'])) {
                             this.__loger.out("ROW_UNALARM_ALL Error: expected to recive monitorId");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
@@ -960,11 +991,11 @@ var stateManager = /** @class */ (function () {
                             }
                         });
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
-                    case 32:
+                        return [3 /*break*/, 35];
+                    case 33:
                         if (!__validateInputs(action.payload, ['monitorId'])) {
                             this.__loger.out("ROW_UNSELECT_ALL Error: expected to recive monitorId");
-                            return [3 /*break*/, 34];
+                            return [3 /*break*/, 35];
                         }
                         _payloadObj = JSON.parse(action.payload);
                         _newMonitors = __spreadArray([], _state.monitors, true);
@@ -979,12 +1010,12 @@ var stateManager = /** @class */ (function () {
                             }
                         });
                         _state = __assign(__assign({}, _state), { monitors: _newMonitors });
-                        return [3 /*break*/, 34];
-                    case 33:
+                        return [3 /*break*/, 35];
+                    case 34:
                         this.__loger.out("Reducer error: Unknown action type: ".concat(action.action));
                         console.error("Reducer error: Unknown action type: ".concat(action.action));
-                        return [3 /*break*/, 34];
-                    case 34: return [2 /*return*/, _state];
+                        return [3 /*break*/, 35];
+                    case 35: return [2 /*return*/, _state];
                 }
             });
         }); };
@@ -999,46 +1030,14 @@ var stateManager = /** @class */ (function () {
                     case 1:
                         _prevState = __assign.apply(void 0, _b.concat([_c.sent()]));
                         this.__state = __assign({}, _state);
-                        // let checkFullDifference = (_obj1:object,_obj2:object)=>{
-                        //     //TODO make this work properly
-                        //     let checkDiffStr = (_one,_two)=>{
-                        //       let _strdiffret = '';
-                        //       let aArr = _one.split('');
-                        //       let bArr = _two.split('');
-                        //       aArr.forEach((letter,i)=>{
-                        //         if(aArr[i] != bArr[i]){
-                        //           _strdiffret += aArr[i]
-                        //         }
-                        //       })
-                        //       return _strdiffret
-                        //     }
-                        //     let _ret:any = {}
-                        //     //we expect two objects to have the same scheme to minimize computation time
-                        //     Object.entries(_obj1).forEach(([_k,_v])=>{
-                        //       if(typeof _obj1[_k] != 'object'){
-                        //         let strDiff = checkDiffStr(_obj1[_k].toString(),_obj2[_k].toString())
-                        //         if(strDiff.length > 0){
-                        //           _ret[_k] = _v
-                        //         }
-                        //       }else{
-                        //         _ret[_k] = checkFullDifference(_obj1[_k],_obj2[_k])
-                        //       }
-                        //     })
-                        //     return _ret
-                        //   }
-                        // if(typeof _state.monitors > 'undefined'){
-                        //     let _fullMonotorDifference = checkFullDifference(_state.monitors,_prevState.monitors)
-                        // }
                         //TODO we need to save history only on user inputs not background services like ping report
                         // but how cat we get list of changed parameters?
-                        // if([].indexOf() != -1){
-                        // }
                         //limit to 20 elements
-                        if (this.__history.length >= 20) {
-                            // removes first element of the array: [1,2,3] > [2,3]
-                            this.__history.shift();
-                        }
-                        this.__history.push(_state);
+                        // if(this.__history.length>=20){
+                        //     // removes first element of the array: [1,2,3] > [2,3]
+                        //     this.__history.shift()
+                        // }
+                        // this.__history.push(_state)
                         return [2 /*return*/, this.__notifySubscribers(_state, _prevState) ? true : false];
                 }
             });
@@ -1055,24 +1054,16 @@ var stateManager = /** @class */ (function () {
             }
         };
         //PUBLIC METHODS
-        this.undo = function () { return __awaiter(_this, void 0, void 0, function () {
-            var _ret;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        _ret = false;
-                        if (!(this.__history.length > 0)) return [3 /*break*/, 2];
-                        this.__history.pop(); //removes current
-                        return [4 /*yield*/, this.__setState(this.__history.pop())];
-                    case 1:
-                        if (_b.sent()) { //setts second instnce from the end
-                            _ret = true;
-                        }
-                        _b.label = 2;
-                    case 2: return [2 /*return*/, _ret];
-                }
-            });
-        }); };
+        // undo = async ()=>{
+        //     let _ret = false
+        //     if(this.__history.length>0){
+        //         this.__history.pop()//removes current
+        //         if( await this.__setState(this.__history.pop())){//setts second instnce from the end
+        //             _ret = true;
+        //         }
+        //     }
+        //     return _ret;
+        // }
         this.dispach = function (action) { return __awaiter(_this, void 0, void 0, function () {
             var _newState, _b, err_1;
             return __generator(this, function (_c) {
@@ -1094,11 +1085,60 @@ var stateManager = /** @class */ (function () {
                 }
             });
         }); };
+        this.queue = function (action) {
+            var maxSize = 100;
+            if (_this.__queue.length < maxSize) {
+                //if there are no exact copyes already in the queue
+                if (!_this.__queue.filter(function (_action) { return _action.payload === action.payload && _action.action === action.action; }).length) {
+                    _this.__queue.push(action);
+                    _this.checkqueue();
+                }
+            }
+        };
+        this.checkqueue = function () { return __awaiter(_this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        if (!(this.__queue.length > 0 && !this.__queueBusy)) return [3 /*break*/, 2];
+                        this.__queueBusy = true;
+                        return [4 /*yield*/, this.dispach(this.__queue[0]).then(function () { return __awaiter(_this, void 0, void 0, function () {
+                                return __generator(this, function (_b) {
+                                    switch (_b.label) {
+                                        case 0:
+                                            this.__queue.shift();
+                                            this.__queueBusy = false;
+                                            if (!(this.__queue.length > 0)) return [3 /*break*/, 2];
+                                            return [4 /*yield*/, this.checkqueue()];
+                                        case 1:
+                                            _b.sent();
+                                            _b.label = 2;
+                                        case 2: return [2 /*return*/];
+                                    }
+                                });
+                            }); })];
+                    case 1:
+                        _b.sent();
+                        _b.label = 2;
+                    case 2: return [2 /*return*/];
+                }
+            });
+        }); };
+        //add to queue:
+        //add to array
+        //check next if exists
+        //start next only after previus finishes
         this.subscribe = function (_callback) {
             _this.__subscribers.push(_callback);
         };
         this.__appVersion = data.version;
         this.dialog = data.dialog;
+        this.__lastSave = new Date().getTime();
+        this.__fileManager = data.fileManager;
+        this.__actionTypes = data.actionTypes;
+        this.__loger = data.loger;
+        this.__config = data.config;
+        this.__pinger = data.pinger;
     }
     stateManager.prototype.__genId = function (target) {
         var _ret = -1;

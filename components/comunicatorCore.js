@@ -90,8 +90,8 @@ var comunicatorCore = /** @class */ (function () {
                     command = data.command;
                     payload = data.payload;
                     //looking for the same channel and command in subscriptions
-                    this.__subscriptions.filter(function (sub) { return (sub.channel === channel && sub.commandListString.indexOf(command) > -1); }).forEach(function (sub) {
-                        sub.callback({ payload: payload });
+                    this.__subscriptions.filter(function (sub) { return (sub.channel === channel && sub.commandListString.includes(command)); }).forEach(function (sub) {
+                        sub.callback({ command: command, payload: payload });
                     });
                     return [2 /*return*/];
                 });
