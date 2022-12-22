@@ -53,7 +53,7 @@ pinger.probe = async (message:probeInput)=>{
                     let pingDellayArray = aline.split('').filter((l:string)=>{
                         if(['0','1','2','3','4','5','6','7','8','9'].indexOf(l) != -1){return true}
                     })
-                    _response = Number(pingDellayArray.reverse().join(''));
+                    _response = Number(pingDellayArray.join(''));
                 }
                 return _response;
             }

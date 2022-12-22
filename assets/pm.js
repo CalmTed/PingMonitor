@@ -497,6 +497,51 @@ var Page = function (_winId) {
                 return _menuModal;
             };
             var _renderSettingsContent_1 = function (_configData) {
+                //TODO make all these input types as constants
+                var settingsRowsSettings = {
+                    timeToAlarmMS: {
+                        type: 'number'
+                    },
+                    timeToLogStatusChangeMS: {
+                        type: 'number'
+                    },
+                    pingHistoryTimeLimitMINS: {
+                        type: 'number'
+                    },
+                    pingHistoryTimeClusteringStartsMINS: {
+                        type: 'number'
+                    },
+                    pingHistoryTimeClusteringSizeMINS: {
+                        type: 'number'
+                    },
+                    miniGraphShowLimitMINS: {
+                        type: 'number'
+                    },
+                    langCode: {
+                        type: 'selector',
+                        options: ['ua', 'en']
+                    },
+                    colorMode: {
+                        type: 'selector',
+                        options: ['system', 'dark', 'light']
+                    },
+                    newRowRule: {
+                        type: 'selector',
+                        options: ['copyPrev', 'default']
+                    },
+                    unmuteOnGettingOnline: {
+                        type: 'checkbox'
+                    },
+                    savePingHistoryToConfig: {
+                        type: 'checkbox'
+                    },
+                    alwaysShowOnTop: {
+                        type: 'checkbox'
+                    },
+                    hideTitleBar: {
+                        type: 'checkbox'
+                    }
+                };
                 var _settingsModalDom = document.querySelector('settingsmodal');
                 var _getOptions = function (_options, _value) {
                     var _op = [];
@@ -521,7 +566,7 @@ var Page = function (_winId) {
                     var _getInputDom = function (_b) {
                         var type = _b.type, name = _b.name, value = _b.value, _c = _b.randNum, randNum = _c === void 0 ? 0 : _c, _d = _b.options, options = _d === void 0 ? [] : _d, _f = _b.callback, callback = _f === void 0 ? function (e) { } : _f;
                         var _inputDom;
-                        if (type == 'selector') {
+                        if (type === 'selector') {
                             _inputDom = document.createElement('select');
                         }
                         else {
@@ -542,9 +587,7 @@ var Page = function (_winId) {
                                 _inputDom.setAttribute('value', "".concat(value));
                                 _inputDom.setAttribute('tabindex', '7');
                                 _inputDom.onkeyup = function (e) {
-                                    if (e.target.value != value) {
-                                        callback(e);
-                                    }
+                                    callback(e);
                                 };
                                 break;
                             case 'string':
@@ -857,6 +900,7 @@ var Page = function (_winId) {
                     }
                 };
                 var _checkSettingsRow = function (_entri) {
+                    var _b;
                     var _type = 'input';
                     var _name = _entri[0];
                     var _value = _entri[1];
@@ -864,31 +908,20 @@ var Page = function (_winId) {
                     if (_name == '__keyForTesting') {
                         return 0;
                     }
-                    if (['timeToAlarmMS', 'timeToLogStatusChangeMS', 'pingHistoryTimeLimitMINS', 'miniGraphShowLimitMINS'].includes(_name)) {
-                        _type = 'number';
+                    if (settingsRowsSettings[_name]) {
+                        _type = settingsRowsSettings[_name].type;
+                        _options = (_b = settingsRowsSettings[_name]) === null || _b === void 0 ? void 0 : _b.options;
                     }
-                    if (['langCode', 'colorMode', 'newRowRule'].includes(_name)) {
-                        _type = 'selector';
-                        switch (_name) {
-                            case 'langCode':
-                                _options = ['ua', 'en'];
-                                break;
-                            case 'colorMode':
-                                _options = ['system', 'dark', 'light'];
-                                break;
-                            case 'newRowRule':
-                                _options = ['copyPrev', 'default'];
-                                break;
-                        }
-                    }
-                    if (['unmuteOnGettingOnline', 'savePingHistoryToConfig', 'alwaysShowOnTop', 'hideTitleBar'].includes(_name)) {
-                        _type = 'checkbox';
-                    }
-                    if (_type == 'input') {
+                    if (_type === 'input') {
                         _type = _name;
                     }
                     if (document.querySelector("settingsrow[name=\"".concat(_name, "\"]")) == null) {
-                        var _settRowDom = _getSettingsRow({ type: _type, name: _name, value: _value, options: _options });
+                        var _settRowDom = _getSettingsRow({
+                            type: _type,
+                            name: _name,
+                            value: _value,
+                            options: _options
+                        });
                         _settingsModalDom.append(_settRowDom);
                     }
                     else {
@@ -1519,7 +1552,15 @@ var Page = function (_winId) {
                             break;
                         case 'a':
                             if (_ctrl) {
-                                document.querySelectorAll('row').forEach(function (_r) { _r.click(); });
+                                var comunicator = Comunicator();
+                                comunicator.send({
+                                    command: 'dispachAction',
+                                    payload: JSON.stringify({
+                                        action: 'rowToggleSelectAll',
+                                        payload: JSON.stringify({ monitorId: _state.subscriptionKey })
+                                    })
+                                });
+                                // document.querySelectorAll('row').forEach((_r:any)=>{_r.click()})
                             }
                             else {
                                 _click('toolunalarm');
@@ -2188,7 +2229,7 @@ var pageStart = function () {
     var comunicator = Comunicator();
     contextMenu = ContextMenu();
     comunicator.subscribe(function (_message) {
-        console.log(_message.command);
+        console.debug(_message.command);
         if (_message.command == 'sendInitData') {
             var _plObj = JSON.parse(_message.payload);
             var _winId = _plObj.winId;

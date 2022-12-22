@@ -38,7 +38,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 var electron_1 = require("electron");
 var pingMonitor = function () {
-    var version = process.env.npm_package_version ? process.env.npm_package_version : '1.4.0';
+    var version = process.env.npm_package_version ? process.env.npm_package_version : '1.4.2';
     var lang = process.env.LANG;
     var dev = (process.env.npm_lifecycle_event === 'tstart');
     var prefix = process.env.npm_lifecycle_event !== 'tstart' ? '../../' : './';
@@ -64,18 +64,29 @@ var pingMonitor = function () {
     var dontQuitApp = false;
     var lastAutosave = new Date().getTime();
     var pingCheck = function (_coreState, _resolve) { return __awaiter(void 0, void 0, void 0, function () {
+        var timeNow;
         return __generator(this, function (_a) {
+            timeNow = new Date().getTime();
             _coreState.monitors.forEach(function (_mon) { return __awaiter(void 0, void 0, void 0, function () {
-                var timeNow;
                 return __generator(this, function (_a) {
-                    timeNow = new Date().getTime();
+                    // for(every mo nitor & every row)
+                    //ITS MIGHT BE QUITE EXPENCIVE!!
+                    //if not busy
+                    //if not paused
+                    //set busy and mark timer
+                    //if busy
+                    //if not paused
+                    //if time has passed < do it with stringify, not json.parse
+                    //await probe
+                    //query probe result
+                    //else if paused < even if time is not passed 
+                    //cancel busy
                     _mon.rows.forEach(function (_rowStr) { return __awaiter(void 0, void 0, void 0, function () {
-                        var isBusy, isPaused, _rowObj, _rowObj;
+                        var isPaused, _rowObj, _rowObj;
                         return __generator(this, function (_a) {
                             if (!_resolve.set) {
-                                isBusy = _rowStr.includes("\"isBusy\":true");
                                 isPaused = _rowStr.includes("\"isPaused\":true");
-                                if (!isBusy) {
+                                if (!_rowStr.includes("\"isBusy\":true")) {
                                     if (!isPaused) {
                                         _rowObj = JSON.parse(_rowStr);
                                         _resolve = {
@@ -189,7 +200,7 @@ var pingMonitor = function () {
             switch (_a.label) {
                 case 0:
                     getNormalWindow = function (winData) {
-                        if (winData === void 0) { winData = { w: 700, h: 400, show: false }; }
+                        if (winData === void 0) { winData = { width: 700, height: 400, top: 0, left: 0, show: false }; }
                         return __awaiter(void 0, void 0, void 0, function () {
                             var _aot, _aotC, _htb, _htbC, _ret;
                             return __generator(this, function (_a) {
@@ -206,8 +217,10 @@ var pingMonitor = function () {
                                         _htbC = _a.sent();
                                         _aotC.success ? _htb = !_htbC.value : 0;
                                         _ret = new electron_1.BrowserWindow({
-                                            width: winData.w,
-                                            height: winData.h,
+                                            width: winData.width,
+                                            height: winData.height,
+                                            x: winData.left,
+                                            y: winData.top,
                                             icon: __dirname + '/assets/PM.ico',
                                             autoHideMenuBar: true,
                                             webPreferences: {
@@ -232,7 +245,13 @@ var pingMonitor = function () {
                         _state.windows.forEach(function (_wStr) {
                             var _wObj = JSON.parse(_wStr);
                             if (windows[_wObj.winId] == undefined) {
-                                _ret.push(_wObj.winId);
+                                _ret.push({
+                                    winId: _wObj.winId,
+                                    width: _wObj.width,
+                                    height: _wObj.height,
+                                    top: _wObj.top,
+                                    left: _wObj.left
+                                });
                             }
                         });
                         return _ret;
@@ -252,52 +271,90 @@ var pingMonitor = function () {
                     return [4 /*yield*/, config.getState()];
                 case 1:
                     _configData_1 = _a.sent();
-                    uncreatedBrowserWIndows.forEach(function (_winId) { return __awaiter(void 0, void 0, void 0, function () {
-                        var _a, _b;
-                        return __generator(this, function (_c) {
-                            switch (_c.label) {
-                                case 0:
-                                    _a = windows;
-                                    _b = _winId;
-                                    return [4 /*yield*/, getNormalWindow()];
-                                case 1:
-                                    _a[_b] = _c.sent();
-                                    windows[_winId].loadFile('pm.html');
-                                    // windows[_winId].removeMenu();
-                                    windows[_winId].setBackgroundColor('#222222');
-                                    //this events are not async!
-                                    windows[_winId].on('close', function (e) { return __awaiter(void 0, void 0, void 0, function () {
-                                        return __generator(this, function (_a) {
+                    uncreatedBrowserWIndows.forEach(function (_a) {
+                        var winId = _a.winId, width = _a.width, height = _a.height, top = _a.top, left = _a.left;
+                        return __awaiter(void 0, void 0, void 0, function () {
+                            var _b, _c;
+                            return __generator(this, function (_d) {
+                                switch (_d.label) {
+                                    case 0:
+                                        _b = windows;
+                                        _c = winId;
+                                        return [4 /*yield*/, getNormalWindow({ width: width, height: height, top: top, left: left, show: false })];
+                                    case 1:
+                                        _b[_c] = _d.sent();
+                                        windows[winId].loadFile('pm.html');
+                                        // windows[winId].removeMenu();
+                                        windows[winId].setBackgroundColor('#222222');
+                                        //this event is not async!
+                                        windows[winId].on('close', function (e) {
                                             store.queue({ action: actionTypes.MONITOR_AUTOSAVE, payload: '' });
                                             store.queue({
-                                                action: 'removeWindowById',
-                                                payload: JSON.stringify({ winId: _winId })
+                                                action: actionTypes.REMOVE_WINDOW_BY_ID,
+                                                payload: JSON.stringify({ winId: winId })
                                             });
-                                            return [2 /*return*/];
                                         });
-                                    }); });
-                                    windows[_winId].on('ready-to-show', function () { return __awaiter(void 0, void 0, void 0, function () {
-                                        return __generator(this, function (_a) {
-                                            switch (_a.label) {
-                                                case 0: return [4 /*yield*/, comunicator.send({
-                                                        window: windows[_winId],
-                                                        command: 'sendInitData',
-                                                        payload: JSON.stringify({ winId: _winId, configData: _configData_1, isProduction: process.env.npm_lifecycle_event !== 'tstart' })
-                                                    })];
-                                                case 1:
-                                                    _a.sent();
-                                                    windows[_winId].show();
-                                                    if (dontQuitApp) {
-                                                        dontQuitApp = false;
-                                                    }
-                                                    return [2 /*return*/];
-                                            }
+                                        windows[winId].on('resized', function (e) {
+                                            var _a = windows[winId].getSize(), win_w = _a[0], win_h = _a[1];
+                                            store.queue({
+                                                action: actionTypes.WIN_SET_PROP,
+                                                payload: JSON.stringify({
+                                                    winId: winId,
+                                                    key: 'width',
+                                                    value: win_w
+                                                })
+                                            });
+                                            store.queue({
+                                                action: actionTypes.WIN_SET_PROP,
+                                                payload: JSON.stringify({
+                                                    winId: winId,
+                                                    key: 'height',
+                                                    value: win_h
+                                                })
+                                            });
                                         });
-                                    }); });
-                                    return [2 /*return*/];
-                            }
+                                        windows[winId].on('moved', function (e) {
+                                            var _a = windows[winId].getPosition(), win_x = _a[0], win_y = _a[1];
+                                            store.queue({
+                                                action: actionTypes.WIN_SET_PROP,
+                                                payload: JSON.stringify({
+                                                    winId: winId,
+                                                    key: 'left',
+                                                    value: win_x
+                                                })
+                                            });
+                                            store.queue({
+                                                action: actionTypes.WIN_SET_PROP,
+                                                payload: JSON.stringify({
+                                                    winId: winId,
+                                                    key: 'top',
+                                                    value: win_y
+                                                })
+                                            });
+                                        });
+                                        windows[winId].on('ready-to-show', function () { return __awaiter(void 0, void 0, void 0, function () {
+                                            return __generator(this, function (_a) {
+                                                switch (_a.label) {
+                                                    case 0: return [4 /*yield*/, comunicator.send({
+                                                            window: windows[winId],
+                                                            command: 'sendInitData',
+                                                            payload: JSON.stringify({ winId: winId, configData: _configData_1, isProduction: process.env.npm_lifecycle_event !== 'tstart' })
+                                                        })];
+                                                    case 1:
+                                                        _a.sent();
+                                                        windows[winId].show();
+                                                        if (dontQuitApp) {
+                                                            dontQuitApp = false;
+                                                        }
+                                                        return [2 /*return*/];
+                                                }
+                                            });
+                                        }); });
+                                        return [2 /*return*/];
+                                }
+                            });
                         });
-                    }); });
+                    });
                     _a.label = 2;
                 case 2:
                     if (undelitedBrowserWindows.length) {
@@ -461,12 +518,9 @@ var pingMonitor = function () {
                         });
                         if (busyRows_1) {
                             setTimeout(function () {
-                                store.queue({ action: 'setPropertyForTesting', payload: Math.round((Math.random() * 1000) * 1000) });
-                                // compute(_coreState,_prevState)
+                                store.queue({ action: actionTypes.SET_PROPERTY_FOR_TESTING, payload: Math.round((Math.random() * 1000) * 1000) });
                             }, 500);
                         }
-                        //if there are some busy rows 
-                        //set timeout of 1000 to continue computing
                     }
                     return [3 /*break*/, 7];
                 case 6:
@@ -488,7 +542,7 @@ var pingMonitor = function () {
             });
         }
     };
-    store.subscribe(compute);
+    store.subscribe(compute); //execute compute on any state change
     comunicator.subscribe({
         channel: 'window',
         commandListString: 'dispachAction, getConfigData, configSetProp, configRestoreDefaults',
@@ -516,7 +570,7 @@ var pingMonitor = function () {
                                             if (dontQuitApp) {
                                                 dontQuitApp = false;
                                             }
-                                        }, 30000);
+                                        }, 12000);
                                     }
                                     return [2 /*return*/];
                                 });
@@ -578,7 +632,7 @@ var pingMonitor = function () {
                                                 });
                                             });
                                             if (!(_plObj.key == 'langCode')) return [3 /*break*/, 4];
-                                            return [4 /*yield*/, store.queue({ action: 'writeNewLangWords', payload: _plObj.value })];
+                                            return [4 /*yield*/, store.queue({ action: actionTypes.WIN_WRITE_NEW_LANG_WORDS, payload: _plObj.value })];
                                         case 3:
                                             _a.sent();
                                             _a.label = 4;
@@ -709,8 +763,8 @@ var pingMonitor = function () {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, store.queue({
-                        action: 'addMonitor',
-                        payload: JSON.stringify({})
+                        action: actionTypes.ADD_NEW_MONITOR,
+                        payload: ''
                     })];
                 case 1:
                     _a.sent();
@@ -797,23 +851,12 @@ var testComponents = function (fileManager, config, loger, pinger, store) { retu
                 }
                 valueForTesting = Math.round((Math.random() * 1000) * 1000);
                 stateManagerTestResult = false;
-                return [4 /*yield*/, store.queue({ action: 'setPropertyForTesting', payload: valueForTesting })];
-            case 7:
-                _a.sent();
-                return [4 /*yield*/, store.queue({ action: 'setPropertyForTesting', payload: 42 })
-                    // let undo = await store.undo()
-                ];
-            case 8:
-                _a.sent();
+                store.queue({ action: actionTypes.SET_PROPERTY_FOR_TESTING, payload: valueForTesting });
+                store.queue({ action: actionTypes.SET_PROPERTY_FOR_TESTING, payload: 42 });
                 return [4 /*yield*/, store.__stateNow()];
-            case 9:
+            case 7:
                 recivedQuery = _a.sent();
                 recivedValue = recivedQuery.propertyForTesting;
-                // if(undo){
-                // if(recivedValue == valueForTesting){
-                // stateManagerTestResult = true
-                // }
-                // }
                 if (stateManagerTestResult) {
                     console.debug('[PASS] test 5 stateManager!');
                 }

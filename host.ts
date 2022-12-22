@@ -1,7 +1,7 @@
 import { BrowserWindow,dialog } from "electron"
 
 const pingMonitor = ()=>{
-  const version = process.env.npm_package_version?process.env.npm_package_version:'1.4.0'
+  const version = process.env.npm_package_version?process.env.npm_package_version:'1.4.2'
   const lang = process.env.LANG
   const dev = (process.env.npm_lifecycle_event === 'tstart')
   const prefix = process.env.npm_lifecycle_event !== 'tstart'?'../../':'./'
@@ -149,7 +149,7 @@ const pingMonitor = ()=>{
     return _resolve
   }
   const windowCheck = async (_coreState:any,_prevState:any,_resolve:any)=>{//this function depends on global variable: windows
-    let getNormalWindow =  async (winData = {w:700,h:400,show:false})=>{
+    let getNormalWindow =  async (winData = {width:700,height:400,top:0,left:0,show:false})=>{
       let _aot = false
       let _aotC = await config.getParam('alwaysShowOnTop')
       _aotC.success?_aot=_aotC.value:0
@@ -157,8 +157,10 @@ const pingMonitor = ()=>{
       let _htbC = await config.getParam('hideTitleBar')
       _aotC.success?_htb=!_htbC.value:0
       let _ret = new BrowserWindow({
-        width: winData.w,
-        height: winData.h,
+        width: winData.width,
+        height: winData.height,
+        x: winData.left,
+        y: winData.top,
         icon: __dirname + '/assets/PM.ico',
         autoHideMenuBar:true,
         webPreferences: {
@@ -177,11 +179,23 @@ const pingMonitor = ()=>{
     }
     // do we need to add new browser window
     let uncreatedBrowserWindowsF = (_state)=>{
-      let _ret:string[] = []
+      let _ret:{
+        winId:string
+        width:number
+        height:number
+        top:number
+        left:number
+      }[] = []
       _state.windows.forEach(_wStr=>{
         let _wObj = JSON.parse(_wStr)
         if(windows[_wObj.winId] == undefined){
-          _ret.push(_wObj.winId)
+          _ret.push({
+            winId:_wObj.winId,
+            width: _wObj.width,
+            height: _wObj.height,
+            top: _wObj.top,
+            left: _wObj.left
+          })
         }
       })
       return _ret
@@ -200,28 +214,65 @@ const pingMonitor = ()=>{
     let undelitedBrowserWindows = undelitedBrowserWindowsF(_coreState)
     if(uncreatedBrowserWIndows.length){
       let _configData = await config.getState()
-      uncreatedBrowserWIndows.forEach(async _winId => {
-        
-        windows[_winId] = await getNormalWindow()
-        windows[_winId].loadFile('pm.html');
-        // windows[_winId].removeMenu();
-        windows[_winId].setBackgroundColor('#222222');
-
-        //this events are not async!
-        windows[_winId].on('close', async (e)=>{
+      uncreatedBrowserWIndows.forEach(async ({winId,width,height,top,left}) => {
+        windows[winId] = await getNormalWindow({width,height,top,left,show:false})
+        windows[winId].loadFile('pm.html');
+        // windows[winId].removeMenu();
+        windows[winId].setBackgroundColor('#222222');
+        //this event is not async!
+        windows[winId].on('close', (e)=>{
           store.queue({action: actionTypes.MONITOR_AUTOSAVE, payload:''})
           store.queue({
-            action:'removeWindowById',
-            payload:JSON.stringify({winId:_winId})
+            action:actionTypes.REMOVE_WINDOW_BY_ID,
+            payload:JSON.stringify({winId:winId})
           })
         })
-        windows[_winId].on('ready-to-show',async ()=>{
-          await comunicator.send({
-            window:windows[_winId],
-            command:'sendInitData',
-            payload:JSON.stringify({winId:_winId,configData:_configData,isProduction:process.env.npm_lifecycle_event !== 'tstart'})
+        windows[winId].on('resized', (e)=>{
+          const [win_w, win_h] = windows[winId].getSize()
+          store.queue({
+            action:actionTypes.WIN_SET_PROP,
+            payload:JSON.stringify({
+              winId:winId,
+              key:'width',
+              value:win_w
+            })
           })
-          windows[_winId].show()
+          store.queue({
+            action:actionTypes.WIN_SET_PROP,
+            payload:JSON.stringify({
+              winId:winId,
+              key:'height',
+              value:win_h
+            })
+          })
+        })
+        windows[winId].on('moved', (e)=>{
+          const [win_x, win_y] = windows[winId].getPosition()
+          store.queue({
+            action:actionTypes.WIN_SET_PROP,
+            payload:JSON.stringify({
+              winId:winId,
+              key:'left',
+              value:win_x
+            })
+          })
+          store.queue({
+            action:actionTypes.WIN_SET_PROP,
+            payload:JSON.stringify({
+              winId:winId,
+              key:'top',
+              value:win_y
+            })
+          })
+        })
+
+        windows[winId].on('ready-to-show',async ()=>{
+          await comunicator.send({
+            window:windows[winId],
+            command:'sendInitData',
+            payload:JSON.stringify({winId:winId,configData:_configData,isProduction:process.env.npm_lifecycle_event !== 'tstart'})
+          })
+          windows[winId].show()
           if(dontQuitApp){
             dontQuitApp = false
           }
@@ -354,7 +405,7 @@ const pingMonitor = ()=>{
         }) 
         if(busyRows){
           setTimeout(()=>{
-            store.queue({action:'setPropertyForTesting',payload:Math.round((Math.random()*1000)*1000)})
+            store.queue({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:Math.round((Math.random()*1000)*1000)})
           },500)
         }
       }
@@ -392,7 +443,7 @@ const pingMonitor = ()=>{
             if(dontQuitApp){
               dontQuitApp = false
             }
-          },30000)
+          },12000)
         }
       }
       const getConfigData = async (payload) => {
@@ -423,7 +474,7 @@ const pingMonitor = ()=>{
           })
         })
         if(_plObj.key == 'langCode'){
-          await store.queue({action:'writeNewLangWords',payload:_plObj.value})
+          await store.queue({action:actionTypes.WIN_WRITE_NEW_LANG_WORDS,payload:_plObj.value})
         }
       }
       const configRestoreDefaults = async (payload) => {
@@ -490,8 +541,8 @@ const pingMonitor = ()=>{
   })
   app.on('second-instance', async (event, commandLine, workingDirectory) => {
     await store.queue({
-      action:'addMonitor',
-      payload:JSON.stringify({})
+      action:actionTypes.ADD_NEW_MONITOR,
+      payload:''
     })
   })
   app.on('window-all-closed', () => {
@@ -558,8 +609,8 @@ const testComponents = async (fileManager: any,config:any,loger:any,pinger:any,s
 
   let valueForTesting = Math.round((Math.random()*1000)*1000)
   let stateManagerTestResult = false
-  store.queue({action:'setPropertyForTesting',payload:valueForTesting})
-  store.queue({action:'setPropertyForTesting',payload:42})
+  store.queue({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:valueForTesting})
+  store.queue({action:actionTypes.SET_PROPERTY_FOR_TESTING,payload:42})
   // let undo = await store.undo()
   let recivedQuery = await store.__stateNow();
   let recivedValue = recivedQuery.propertyForTesting;

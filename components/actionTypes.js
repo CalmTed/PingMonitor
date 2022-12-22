@@ -19,6 +19,7 @@ var actionTypes = {
     ROW_TOGGLE_PROP: 'rowToggleProp',
     ROW_CLEAR_ALL_HISTORY: "rowClearAllHistory",
     ROW_PAUSE_ALL: 'rowPauseAllActive',
+    ROW_TOGGLE_SELECT_ALL: 'rowToggleSelectAll',
     ROW_UNALARM_ALL: 'winUnalarmAllRows',
     ROW_UNSELECT_ALL: 'rowUnselectAllSelected',
     ROW_EDIT_PROP_SET: 'rowEditProperySet',

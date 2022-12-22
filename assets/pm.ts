@@ -352,15 +352,15 @@ const Page = (_winId)=>{
                 _menuOptionDom.onclick = (_e)=>{
                     if(action.command == 'setZoom'){
                         switch(action.payload){
-                            case 'In':
-                                webFrame.setZoomFactor(webFrame.getZoomFactor()*1.5);
-                                break
-                            case 'Out':
-                                webFrame.setZoomFactor(webFrame.getZoomFactor()/1.5);
-                                break;
-                            case 'Fix':
-                                webFrame.setZoomFactor(1);
-                                break;
+                        case 'In':
+                            webFrame.setZoomFactor(webFrame.getZoomFactor()*1.5);
+                            break
+                        case 'Out':
+                            webFrame.setZoomFactor(webFrame.getZoomFactor()/1.5);
+                            break;
+                        case 'Fix':
+                            webFrame.setZoomFactor(1);
+                            break;
                         }
                     }else{
                         let comunicator = Comunicator()
@@ -494,6 +494,51 @@ const Page = (_winId)=>{
             return _menuModal
         }
         let _renderSettingsContent = (_configData)=>{
+            //TODO make all these input types as constants
+            const settingsRowsSettings = {
+                timeToAlarmMS:{
+                    type: 'number'
+                },
+                timeToLogStatusChangeMS:{
+                    type: 'number'
+                },
+                pingHistoryTimeLimitMINS:{
+                    type: 'number'
+                },
+                pingHistoryTimeClusteringStartsMINS:{
+                    type: 'number'
+                },
+                pingHistoryTimeClusteringSizeMINS:{
+                    type: 'number'
+                },
+                miniGraphShowLimitMINS:{
+                    type: 'number'
+                },
+                langCode:{
+                    type:'selector',
+                    options: ['ua','en']
+                },
+                colorMode:{
+                    type:'selector',
+                    options: ['system','dark','light']
+                },
+                newRowRule:{
+                    type:'selector',
+                    options: ['copyPrev','default']
+                },
+                unmuteOnGettingOnline:{
+                    type:'checkbox'
+                },
+                savePingHistoryToConfig:{
+                    type:'checkbox'
+                },
+                alwaysShowOnTop:{
+                    type:'checkbox'
+                },
+                hideTitleBar:{
+                    type:'checkbox'
+                }
+            }
             let _settingsModalDom = document.querySelector('settingsmodal')
             let _getOptions = (_options,_value)=>{
                 let _op = []
@@ -516,7 +561,7 @@ const Page = (_winId)=>{
                 }
                 let _getInputDom = ({type,name,value,randNum=0,options=[],callback=(e)=>{}})=>{
                     let _inputDom
-                    if(type == 'selector'){
+                    if(type === 'selector'){
                         _inputDom = document.createElement('select')
                     }else{
                         _inputDom = document.createElement('input')
@@ -536,9 +581,7 @@ const Page = (_winId)=>{
                             _inputDom.setAttribute('value',`${value}`)
                             _inputDom.setAttribute('tabindex','7')
                             _inputDom.onkeyup = (e)=>{
-                                if(e.target.value!=value){
                                     callback(e)
-                                }
                             }
                             break;
                         case 'string':
@@ -828,32 +871,20 @@ const Page = (_winId)=>{
                 if(_name == '__keyForTesting' ){
                     return 0
                 }
-                if(['timeToAlarmMS','timeToLogStatusChangeMS','pingHistoryTimeLimitMINS','miniGraphShowLimitMINS'].includes(_name)){
-                    _type='number'
+                if(settingsRowsSettings[_name]){
+                    _type = settingsRowsSettings[_name].type
+                    _options = settingsRowsSettings[_name]?.options
                 }
-                if(['langCode','colorMode','newRowRule'].includes(_name)){
-                    _type='selector'
-                    switch(_name){
-                        case 'langCode':
-                            _options = ['ua','en']
-                            break;
-                        case 'colorMode':
-                            _options = ['system','dark','light']
-                            break;
-                        case 'newRowRule':
-                            _options = ['copyPrev','default']
-                            break;
-                    }
-                }
-                if(['unmuteOnGettingOnline','savePingHistoryToConfig','alwaysShowOnTop','hideTitleBar'].includes(_name)){
-                    _type='checkbox'
-                }
-                if(_type == 'input'){
+                if(_type === 'input'){
                     _type = _name
                 }
-
                 if(document.querySelector(`settingsrow[name="${_name}"]`) == null){
-                    let _settRowDom = _getSettingsRow({type:_type,name:_name,value:_value,options:_options})
+                    let _settRowDom = _getSettingsRow({
+                        type: _type,
+                        name: _name,
+                        value: _value,
+                        options: _options
+                    })
                     _settingsModalDom.append(_settRowDom)
                 }else{
                     _updateSettingsRow({type:_type,name:_name,value:_value})
@@ -942,7 +973,6 @@ const Page = (_winId)=>{
                 }
                 _settingsModalDom.append(_settKeys)
             }
-
         }
         let _renderNewConfig = (_newConfigObj)=>{
             let _previousConfig = JSON.parse(JSON.stringify(this.appConfig))
@@ -1465,7 +1495,15 @@ const Page = (_winId)=>{
                         break;
                     case'a':
                         if(_ctrl){
-                            document.querySelectorAll('row').forEach((_r:any)=>{_r.click()})
+                            const comunicator = Comunicator()
+                            comunicator.send({
+                                command:'dispachAction',
+                                payload:JSON.stringify({
+                                    action:'rowToggleSelectAll',
+                                    payload:JSON.stringify({monitorId:_state.subscriptionKey})
+                                })
+                            })
+                            // document.querySelectorAll('row').forEach((_r:any)=>{_r.click()})
                         }else{
                             _click('toolunalarm')
                         }

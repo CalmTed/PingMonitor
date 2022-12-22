@@ -91,7 +91,7 @@ pinger.probe = function (message) { return __awaiter(_this, void 0, void 0, func
                                     return true;
                                 }
                             });
-                            _response = Number(pingDellayArray.reverse().join(''));
+                            _response = Number(pingDellayArray.join(''));
                         }
                         return _response;
                     };

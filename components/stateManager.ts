@@ -40,6 +40,10 @@ interface winState {
     winId: number
     subscriptionKey: number//monitor id
     title: string
+    height: number
+    width: number
+    left: number
+    top: number
     isGraph: boolean
     isHidden: boolean
     isFullscreen: boolean
@@ -62,7 +66,7 @@ interface actionType {
     action:string
     payload?:any
 }
-
+const MINUTE = 60000
 class stateManager {
     __appVersion:string
     __langCode:string
@@ -248,7 +252,7 @@ class stateManager {
     }
     __userLogger = async ({name,text,indent})=>{
         let _indent = (_len = 0)=>{
-            let _ret = '                '
+            let _ret = '                '//indent string
             let _ind = ''
             let _step = ' '
             for(let _j=0;_j<40;_j++){
@@ -382,6 +386,9 @@ class stateManager {
             case this.__actionTypes.ADD_NEW_MONITOR:
                 _newMonitors = JSON.parse(JSON.stringify(_state.monitors))
                 let _newMon = await __newMonitor()
+                while(_newMonitors.filter(_monitor => _monitor.monitorId === _newMon.monitorId).length !== 0){
+                    _newMon = await __newMonitor()
+                }
                 _newMonitors.push(_newMon)
                 _state = {..._state,monitors:_newMonitors}
                 break;
@@ -409,8 +416,7 @@ class stateManager {
                         Object.entries(_rowObg).forEach(([_rok,_rov])=>{
                             if(!_savePingHistory && _rok=='history'){
                                 _modRowObg[_rok] = []
-                            }
-                            if(_rok=='isBusy'){
+                            }else if(_rok=='isBusy'){
                                 _modRowObg[_rok] = false
                             }else{
                                 _modRowObg[_rok] = _rov
@@ -418,6 +424,20 @@ class stateManager {
                         })
                         _modifiedState.monitors[_monitIndex].rows[_rowIndex] = JSON.stringify(_modRowObg)
                     })
+                })
+                _modifiedState.windows.forEach((_windowStr,_windowIndex)=>{
+                    let _windowObj = JSON.parse(_windowStr)
+                    let _mogWindowObj = {}
+                    Object.entries(_windowObj).forEach(([_wink,_winv])=>{
+                        if(_wink === 'langWords'){
+                            _mogWindowObj[_wink] = {}
+                        }else if(_wink === 'imagesList'){
+                            _mogWindowObj[_wink] = []
+                        }else{
+                            _mogWindowObj[_wink] = _winv
+                        }
+                    })
+                    _modifiedState.windows[_windowIndex] = JSON.stringify(_mogWindowObj)
                 })
                 let _exportContent = JSON.stringify(_modifiedState,undefined,4);
                 let _exportResult = await this.__fileManager.write({
@@ -444,6 +464,15 @@ class stateManager {
                 if(_importResult.success){
                     let _openedStateStr = _importResult.payload.content
                     let _openedStateObj = JSON.parse(_openedStateStr)
+                    const _langCode = await this.__getLangCode()
+                    const _langWords = await this.__getAllWords(_langCode)
+                    const _imageList = await this.__getImagesList()
+                    _openedStateObj.windows.forEach((_windowStr,_windowInd)=>{
+                        const _modWinObj = JSON.parse(_windowStr)
+                        _modWinObj.langWords = _langWords
+                        _modWinObj.imagesList = _imageList
+                        _openedStateObj.windows[_windowInd] = JSON.stringify(_modWinObj)
+                    })
                     if(_openedStateObj.version == _state.version){
                         _state = {..._openedStateObj}
                     }
@@ -570,7 +599,7 @@ class stateManager {
                     break;
                 }
                 _payloadObj = JSON.parse(action.payload)
-                _newMonitors = [..._state.monitors]
+                _newMonitors = JSON.parse(JSON.stringify(_state.monitors))
                 _neededMonitorIndex = _newMonitors.map((_m)=>{
                     return _m.monitorId == _payloadObj.monitorId
                 }).indexOf(true)
@@ -600,7 +629,7 @@ class stateManager {
                 _newMonitors = [..._state.monitors]
                 _rowInfo = __getRow(action.payload,_newMonitors)
                 if(!_rowInfo.success){
-                    this.__loger.out(`ROW_SET_PROP Error: row was not found`)
+                    this.__loger.out(`ROW_SUBMIT_PING_PROBE Error: row was not found`)
                     break;
                 }
                 if(!_rowInfo.rowObj.isBusy){
@@ -619,18 +648,53 @@ class stateManager {
                     d:_payloadObj.dellay,
                     tl:_payloadObj.ttl,
                 })
+                //do we need to erase some old history
                 let pingHistoryTimeLimitMINS = _configState.pingHistoryTimeLimitMINS
-                if((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS*60000){
+                if (_reduceTime - _rowInfo.rowObj.history[0].t > pingHistoryTimeLimitMINS * MINUTE) {
                     _rowInfo.rowObj.history.shift()
                     //this duplication is for deliting faster than adding, if there is too much history
-                    if((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS*60000){
+                    if((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS * MINUTE){
                         let whileLimit = 10000
-                        while((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS*60000 && whileLimit > 0){
+                        while((_reduceTime - _rowInfo.rowObj.history[0].t)>pingHistoryTimeLimitMINS * MINUTE && whileLimit > 0){
                             _rowInfo.rowObj.history.shift()
                             whileLimit--
                         }
                     }
                 }
+                //do we need to cluster some history
+                const startClusteringMINS = _configState.pingHistoryTimeClusteringStartsMINS
+                const clusteringSizeMINS = _configState.pingHistoryTimeClusteringSizeMINS
+                if (_reduceTime - _rowInfo.rowObj.history[0].t > (startClusteringMINS + clusteringSizeMINS) * MINUTE) {//if we have data older then 1h + 5m
+                    let safeBreak = 10000
+                    //set target index and data
+                    let targetMomentIndex = 0
+                    let targetMomentData = _rowInfo.rowObj.history[targetMomentIndex]
+                    while(_reduceTime - targetMomentData.t > startClusteringMINS * MINUTE && safeBreak > 0){
+                        const nextMomentIndex = targetMomentIndex+1
+                        const nextMomentData = _rowInfo.rowObj.history[nextMomentIndex]
+                        if(nextMomentData.t - targetMomentData.t < clusteringSizeMINS * MINUTE){//if next moment less then 5 mins later
+                            if(nextMomentData.s === targetMomentData.s && nextMomentData.ttl === targetMomentData.ttl){//if next moment have the same status and ttl
+                                //change target's data, average of two
+                                _rowInfo.rowObj.history[targetMomentIndex].d = (_rowInfo.rowObj.history[targetMomentIndex].d+_rowInfo.rowObj.history[nextMomentIndex].d)/2
+                                //delete this next moment
+                                _rowInfo.rowObj.history.splice(nextMomentIndex,1)
+                            }else{
+                                targetMomentIndex = nextMomentIndex
+                                targetMomentData = _rowInfo.rowObj.history[targetMomentIndex]
+                            }
+                        }else{//else if 5 mins passed
+                            if(_reduceTime - nextMomentData.t > (startClusteringMINS + clusteringSizeMINS) * MINUTE){//if this next moment is older then 1hr + 5min
+                                targetMomentIndex = nextMomentIndex
+                                targetMomentData = _rowInfo.rowObj.history[targetMomentIndex]
+                            }
+                        }
+                        safeBreak--
+                    }
+                    if(safeBreak === 0){
+                        this.__loger.out(`ROW_SUBMIT_PING_PROBE Warn: infinite clustering prevented`)
+                    }
+                }
+                //do we need to change updateTime
                 try{
                     let _ptsNeededStatus = _rowInfo.rowObj.pingTimeStrategy.find(_pts=>_pts.conditions.status == _payloadObj.status)
                     if(_ptsNeededStatus != null){
@@ -870,6 +934,24 @@ class stateManager {
                         }
                     })
                 }
+                _state = {..._state,monitors:_newMonitors}
+                break;
+            case this.__actionTypes.ROW_TOGGLE_SELECT_ALL:
+                if(!__validateInputs(action.payload,['monitorId'])){
+                    this.__loger.out(`ROW_TOGGLE_SELECT_ALL Error: expected to recive monitorId`)
+                    break;
+                }
+                _payloadObj = JSON.parse(action.payload)
+                _newMonitors = [..._state.monitors]
+                _neededMonitorIndex = _newMonitors.map((_m)=>{
+                    return _m.monitorId == _payloadObj.monitorId
+                }).indexOf(true)
+                _newMonitors[_neededMonitorIndex].rows.forEach((_rowStr,_i)=>{
+                    _newMonitors[_neededMonitorIndex].rows[_i] = _rowStr.includes(`"isSelected":true`) ? _rowStr.replace(`"isSelected":true`,`"isSelected":false`) : _rowStr.replace(`"isSelected":false`,`"isSelected":true`)
+                    // let _rowObj = JSON.parse(_rowStr)
+                    
+                    // _rowObj.isSelected = !_rowObj.isSelected
+                })
                 _state = {..._state,monitors:_newMonitors}
                 break;
             case this.__actionTypes.ROW_UNALARM_ALL:

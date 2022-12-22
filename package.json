@@ -1,6 +1,6 @@
 {
   "name": "pingmonitor",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "description": "ping monitoring",
   "main": "host.js",
   "icon": "assets/icons/PM_nofill.ico",
@@ -18,7 +18,7 @@
   "build": {
     "appId": "ping.monitor",
     "productName"   : "Ping Monitor",
-    "buildVersion": "1.4.0",
+    "buildVersion": "1.4.2",
     "target": "portable",
     "icon": "assets/icons/PM.ico",
     "compression": "maximum",

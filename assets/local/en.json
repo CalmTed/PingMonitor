@@ -59,6 +59,8 @@
     "defaultPingTimeStrategy": "Update time change strategy",
     "unmuteOnGettingOnline": "Unmute on getting online",
     "pingHistoryTimeLimitMINS": "Ping history time limit(mins)",
+    "pingHistoryTimeClusteringStartsMINS": "Ping history clustering starts after(mins)",
+    "pingHistoryTimeClusteringSizeMINS": "Ping history time cluster size(mins)",
     "miniGraphShowLimitMINS": "Mini-graph show limit(mins)",
     "savePingHistoryToConfig": "Save ping history to config",
     "logSettings": "Log settings",
@@ -97,7 +99,7 @@
     "ABOUT": "",
     "PingMonitor is a free app to automatically ping and show status of network devices.": "",
     "Version": "",
-    "May": "",
+    "May": "June",
     "Made by Fedir Moroz for Ukrainian Military Forces in Sep 2021 for no commercial use only.": "",
-    "For more info contact me at": ""
+    "For more info contact me at": ""   
 }
