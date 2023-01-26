@@ -1,56 +1,43 @@
 {
   "name": "pingmonitor",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "ping monitoring",
-  "main": "host.js",
   "icon": "assets/icons/PM_nofill.ico",
   "scripts": {
-    "start": "electron index.js",
-    "tcompile": "tsc --project tsconfig.json",
-    "tstart": "npm run tcompile && electron host.js",
-    "pack": "electron-packager ./ PingMonitor",
-    "build": "npm run tcompile && electron-builder --dir",
-    "build_portable": "npm run tcompile && electron-builder --win portable",
-    "build_mac": "npm run tcompile && electron-builder --mac",
-    "build_linux": "npm run tcompile && electron-builder --linux",
-    "build_all": "npm run tcompile && electron-builder -mwl"
-  },
-  "build": {
-    "appId": "ping.monitor",
-    "productName"   : "Ping Monitor",
-    "buildVersion": "1.4.2",
-    "target": "portable",
-    "icon": "assets/icons/PM.ico",
-    "compression": "maximum",
-    "asar": true,
-    "extraFiles": [
-      "assets/config.json",
-      "assets/local/ua.json",
-      "assets/local/en.json",
-      "assets/alarm.wav",
-      "assets/icons/*",
-      "components/*.js",
-      "node_modules/ping",
-      "node_modules/underscore",
-      "node_modules/q"
-    ],
-    "win": {
-      "legalTrademarks": "© Made by Ted Frost for UMF in 2021. For no commercial use only."
-    }
+    "tauri-dev": "tauri dev",
+    "tauri-build": "tauri build",
+    "localhost": "servor dist index.html 8080 --reload",
+    "ui-build": "rollup -c",
+    "ui-dev": "rollup -c -w --bundleConfigAsCjs"
   },
   "author": "calmted",
   "license": "ISC",
   "dependencies": {
-    "electron-packager": "^15.2.0",
-    "jquery": "^3.6.0",
-    "local-storage": "^2.0.0",
-    "material-icons": "^1.10.3",
-    "ping": "^0.4.1",
-    "sortablejs": "^1.14.0",
-    "typescript": "^4.6.3"
+    "@tauri-apps/api": "^1.2.0",
+    "sortablejs": "^1.14.0"
   },
   "devDependencies": {
-    "electron-builder": "^23.0.3",
-    "electron": "^13.6.9"
+    "@rollup/plugin-commonjs": "^24.0.1",
+    "@rollup/plugin-eslint": "^9.0.3",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "@rollup/plugin-replace": "^5.0.2",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@tauri-apps/cli": "^1.2.3",
+    "@types/react": "^18.0.27",
+    "@types/react-dom": "^18.0.10",
+    "@types/styled-components": "^5.1.26",
+    "@typescript-eslint/eslint-plugin": "^5.49.0",
+    "eslint": "^8.32.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-react": "^7.32.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-jsx": "^1.0.0",
+    "rollup": "^3.10.1",
+    "servor": "^4.0.2",
+    "styled-components": "^5.3.6",
+    "tslib": "^2.4.1",
+    "typescript": "^4.9.4"
   }
 }

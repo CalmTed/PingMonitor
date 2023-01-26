@@ -32,9 +32,9 @@
     "timeToAlarmMS": 10000,
     "unmuteOnGettingOnline": true,
     "pingHistoryTimeLimitMINS": 360,
-    "pingHistoryTimeClusteringStartsMINS": 60,
+    "pingHistoryTimeClusteringStartsMINS": 50,
     "pingHistoryTimeClusteringSizeMINS": 5,
-    "miniGraphShowLimitMINS": 5,
+    "miniGraphShowLimitMINS": 70,
     "savePingHistoryToConfig": false,
     "logSettings": {
         "logChanges": false,

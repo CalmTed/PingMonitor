@@ -1,0 +1,89 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeBuildCommand": "",
+    "beforeDevCommand": "",
+    "devPath": "http://localhost:8080/",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Ping Monitor",
+    "version": "1.5.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "window": {
+        "close":true
+      },
+      "dialog": {
+        "open": true  
+      },
+      "fs": {
+        "scope": ["*"],
+        "readFile": true,
+        "writeFile": true
+      },
+      "path": {
+        "all": true
+      },
+      "protocol": {
+        "asset": true,
+        "assetScope": ["*"]
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "Created by Ted Frost in July 2023 for Ukraine Milirary Forces for non-comertial use",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/icon.ico"
+      ],
+      "identifier": "app.calmTed.pingMonitor",
+      "longDescription": "",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": [],
+      "shortDescription": "Created by Ted Frost in July 2023 for Ukraine Milirary Forces for non-comertial use",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": "",
+        "wix": {
+          "language": "uk-UA"
+        },
+        "webviewInstallMode": {
+          "type":"offlineInstaller"
+        }
+      }
+    },
+    "security": {
+      "csp": "default-src: *; img-src: *; tyle-src-elem: unsafe-inline; style-src: unsafe-inline; asset: https://asset.localhost" 
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 650,
+        "resizable": true,
+        "title": "Ping Monitor 1.5.0",
+        "width": 900,
+        "label":"main",
+        "alwaysOnTop": false,
+        "fileDropEnabled":false,
+        "url": "index.html"
+      }
+    ]
+  }
+}

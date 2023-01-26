@@ -4,7 +4,10 @@
 			"path": "."
 		},
 		{
-			"path": "..\\OptyDocReact"
+			"path": "../statustauri"
+		},
+		{
+			"path": "../OptyDocTS"
 		}
 	],
 	"settings": {}
