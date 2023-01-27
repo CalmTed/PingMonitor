@@ -3,12 +3,13 @@
   "version": "1.5.0",
   "description": "ping monitoring",
   "icon": "assets/icons/PM_nofill.ico",
+  "type":"module",
   "scripts": {
     "tauri-dev": "tauri dev",
     "tauri-build": "tauri build",
     "localhost": "servor dist index.html 8080 --reload",
     "ui-build": "rollup -c",
-    "ui-dev": "rollup -c -w --bundleConfigAsCjs"
+    "ui-dev": "rollup -c -w"
   },
   "author": "calmted",
   "license": "ISC",

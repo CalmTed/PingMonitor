@@ -18,8 +18,19 @@
       "dialog": {
         "open": true  
       },
+      "shell": {
+        "all": true,
+        "execute": true,
+        "scope": [{
+          "name": "pinging",
+          "cmd": "ping",
+          "args": true
+        }]
+      },
       "fs": {
-        "scope": ["*"],
+        "scope": ["$DOCUMENT/**"],
+        "exists": true,
+        "createDir": true,
         "readFile": true,
         "writeFile": true
       },

@@ -24,7 +24,8 @@ export default [
       }),
       eslint(),
       replace({
-          "process.env.NODE_ENV": JSON.stringify("development")
+          "process.env.NODE_ENV": JSON.stringify("development"),
+          preventAssignment: true
       }),
       commonjs({
         include: /node_modules/,
