@@ -6,7 +6,7 @@ export const getInitialState: () => StateModel = () => {
   return {
     version: VERSION,
     lastChanged: 0,
-    langCode: LANG_CODE.ua,
+    langCode: LANG_CODE.en,
     view: VIEW_TYPE.tales,
     rows: getInitialRows()
   };

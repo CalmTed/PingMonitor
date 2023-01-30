@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { PROMPT_TYPES, TOAST_TIMEOUT } from "src/constants";
+import { Option } from "src/models";
 
 
 export const customHook = () => {
   const [toastData, setToastData] = useState({
     isShown: false,
-    text: ""
+    text: "",
+    timeoutId: 0
   });
   const [alertData, setAlertData] = useState({
     isShown: false,
@@ -17,33 +20,79 @@ export const customHook = () => {
     isShown: false,
     header: "",
     text: "",
+    type: PROMPT_TYPES.confirm,
     oncancel: () => { return; },
-    onconfirm: (arg: string) => { arg; }
+    onconfirm: (arg: string) => { arg; },
+    confirmButtonTitle: undefined  as string | undefined,
+    options: undefined as Option[] | undefined
   });
   const showToast = (text: string) => {
+    toastData.isShown ? clearTimeout(toastData.timeoutId) : null;
+    const toID = setTimeout(() => {
+      setToastData({
+        isShown: false,
+        text: toastData.text,
+        timeoutId: toastData.timeoutId
+      });
+    }, TOAST_TIMEOUT);
     setToastData({
       isShown: true,
-      text
+      text,
+      timeoutId: toID
     });
-    //set settimeout to hide in 5 sec
-    return;
   };
   const showAlert = (header:string, text: string, oncancel: () => void, onconfirm: () => void) => {
+    const hideAlert = () => {
+      setAlertData({
+        isShown: false,
+        header: alertData.header,
+        text: alertData.text,
+        oncancel: alertData.oncancel,
+        onconfirm: alertData.onconfirm
+      });  
+    };
     setAlertData({
       isShown: true,
       header,
       text,
-      oncancel,
-      onconfirm
+      oncancel: () => { 
+        hideAlert();
+        oncancel();
+      },
+      onconfirm: () => { 
+        hideAlert();
+        onconfirm();
+      }
     });
   };
-  const showPrompt = (header:string, text: string, oncancel: () => void, onconfirm: (arg: string) => void) => {
+  const showPrompt = (header:string, text: string, type: PROMPT_TYPES, oncancel: () => void, onconfirm: (arg: string) => void,  confirmButtonTitle?: string, options?: Option[]) => {
+    const hidePrompt = () => {
+      setPromptData({
+        isShown: false,
+        header: promptData.header,
+        text: promptData.text,
+        type: promptData.type,
+        oncancel: promptData.oncancel,
+        onconfirm: promptData.onconfirm,
+        options: promptData.options,
+        confirmButtonTitle: promptData.confirmButtonTitle
+      });
+    };
     setPromptData({
       isShown: true,
       header,
       text,
-      oncancel,
-      onconfirm
+      type,
+      oncancel: () => {
+        hidePrompt();
+        oncancel();
+      },
+      onconfirm: (ret: string) => {
+        hidePrompt();
+        onconfirm(ret);
+      },
+      options,
+      confirmButtonTitle
     });
   };
   return {toastData,

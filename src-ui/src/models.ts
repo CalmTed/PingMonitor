@@ -1,13 +1,14 @@
-import { HOST_STATE, ROW_COLOR, ROW_SIZE, VIEW_TYPE } from "./constants";
-import { LANG_CODE } from "./utils/lang";
+import { HOST_STATE, PROMPT_TYPES, ROW_COLOR, ROW_SIZE, VIEW_TYPE } from "./constants";
+import { LANG_CODE, Word } from "./utils/lang";
 import { ActionType } from "./utils/reducer";
 
 export interface StoreModel {
   state: StateModel
+  t: (word: Word) => string
   dispatch: (action: ActionType) => void
   showToast: (text: string) => void
   showAlert: (header: string, text: string, oncancel: () => void, onconfirm: () => void) => void
-  showPrompt: (header: string, text: string, oncancel: () => void, onconfirm: (arg: string) => void) => void 
+  showPrompt: (header: string, text: string, type: PROMPT_TYPES, oncancel: () => void, onconfirm: (arg: string) => void, confirmButtonTitle?: string, options?: Option[]) => void 
 }
 
 export interface StateModel{

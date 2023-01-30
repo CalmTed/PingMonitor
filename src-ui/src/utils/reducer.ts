@@ -1,4 +1,5 @@
 import { StateModel } from "src/models";
+import { LANG_CODE } from "./lang";
 
 enum ACTION_GROUP {
   app = "APP",
@@ -11,8 +12,8 @@ export enum ACTION_NAME {
 }
 
 export type ActionType = {
-  name: ACTION_NAME
-  payload: string
+  name: ACTION_NAME.APP_SET_LANG_CODE
+  payload: LANG_CODE
 }
  
 

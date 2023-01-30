@@ -1,5 +1,7 @@
 export const VERSION = "1.5.0";
 
+export const TOAST_TIMEOUT = 5000;
+
 export enum VIEW_TYPE {
   tales = "tales",
   timeline = "timeline"
@@ -36,4 +38,10 @@ export enum ROW_SIZE {
   x2h = "x2h",
   x4 = "x4",
   x6 = "x6",
+}
+
+export enum PROMPT_TYPES {
+  confirm = "confirm",
+  select = "select",
+  text = "text"
 }
