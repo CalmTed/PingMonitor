@@ -13,7 +13,8 @@
   "tauri": {
     "allowlist": {
       "window": {
-        "close":true
+        "close":true,
+        "setFullscreen": true
       },
       "dialog": {
         "open": true  
@@ -45,7 +46,7 @@
     "bundle": {
       "active": true,
       "category": "DeveloperTool",
-      "copyright": "Created by Ted Frost in July 2023 for Ukraine Milirary Forces for non-comertial use",
+      "copyright": "Created by Ted Frost in January 2023 for Ukraine Milirary Forces for non-comertial use",
       "deb": {
         "depends": []
       },
@@ -63,7 +64,7 @@
         "signingIdentity": null
       },
       "resources": [],
-      "shortDescription": "Created by Ted Frost in July 2023 for Ukraine Milirary Forces for non-comertial use",
+      "shortDescription": "Created by Ted Frost in January 2023 for Ukraine Milirary Forces for non-comertial use",
       "targets": "all",
       "windows": {
         "certificateThumbprint": null,

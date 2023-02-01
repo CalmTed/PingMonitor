@@ -5,6 +5,7 @@ const en = {
   titleSettings: "Open settings",
   titleExport: "Export rows",
   titleImport: "Import rows",
+  titleFullscreen: "Toggle fullscreen",
 
   menuItemSettings: "Settings",
   menuItemExport: "Export",
@@ -22,7 +23,14 @@ const en = {
   configItemTimeToAlarm: "Time to alarm activation",
   configUnmuteOnOnline: "Unmute row on getting online",
   configTimeToAlarm: "Offline time before alarm activation",
-  configHideAddress: "Hide address"
+  configHideAddress: "Hide address",
+
+  contextMenuPlay: "Start",
+  contextMenuPause: "Pause",
+  contextMenuRemove: "Remove",
+  contextMenuMute: "Mute",
+  contextMenuUnmute: "Unmute",
+  contextMenuEdit: "Edit"
 };
 
 const ua: typeof en = {
@@ -32,6 +40,7 @@ const ua: typeof en = {
   titleSettings: "Відкрити налаштування",
   titleExport: "Експортувати налаштування",
   titleImport: "Імпортувати налаштування",
+  titleFullscreen: "Повноекраний режим",
 
   menuItemSettings: "Налаштування",
   menuItemExport: "Ексопрт",
@@ -49,7 +58,14 @@ const ua: typeof en = {
   configItemTimeToAlarm: "Час до спрацювання сирени",
   configUnmuteOnOnline: "Увімкнути звук рядка при відновленні зв'язку",
   configTimeToAlarm: "Час до спрацювання сирени",
-  configHideAddress: "Приховати адресу"
+  configHideAddress: "Приховати адресу",
+
+  contextMenuPlay: "Розпочати",
+  contextMenuPause: "Призупинити",
+  contextMenuRemove: "Видалити",
+  contextMenuMute: "Вимкнути звук",
+  contextMenuUnmute: "Увімкнути звук",
+  contextMenuEdit: "Редагувати"
 };
 
 const fr: typeof en = {
@@ -59,6 +75,7 @@ const fr: typeof en = {
   titleSettings: "Ouvrir les paramètres",
   titleExport: "Exporter des lignes",
   titleImport: "Importer des lignes",
+  titleFullscreen: "Toggle fullscreen",
 
   menuItemSettings: "Les paramètres",
   menuItemExport: "Exporter",
@@ -76,7 +93,15 @@ const fr: typeof en = {
   configItemTimeToAlarm: "Délai d'activation de l'alarme",
   configUnmuteOnOnline: "Activer le son de la ligne lorsque la connexion est rétablie",
   configTimeToAlarm: "Offline time before alarm activation",
-  configHideAddress: "Hide address"
+  configHideAddress: "Hide address",
+
+  
+  contextMenuPlay: "Start",
+  contextMenuPause: "Pause",
+  contextMenuRemove: "Remove",
+  contextMenuMute: "Mute",
+  contextMenuUnmute: "Unmute",
+  contextMenuEdit: "Edit"
 };
 
 export type Word = keyof typeof en; 

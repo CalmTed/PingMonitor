@@ -9,7 +9,10 @@ enum ACTION_GROUP {
 
 export enum ACTION_NAME {
   APP_SET_CONFIG_OPEN_STATE = "APP_SET_CONFIG_OPEN_STATE",
+  APP_SET_ZOOM = "APP_SET_ZOOM",
+
   CONFIG_RERENDER = "CONFIG_RERENDER",
+
   ROW_ADD = "ROW_ADD",
   ROWS_REMOVE = "ROW_REMOVE",
   ROWS_SET_PARAM = "ROW_SET_PARAM",
@@ -19,7 +22,11 @@ export enum ACTION_NAME {
 export type ActionType = {
   name: ACTION_NAME.APP_SET_CONFIG_OPEN_STATE
   payload: boolean
-} | {
+} 
+| {
+  name: ACTION_NAME.APP_SET_ZOOM
+  payload: number
+}   | {
   name: ACTION_NAME.CONFIG_RERENDER
 } | {
   name: ACTION_NAME.ROW_ADD
@@ -44,7 +51,6 @@ export type ActionType = {
  
 
 export const reducer: (state: StateModel, action: ActionType) => StateModel | null = (state, action) => {
-  
   //special case for config change
   if(action.name === ACTION_NAME.CONFIG_RERENDER) {
     return state;
@@ -76,6 +82,17 @@ const appReducer: (state: StateModel, action: ActionType) => StateModel | null =
     ret = {
       ...state,
       isConfigOpen: action.payload
+    };
+    break;
+  case ACTION_NAME.APP_SET_ZOOM:
+    const minZoom = 10;
+    const maxZoom = 400;
+    if(state.zoom === action.payload || action.payload < minZoom || action.payload > maxZoom) {
+      break;
+    }
+    ret = {
+      ...state,
+      zoom: action.payload
     };
     break;
   default: 

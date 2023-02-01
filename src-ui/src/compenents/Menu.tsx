@@ -4,10 +4,12 @@ import { Word } from "src/utils/lang";
 import styled from "styled-components";
 import { Icon, IconName } from "./Icon";
 import { ACTION_NAME } from "src/utils/reducer";
+import { appWindow } from "@tauri-apps/api/window";
 
 interface MenuComponentModel{
   store: StoreModel
 }
+
 
 const MenuStyle = styled.div`
   .menuButton:focus + .menuList, .menuList:focus-within{
@@ -35,6 +37,18 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
       payload: true
     });
   };
+  
+  const handleFullscreen = () => {
+    appWindow.isFullscreen().then((isFullscreen) => {
+      appWindow.setFullscreen(!isFullscreen);
+    });
+    // document.documentElement.requestFullscreen();
+    // if (!document.fullscreenElement) {
+    //   null;
+    // } else if (document.exitFullscreen) {
+    //   document.exitFullscreen();
+    // }
+  };
   return <MenuStyle>
     <ToolItem store={store} icon="ico_menu" title="titleMenu" classes="menuButton" onClick={() => { return; }}/>
     <MenuList>
@@ -44,6 +58,7 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
 
     </MenuList>
     <ToolItem store={store} icon="ico_plus" title="titleAdd" onClick={handleAddRow}></ToolItem>
+    <ToolItem store={store} icon="ico_fullscreen" title="titleFullscreen" onClick={handleFullscreen}></ToolItem>
   </MenuStyle>;
 };
 
@@ -80,7 +95,7 @@ const ToolItemStyle = styled.div`
 export const ToolItem: FC<ToolItemComponentModel> = ({store, icon, title, onClick, disabled, classes}) => {
 
   return <ToolItemStyle 
-    className={`bc menuItem${disabled ? " disabled" : ""}${classes ? " " + classes : ""}`}
+    className={`bc toolItem${disabled ? " disabled" : ""}${classes ? " " + classes : ""}`}
     title={store.t(title)}
     onClick={() => { disabled ? null : onClick(); }}
     tabIndex={1}
@@ -100,8 +115,6 @@ const MenuListStyle = styled.div`
   left: 5em;
   transition: var(--transition);
   background: transparent;
-  // border-radius: var(--radius);
-  // overflow: hidden;
   visibility: hidden;
   opacity: 0;
 `;

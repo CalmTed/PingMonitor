@@ -6,7 +6,8 @@ export const getInitialState: () => StateModel = () => {
     version: VERSION,
     lastChanged: 0,
     rows: getInitialRows(),
-    isConfigOpen: false
+    isConfigOpen: false,
+    zoom: 100
   };
 };
 
@@ -29,12 +30,13 @@ export const getADefaultRow: () => RowModel = () => {
       avgDellay: 0,
       ttl: null
     },
-    picture: "pic_pingMonitor",
+    picture: "ico_play",
     color: ROW_COLOR.gray,
     size: ROW_SIZE.x2h,
     isCollapsed: true,
     isBusy: false,
-    isPaused: false,
+    isPaused: true,
+    isMuted: false,
     isAlarmed: false,
     isSelected: false
   };

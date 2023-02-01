@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React, { FC, useEffect } from "react";
 import styled from "styled-components";
 import { ActionType, StateModel, StoreModel } from "src/models";
 import { customHook } from "src/utils/customHook";
@@ -10,16 +10,58 @@ import Prompt from "./Prompt";
 import { ConfigModal } from "./ConfigModal";
 import { getConfig } from "src/utils/config";
 import { View } from "./View";
+import { ACTION_NAME } from "src/utils/reducer";
+import { ContextMenu } from "./ContextMenu";
+import { contextMenuHook } from "src/utils/contextMenuHook";
 
 interface AppInterface {
   state: StateModel
   dispatch: (action: ActionType) => void
 }
 
-const AppStyle = styled.div``; 
+const AppStyle = styled.div`
+  &:not(:focus-within) .toolItem{
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.7);
+  }
+  :hover .toolItem{
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+  }
+`; 
 
 const App: FC<AppInterface> = ({state, dispatch}) => {
+  //hotkeys
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if(["Equal", "Minus", "Digit0"].includes(e.code) && e.ctrlKey) { 
+        e.preventDefault();
+        const speed = 10;
+        const defaultZoom = 100;
+        const newZoom  = e.code === "Digit0" ? defaultZoom : e.code === "Equal" ? state.zoom + speed : state.zoom - speed;
+        store.dispatch({
+          name: ACTION_NAME.APP_SET_ZOOM,
+          payload: newZoom
+        });
+      }
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      const isContextMenuItself = (e.target as HTMLElement).className?.includes("contextMenuItem") || false;
+      if(contextMenuData.isShown && !isContextMenuItself) {
+        store.hideContextMenu();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown, {passive: false});
+    document.addEventListener("mouseup", handleMouseUp, {passive: false});
+    return () => {
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  });
   const {toastData, showToast, alertData, showAlert, promptData, showPrompt} = customHook();
+  const {contextMenuData, showContextMenu, hideContextMenu} = contextMenuHook();
   const config = getConfig();
   const store: StoreModel = {
     state: state,
@@ -28,61 +70,14 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
     dispatch, 
     showToast,
     showAlert,
-    showPrompt
+    showPrompt,
+    showContextMenu,
+    hideContextMenu
   };
-  // const changeLang = () => {
-  //   dispatch({
-  //     name: ACTION_NAME.APP_SET_LANG_CODE,
-  //     payload: state.langCode === LANG_CODE.ua ? LANG_CODE.en : LANG_CODE.ua
-  //   });
-  // };
-  // const handleClick = () => {
-  //   const one = 1;
-  //   setTimeout(async () => {
-  //     const addr = (document.querySelector(".hostAddr") as HTMLInputElement).value;
-  //     const p = await ping(addr);
-  //     const zero = 0;
-  //     if(!p) {
-  //       return;
-  //     }
-  //     await writeHist({
-  //       time: p.time,
-  //       addressIP: p.address,
-  //       dellay: p.avgDellay,
-  //       ttl: p.ttl || zero
-  //     });
-  //     const one = 1, two = 2;
-  //     const d = new Date();
-  //     const fileName = `${d.getFullYear()}${addZero(String(d.getMonth() + one), two)}${addZero(String(d.getDate()), two)}.txt`;
-  //     const hist = await readHistDay(fileName);
-      
-      
-  //   }, one);
-  // };
-  // const askForLanguage = () => {
-  //   store.showPrompt("Оберіть мову", "Select language", PROMPT_TYPES.select, () => {
-  //     store.showToast("English by default", "pic_pingMonitor");
-  //   }, (result) => {
-  //     dispatch({
-  //       name: ACTION_NAME.APP_SET_LANG_CODE,
-  //       payload: result === LANG_CODE.ua ? LANG_CODE.ua : LANG_CODE.en
-  //     });
-  //   }, 
-  //   "Select",
-  //   [
-  //     {
-  //       label: "English",
-  //       value: LANG_CODE.en
-  //     },
-  //     {
-  //       label: "Українська",
-  //       value: LANG_CODE.ua
-  //     }
-  //   ]
-  //   );
-  // };
-  return <AppStyle>
+  const appZoomStyle = {"--zoom": state.zoom} as React.CSSProperties;
+  return <AppStyle style={appZoomStyle}>
     <View store={store}/>
+    <ContextMenu store={store} data={contextMenuData} />
     <Menu store={store}/>
     <ConfigModal store={store} />
     <Prompt 

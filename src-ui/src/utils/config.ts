@@ -1,5 +1,4 @@
 import { CONFIG_TYPE, VERSION, VIEW_TYPE } from "src/constants";
-import { getADefaultRow } from "src/initials";
 import { Option, RowModel } from "src/models";
 import { LANG_CODE, Word } from "./lang";
 
