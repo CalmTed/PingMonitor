@@ -3,13 +3,12 @@ export const VERSION = "1.5.0";
 export const TOAST_TIMEOUT = 5000;
 
 export enum VIEW_TYPE {
-  tales = "tales",
+  tiles = "tiles",
   timeline = "timeline"
 }
 
 export enum CONFIG_TYPE {
   row = "row",
-  rowGroup = "rowGroup",
   boolean = "boolean",
   number = "number",
   options = "options" 
@@ -18,7 +17,8 @@ export enum CONFIG_TYPE {
 export enum HOST_STATE {
   online = "online",
   timeout = "timeout",
-  error = "error"
+  error = "error",
+  unchecked = "unchecked"
 }
 
 export enum ROW_COLOR {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { IconName } from "src/compenents/Icon";
 import { PROMPT_TYPES, TOAST_TIMEOUT } from "src/constants";
 import { Option } from "src/models";
 
@@ -7,6 +8,7 @@ export const customHook = () => {
   const [toastData, setToastData] = useState({
     isShown: false,
     text: "",
+    icon: undefined as IconName | undefined,
     timeoutId: 0
   });
   const [alertData, setAlertData] = useState({
@@ -26,18 +28,20 @@ export const customHook = () => {
     confirmButtonTitle: undefined  as string | undefined,
     options: undefined as Option[] | undefined
   });
-  const showToast = (text: string) => {
+  const showToast = (text: string, icon?: IconName) => {
     toastData.isShown ? clearTimeout(toastData.timeoutId) : null;
     const toID = setTimeout(() => {
       setToastData({
         isShown: false,
         text: toastData.text,
+        icon: toastData.icon,
         timeoutId: toastData.timeoutId
       });
     }, TOAST_TIMEOUT);
     setToastData({
       isShown: true,
       text,
+      icon,
       timeoutId: toID
     });
   };

@@ -1,9 +1,11 @@
 import { Command } from "@tauri-apps/api/shell";
+import { HOST_STATE } from "src/constants";
 
 const defaultPacketsNumber = 1;
 const defaultPacketsSize = 32;
 
-interface parseResultInterface {
+export interface parseResultInterface {
+  status: HOST_STATE
   address: string
   time: number
   avgDellay: number
@@ -29,10 +31,18 @@ const ping = async (address: string, packetsNumber = defaultPacketsNumber, packe
     const avgDellay = parseInt(str.substring(dellayLastIndex, str.length).replace(/\D+/g, "")) || defaultDellay;
     const tllLastIndex = str.lastIndexOf("TTL=");
     const ttl = parseInt(str.substring(tllLastIndex + ttlStart, tllLastIndex + ttlEnd).replace(/\D+/g, "")) || null;
+    console.log("NO TIMEOUNT HERE YET");
     if(!addr) {
-      return null;
+      return {
+        status: HOST_STATE.error,
+        address: "",
+        time: date.getHours() * hour + date.getMinutes() * minute + date.getSeconds(),
+        avgDellay: Infinity,
+        ttl: ttl || null
+      };
     }
     return {
+      status: HOST_STATE.online,
       address: addr === "::1" ? "0.0.0.0" : addr,
       time: date.getHours() * hour + date.getMinutes() * minute + date.getSeconds(),
       avgDellay: avgDellay,

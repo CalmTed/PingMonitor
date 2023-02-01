@@ -1,9 +1,25 @@
-import { CONFIG_TYPE, VERSION } from "src/constants";
+import { CONFIG_TYPE, VERSION, VIEW_TYPE } from "src/constants";
 import { getADefaultRow } from "src/initials";
 import { Option, RowModel } from "src/models";
-import { Word } from "./lang";
+import { LANG_CODE, Word } from "./lang";
 
-export const getConfig = () => {
+export const getConfig: () => ConfigModel = () => {
+  const listToTry = getConfigList();
+  if(Object.keys(CONFIG_NAMES).length !== Object.keys(listToTry).length) {
+    setFullConfig(initialConfig);
+  }
+  const list = getConfigList();
+  const ret: ConfigModel = {
+    [CONFIG_NAMES.language]: list[CONFIG_NAMES.language].value as LANG_CODE,
+    [CONFIG_NAMES.view]: list[CONFIG_NAMES.view].value as VIEW_TYPE,
+    [CONFIG_NAMES.unmuteOnOnline]: list[CONFIG_NAMES.unmuteOnOnline].value as boolean,
+    [CONFIG_NAMES.timeToAlarm]: list[CONFIG_NAMES.timeToAlarm].value as number,
+    [CONFIG_NAMES.hideAddress]: list[CONFIG_NAMES.hideAddress].value as boolean
+  };
+  return ret;
+};
+
+export const getConfigList: () => ConfigListModel = () => {
   const localConfigJSON = localStorage.getItem(`config${VERSION}`);
 
   if(localConfigJSON) {
@@ -13,14 +29,17 @@ export const getConfig = () => {
       setFullConfig(initialConfig);
       return initialConfig;
     }
+  }else{
+    setFullConfig(initialConfig);
+    return initialConfig;
   }
 };
 
-const setFullConfig: (config:ConfigModel) => void = (config) => {
+const setFullConfig: (config:ConfigListModel) => void = (config) => {
   localStorage.setItem(`config${VERSION}`, JSON.stringify(config));
 };
 
-export const setConfig: (name: keyof ConfigModel, value: ConfigItemType) => void = (name, value) => {
+export const setConfig: (name: keyof ConfigListModel, value: ConfigItemType) => void = (name, value) => {
   const isExists = localStorage.getItem(`config${VERSION}`);
   //if not exists
   if(!isExists) {
@@ -35,33 +54,30 @@ export const setConfig: (name: keyof ConfigModel, value: ConfigItemType) => void
   const localConfig = localStorage.getItem(`config${VERSION}`);
   if(localConfig) {
     const newConfig = {
-      ...JSON.parse(localConfig) as ConfigModel,
-      name: value
+      ...JSON.parse(localConfig) as ConfigListModel,
+      [name]: value
     };
     setFullConfig(newConfig);
   }
 };
 
 export type ConfigItemType = {
-  group: string
+  name: CONFIG_NAMES
+  group: Word
   label: Word
   type: CONFIG_TYPE.row
   defaultValue: RowModel
   value: RowModel
 } | {
-  group: string
-  label: Word
-  type: CONFIG_TYPE.rowGroup
-  defaultValue: RowModel[]
-  value: RowModel[]
-} | {
-  group: string
+  name: CONFIG_NAMES
+  group: Word
   label: Word
   type: CONFIG_TYPE.boolean
   defaultValue: boolean
   value: boolean
 } | {
-  group: string
+  name: CONFIG_NAMES
+  group: Word
   label: Word
   type: CONFIG_TYPE.number
   defaultValue: number
@@ -70,7 +86,8 @@ export type ConfigItemType = {
   max: number
   step: number
 } | {
-  group: string
+  name: CONFIG_NAMES
+  group: Word
   label: Word
   type: CONFIG_TYPE.options
   defaultValue: string
@@ -78,24 +95,104 @@ export type ConfigItemType = {
   options: Option[]
 }
 
-interface ConfigModel {
-  defaultRows: ConfigItemType,
-  defaultRow: ConfigItemType
+//config list
+//default new row rule
+//defeult new row
+//history save limit
+//time to alarm
+//unmute on getting online
+export enum CONFIG_NAMES {
+  language = "language",
+  unmuteOnOnline = "unmuteOnOnline",
+  hideAddress = "hideAddress",
+  timeToAlarm = "timeToAlarm",
+  view = "view"
 }
 
-const initialConfig: ConfigModel = {
-  defaultRows: {
-    group: "defaults",
-    label: "lang",
-    type: CONFIG_TYPE.rowGroup,
-    defaultValue: [] as RowModel[],
-    value: []
+export interface ConfigListModel {
+  [CONFIG_NAMES.language]: ConfigItemType
+  [CONFIG_NAMES.view]: ConfigItemType
+  [CONFIG_NAMES.unmuteOnOnline]: ConfigItemType
+  [CONFIG_NAMES.hideAddress]: ConfigItemType
+  [CONFIG_NAMES.timeToAlarm]: ConfigItemType
+}
+
+export type ConfigModel = {
+  [CONFIG_NAMES.language]: LANG_CODE
+  [CONFIG_NAMES.view]: VIEW_TYPE
+  [CONFIG_NAMES.unmuteOnOnline]: boolean
+  [CONFIG_NAMES.timeToAlarm]: number
+  [CONFIG_NAMES.hideAddress]: boolean
+};
+
+const initialConfig: ConfigListModel = {
+  //GENERAL
+  [CONFIG_NAMES.language]: {
+    name: CONFIG_NAMES.language,
+    group: "configGroupGeneral",
+    label: "configLanguage",
+    type: CONFIG_TYPE.options,
+    options: [
+      {
+        label: "English",
+        value: LANG_CODE.en
+      },
+      {
+        label: "Українська",
+        value: LANG_CODE.ua
+      },
+      {
+        label: "Française",
+        value: LANG_CODE.fr
+      }
+    ],
+    defaultValue: LANG_CODE.en,
+    value: LANG_CODE.en 
   },
-  defaultRow: {
-    group: "defaults",
-    label: "lang",
-    type: CONFIG_TYPE.row,
-    defaultValue: getADefaultRow(),
-    value: getADefaultRow()
+  [CONFIG_NAMES.view]: {
+    name: CONFIG_NAMES.view,
+    group: "configGroupGeneral",
+    label: "configView",
+    type: CONFIG_TYPE.options,
+    options: [
+      {
+        label: "configViewTiles",
+        value: VIEW_TYPE.tiles
+      },
+      {
+        label: "configViewTimeline",
+        value: VIEW_TYPE.timeline
+      }
+    ],
+    defaultValue: VIEW_TYPE.tiles,
+    value: VIEW_TYPE.tiles 
+  },
+  //ROW
+  [CONFIG_NAMES.unmuteOnOnline]: {
+    name: CONFIG_NAMES.unmuteOnOnline,
+    group: "configGroupRow",
+    label: "configUnmuteOnOnline",
+    type: CONFIG_TYPE.boolean,
+    defaultValue: false,
+    value: false 
+  },
+  [CONFIG_NAMES.timeToAlarm]: {
+    name: CONFIG_NAMES.timeToAlarm,
+    group: "configGroupRow",
+    label: "configTimeToAlarm",
+    type: CONFIG_TYPE.number,
+    defaultValue: 10000,
+    value: 10000,  
+    min: 1000,
+    max: 30000,
+    step: 1000
+  },
+  [CONFIG_NAMES.hideAddress]: {
+    name: CONFIG_NAMES.hideAddress,
+    group: "configGroupRow",
+    label: "configHideAddress",
+    type: CONFIG_TYPE.boolean,
+    defaultValue: false,
+    value: false
   }
 };

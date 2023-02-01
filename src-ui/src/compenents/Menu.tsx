@@ -3,6 +3,7 @@ import { StoreModel } from "src/models";
 import { Word } from "src/utils/lang";
 import styled from "styled-components";
 import { Icon, IconName } from "./Icon";
+import { ACTION_NAME } from "src/utils/reducer";
 
 interface MenuComponentModel{
   store: StoreModel
@@ -14,6 +15,9 @@ const MenuStyle = styled.div`
     visibility: visible;
     opacity: 1;
   }
+  top: 0;
+  left: 0;
+  position: fixed;
   display: flex;
   flex-wrap: wrap;
   width: 4em;
@@ -21,12 +25,20 @@ const MenuStyle = styled.div`
 
 export const Menu: FC<MenuComponentModel> = ({store}) => {
   const handleAddRow = () => {
-    return;
+    store.dispatch({
+      name: ACTION_NAME.ROW_ADD
+    });
+  };
+  const handleOpenConfig = () => {
+    store.dispatch({
+      name: ACTION_NAME.APP_SET_CONFIG_OPEN_STATE,
+      payload: true
+    });
   };
   return <MenuStyle>
     <ToolItem store={store} icon="ico_menu" title="titleMenu" classes="menuButton" onClick={() => { return; }}/>
     <MenuList>
-      <MenuItem store={store} icon="ico_settings" name="menuItemSettings" title="titleSettings" onClick={() => { return; }}></MenuItem>
+      <MenuItem store={store} icon="ico_settings" name="menuItemSettings" title="titleSettings" onClick={handleOpenConfig}></MenuItem>
       <MenuItem store={store} icon="ico_export" name="menuItemExport" title="titleExport" onClick={() => { return; }}></MenuItem>
       <MenuItem store={store} icon="ico_import" name="menuItemImport" title="titleImport" onClick={() => { return; }}></MenuItem>
 
@@ -56,8 +68,12 @@ const ToolItemStyle = styled.div`
   display: flex;
   align-items: center;
   justify-components: center;
+  transition: var(--transition);
   .menuButton:focus{
     background: var(--bc-bg-hover);  
+  }
+  &:hover{
+    background: var(--bc-bg-hover);
   }
 `;
 

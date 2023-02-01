@@ -8,8 +8,21 @@ const en = {
 
   menuItemSettings: "Settings",
   menuItemExport: "Export",
-  menuItemImport: "Import"
+  menuItemImport: "Import",
 
+  headerSettings: "Settings",
+  configGroupGeneral: "General",
+  configGroupRow: "Row",
+  configLanguage: "Language",
+  configView: "View",
+  configViewTiles: "Tiles",
+  configViewTimeline: "Timeline",
+  configItemDefaultRow: "Default row",
+  configItemDefaultRowRule: "Default row rule",
+  configItemTimeToAlarm: "Time to alarm activation",
+  configUnmuteOnOnline: "Unmute row on getting online",
+  configTimeToAlarm: "Offline time before alarm activation",
+  configHideAddress: "Hide address"
 };
 
 const ua: typeof en = {
@@ -22,19 +35,62 @@ const ua: typeof en = {
 
   menuItemSettings: "Налаштування",
   menuItemExport: "Ексопрт",
-  menuItemImport: "Імпорт"
+  menuItemImport: "Імпорт",
+
+  headerSettings: "Налаштування",
+  configGroupGeneral: "Загальні",
+  configGroupRow: "Рядок",
+  configLanguage: "Мова",
+  configView: "Вид",
+  configViewTiles: "Блоки",
+  configViewTimeline: "Часова лінія",
+  configItemDefaultRow: "Рядок за замовченням",
+  configItemDefaultRowRule: "Правило нового рядка",
+  configItemTimeToAlarm: "Час до спрацювання сирени",
+  configUnmuteOnOnline: "Увімкнути звук рядка при відновленні зв'язку",
+  configTimeToAlarm: "Час до спрацювання сирени",
+  configHideAddress: "Приховати адресу"
+};
+
+const fr: typeof en = {
+  lang: "Française",
+  titleMenu: "Menu",
+  titleAdd: "Ajouter une rangée",
+  titleSettings: "Ouvrir les paramètres",
+  titleExport: "Exporter des lignes",
+  titleImport: "Importer des lignes",
+
+  menuItemSettings: "Les paramètres",
+  menuItemExport: "Exporter",
+  menuItemImport: "Importer",
+
+  headerSettings: "Les paramètres",
+  configGroupGeneral: "Général",
+  configGroupRow: "Ligne",
+  configLanguage: "Langue",
+  configView: "View",
+  configViewTiles: "Tiles",
+  configViewTimeline: "Timeline",
+  configItemDefaultRow: "Ligne par défaut",
+  configItemDefaultRowRule: "Règle de ligne par défaut",
+  configItemTimeToAlarm: "Délai d'activation de l'alarme",
+  configUnmuteOnOnline: "Activer le son de la ligne lorsque la connexion est rétablie",
+  configTimeToAlarm: "Offline time before alarm activation",
+  configHideAddress: "Hide address"
 };
 
 export type Word = keyof typeof en; 
 
 export enum LANG_CODE{
   ua = "ua",
-  en = "en"
+  en = "en",
+  fr = "fr"
 }
 
 export const WORDS = {
   ua: ua,
-  en: en
+  en: en,
+  fr: fr
 };
 
 export const getT: (lang: LANG_CODE) => (word: Word) => string = (lang) => {

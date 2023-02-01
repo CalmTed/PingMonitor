@@ -1,14 +1,12 @@
-import { ROW_COLOR, ROW_SIZE, VERSION, VIEW_TYPE } from "./constants";
+import { HOST_STATE, ROW_COLOR, ROW_SIZE, VERSION } from "./constants";
 import { RowModel, StateModel } from "./models";
-import { LANG_CODE } from "./utils/lang";
 
 export const getInitialState: () => StateModel = () => {
   return {
     version: VERSION,
     lastChanged: 0,
-    langCode: LANG_CODE.en,
-    view: VIEW_TYPE.tales,
-    rows: getInitialRows()
+    rows: getInitialRows(),
+    isConfigOpen: false
   };
 };
 
@@ -24,6 +22,14 @@ export const getADefaultRow: () => RowModel = () => {
     updateTimeStrategy: [
 
     ],
+    lastPing: {
+      status: HOST_STATE.unchecked,
+      address: "",
+      time: 0,
+      avgDellay: 0,
+      ttl: null
+    },
+    picture: "pic_pingMonitor",
     color: ROW_COLOR.gray,
     size: ROW_SIZE.x2h,
     isCollapsed: true,

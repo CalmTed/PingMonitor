@@ -1,12 +1,16 @@
-import { HOST_STATE, PROMPT_TYPES, ROW_COLOR, ROW_SIZE, VIEW_TYPE } from "./constants";
-import { LANG_CODE, Word } from "./utils/lang";
+import { IconName } from "./compenents/Icon";
+import { HOST_STATE, PROMPT_TYPES, ROW_COLOR, ROW_SIZE } from "./constants";
+import { ConfigModel } from "./utils/config";
+import { Word } from "./utils/lang";
+import { parseResultInterface } from "./utils/ping";
 import { ActionType } from "./utils/reducer";
 
 export interface StoreModel {
   state: StateModel
+  config: ConfigModel
   t: (word: Word) => string
   dispatch: (action: ActionType) => void
-  showToast: (text: string) => void
+  showToast: (text: string, icon?:IconName) => void
   showAlert: (header: string, text: string, oncancel: () => void, onconfirm: () => void) => void
   showPrompt: (header: string, text: string, type: PROMPT_TYPES, oncancel: () => void, onconfirm: (arg: string) => void, confirmButtonTitle?: string, options?: Option[]) => void 
 }
@@ -14,9 +18,8 @@ export interface StoreModel {
 export interface StateModel{
   version: string
   lastChanged: number
-  langCode: LANG_CODE
-  view: VIEW_TYPE
   rows: RowModel[]
+  isConfigOpen: boolean
 }
 
 export interface RowModel{
@@ -26,6 +29,8 @@ export interface RowModel{
   updateTimeStrategy: UpdateTimeStrategyItem[]
   color: ROW_COLOR
   size: ROW_SIZE
+  picture: IconName
+  lastPing: parseResultInterface
   isCollapsed: boolean
   isBusy: boolean
   isPaused: boolean

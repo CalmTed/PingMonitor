@@ -5,16 +5,18 @@ import styled from "styled-components";
 
 interface IconModel{
   icon: IconName
+  css?: React.CSSProperties
 }
 
 const IconStyle = styled.div`
+  display: inline-block;
   width: 2rem;
   aspect-ratio: 1;
   --icon-color: #fff;
 `;
 
-export const Icon: FC<IconModel> = ({icon}) => {
-  return <IconStyle dangerouslySetInnerHTML={{ __html: ICONS[icon]}} />;
+export const Icon: FC<IconModel> = ({icon, css}) => {
+  return <IconStyle style={css} dangerouslySetInnerHTML={{ __html: ICONS[icon]}} />;
 };
 
 export type IconName = keyof typeof ICONS;

@@ -1,7 +1,10 @@
-import React, {FC} from "react";
+import React, {FC, useState} from "react";
 import { PROMPT_TYPES } from "src/constants";
 import { Option } from "src/models";
 import styled from "styled-components";
+import Button from "./Button";
+import Select from "./Select";
+import Input from "./Input";
 
 interface PromptComponentModel {
   isShown: boolean
@@ -58,7 +61,11 @@ const PromptStyle = styled.div`
       word-break: break-all;
     }
     .inputs{
-
+      padding: 0.5em 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      
     }  
     .buttons{
       height: min-content;
@@ -66,6 +73,9 @@ const PromptStyle = styled.div`
       width: 100%;
       display: flex;
       justify-content: center;
+      gap: 0.4em;
+      .botton{
+      }
     }
   }
   &.shown{
@@ -81,6 +91,12 @@ const PromptStyle = styled.div`
 
 
 const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel, onconfirm, options, confirmButtonTitle}) => {
+  const defaultOption = typeof options === "object" ? options[0].value : "";
+  const [selectValue, setSelectValue] = useState(defaultOption);
+  if(selectValue === "" && selectValue !== defaultOption) {
+    setSelectValue(defaultOption);
+  }
+  const [inputValue, setInputValue] = useState("");
   const handleConfirm = (value = true) => {
     let retVlaue = "";
     switch(type) {
@@ -88,17 +104,16 @@ const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel
       retVlaue = String(value);
       break;
     case PROMPT_TYPES.select:
-      retVlaue = (document.querySelector(".inputs select") as HTMLSelectElement).value || "";
+      retVlaue = selectValue || "";
       break;
     case PROMPT_TYPES.text:
-      retVlaue = (document.querySelector(".inputs input") as HTMLInputElement).value || "";
+      retVlaue = inputValue || "";
       break;
     }
-    console.log(value, type, !value && type !== PROMPT_TYPES.confirm);
     !value && type !== PROMPT_TYPES.confirm ? oncancel() : onconfirm(retVlaue);
   };
   return <PromptStyle
-    className={`bc${ isShown ? " shown" : ""}`}
+    className={`${ isShown ? " shown" : ""}`}
   >
     <div className="backdrop" onClick={oncancel}></div>
     <div className="container bc">
@@ -107,24 +122,20 @@ const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel
       { type === PROMPT_TYPES.select && 
         ( 
           <div className="inputs">
-            <select>
-              {options && options.map(option => 
-                <option key={option.value} value={option.value}>{option.label}</option> 
-              )}
-            </select>
+            <Select value={selectValue} options={options || []} onChange={(newValue) => { setSelectValue(newValue); } }/>
           </div>
         )
       }
       { type === PROMPT_TYPES.text && 
         ( 
           <div className="inputs">
-            <input type="text" onKeyUp={(e) => { e.code === "Enter" ? handleConfirm() : null; }} />
+            <Input value={inputValue} onChange={ (newValue) => { setInputValue(newValue); }} onSubmit={ () => handleConfirm(true)} />
           </div>
         )
       }
       <div className="buttons">
-        <div onClick={() => handleConfirm(false)}>[Cancel]</div>
-        <div onClick={() => handleConfirm(true)}>[{confirmButtonTitle ? confirmButtonTitle : "OK"}]</div>
+        <Button onClick={() => handleConfirm(false)} title="Cancel" type="secondary"/>
+        <Button onClick={() => handleConfirm(true)} title={confirmButtonTitle ? confirmButtonTitle : "OK"} type="primary"/>
       </div>
     </div>
   </PromptStyle>;
