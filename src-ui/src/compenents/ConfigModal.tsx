@@ -2,7 +2,7 @@ import React, { FC } from "react";
 import { Modal } from "./Modal";
 import { Option, StoreModel } from "src/models";
 import { ACTION_NAME } from "src/utils/reducer";
-import { ConfigItemType, getConfigList, ConfigListModel, setConfig, CONFIG_NAMES } from "src/utils/config";
+import { ConfigItemType, getConfigList, ConfigListModel, setConfig } from "src/utils/config";
 import { Word } from "src/utils/lang";
 import { CONFIG_TYPE } from "src/constants";
 import Select from "./Select";

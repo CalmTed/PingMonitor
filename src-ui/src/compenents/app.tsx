@@ -13,6 +13,7 @@ import { View } from "./View";
 import { ACTION_NAME } from "src/utils/reducer";
 import { ContextMenu } from "./ContextMenu";
 import { contextMenuHook } from "src/utils/contextMenuHook";
+import { RowEditModal } from "./RowEditModal";
 
 interface AppInterface {
   state: StateModel
@@ -48,7 +49,18 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
       }
     };
     const handleMouseUp = (e: MouseEvent) => {
-      const isContextMenuItself = (e.target as HTMLElement).className?.includes("contextMenuItem") || false;
+      const target = (e.target as HTMLElement);
+      const parent1 = target?.parentElement || null;
+      const parent2 = parent1?.parentElement || null;
+      const parent3 = parent2?.parentElement || null;
+      const parent4 = parent3?.parentElement || null;
+      const hasClass: (node: HTMLElement | null) => boolean = (node) => {
+        if(!node || typeof node?.className !== "string") {
+          return false;
+        }
+        return node.className.includes("contextMenuItem") || false;
+      };
+      const isContextMenuItself = hasClass(target) || hasClass(parent1) || hasClass(parent2) || hasClass(parent3) || hasClass(parent4);
       if(contextMenuData.isShown && !isContextMenuItself) {
         store.hideContextMenu();
       }
@@ -79,6 +91,7 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
     <View store={store}/>
     <ContextMenu store={store} data={contextMenuData} />
     <Menu store={store}/>
+    <RowEditModal store={store} />
     <ConfigModal store={store} />
     <Prompt 
       isShown={promptData.isShown}
