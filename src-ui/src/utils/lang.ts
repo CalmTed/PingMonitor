@@ -12,6 +12,8 @@ const en = {
   menuItemImport: "Import",
 
   headerSettings: "Settings",
+  headerEditRow: "Edit row",
+
   configGroupGeneral: "General",
   configGroupRow: "Row",
   configLanguage: "Language",
@@ -30,7 +32,26 @@ const en = {
   contextMenuRemove: "Remove",
   contextMenuMute: "Mute",
   contextMenuUnmute: "Unmute",
-  contextMenuEdit: "Edit"
+  contextMenuEdit: "Edit",
+
+  rowTitlePicture: "Picture",
+  rowTitleName: "Name",
+  rowTitleAddress: "Address",
+  rowTitleSize: "Size",
+  rowTitleColor: "Picture",
+  rowTitleUTS: "Update time strategy",
+
+  colorGray: "Gray",
+  colorRed: "Red",
+  colorOrange: "Orange",
+  colorYellow: "Yellow",
+  colorGreen: "Green",
+  colorBlue: "Blue",
+  colorPurple: "Purple",
+  colorPink: "Pink",
+
+  s: "s",
+  ms: "ms"
 };
 
 const ua: typeof en = {
@@ -47,6 +68,8 @@ const ua: typeof en = {
   menuItemImport: "Імпорт",
 
   headerSettings: "Налаштування",
+  headerEditRow: "Налаштування строки",
+
   configGroupGeneral: "Загальні",
   configGroupRow: "Рядок",
   configLanguage: "Мова",
@@ -65,7 +88,26 @@ const ua: typeof en = {
   contextMenuRemove: "Видалити",
   contextMenuMute: "Вимкнути звук",
   contextMenuUnmute: "Увімкнути звук",
-  contextMenuEdit: "Редагувати"
+  contextMenuEdit: "Редагувати",
+  
+  rowTitlePicture: "Зображення",
+  rowTitleName: "Ім'я",
+  rowTitleAddress: "Адреса",
+  rowTitleSize: "Розмір",
+  rowTitleColor: "Колір",
+  rowTitleUTS: "Стратегія оновлення",
+
+  colorGray: "Сірий",
+  colorRed: "Червоний",
+  colorOrange: "Поморанчевий",
+  colorYellow: "Жовтий",
+  colorGreen: "Зелений",
+  colorBlue: "Синій",
+  colorPurple: "Фіолетовий",
+  colorPink: "Рожевий",
+
+  s: "с",
+  ms: "мс"
 };
 
 const fr: typeof en = {
@@ -82,6 +124,8 @@ const fr: typeof en = {
   menuItemImport: "Importer",
 
   headerSettings: "Les paramètres",
+  headerEditRow: "Edit row",
+
   configGroupGeneral: "Général",
   configGroupRow: "Ligne",
   configLanguage: "Langue",
@@ -101,7 +145,26 @@ const fr: typeof en = {
   contextMenuRemove: "Remove",
   contextMenuMute: "Mute",
   contextMenuUnmute: "Unmute",
-  contextMenuEdit: "Edit"
+  contextMenuEdit: "Edit",
+  
+  rowTitlePicture: "Picture",
+  rowTitleName: "Name",
+  rowTitleAddress: "Address",
+  rowTitleSize: "Size",
+  rowTitleColor: "Picture",
+  rowTitleUTS: "Update time strategy",
+
+  colorGray: "Gray",
+  colorRed: "Red",
+  colorOrange: "Orange",
+  colorYellow: "Yellow",
+  colorGreen: "Green",
+  colorBlue: "Blue",
+  colorPurple: "Purple",
+  colorPink: "Pink",
+
+  s: "s",
+  ms: "ms"
 };
 
 export type Word = keyof typeof en; 

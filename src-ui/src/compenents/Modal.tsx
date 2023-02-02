@@ -31,6 +31,7 @@ const ModalStyle = styled.div`
     height: calc(90vh - 2em);
     border-radius: var(--radius);
     padding: 1em 2em;
+    overflow-y: auto;
   }
   &.shown{
     .backdrop,.container{

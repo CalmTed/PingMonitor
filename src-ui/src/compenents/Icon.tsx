@@ -16,7 +16,7 @@ const IconStyle = styled.div`
 `;
 
 export const Icon: FC<IconModel> = ({icon, css}) => {
-  return <IconStyle style={css} dangerouslySetInnerHTML={{ __html: ICONS[icon]}} />;
+  return <IconStyle className="icon" style={css} dangerouslySetInnerHTML={{ __html: ICONS[icon]}} />;
 };
 
 export type IconName = keyof typeof ICONS;

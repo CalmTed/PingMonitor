@@ -23,6 +23,7 @@ export interface StateModel{
   version: string
   lastChanged: number
   rows: RowModel[]
+  rowEditing: number[] | null
   isConfigOpen: boolean
   zoom: number
 }
@@ -31,7 +32,7 @@ export interface RowModel{
   id: number,
   label: string,
   address: string,
-  updateTimeStrategy: UpdateTimeStrategyItem[]
+  updateTimeStrategy: UpdateTimeStrategyModel
   color: ROW_COLOR
   size: ROW_SIZE
   picture: IconName
@@ -44,9 +45,11 @@ export interface RowModel{
   isSelected: boolean
 }
 
-export interface UpdateTimeStrategyItem{
-  state: HOST_STATE
-  updateTime: number
+export interface UpdateTimeStrategyModel{
+  [HOST_STATE.online]: number
+  [HOST_STATE.error]: number
+  [HOST_STATE.timeout]: number
+  [HOST_STATE.unchecked]: number
 }
 
 

@@ -1,6 +1,6 @@
 import { ROW_COLOR, ROW_SIZE } from "src/constants";
 import { getADefaultRow } from "src/initials";
-import { RowModel, StateModel, UpdateTimeStrategyItem } from "src/models";
+import { RowModel, StateModel, UpdateTimeStrategyModel } from "src/models";
 
 enum ACTION_GROUP {
   app = "APP",
@@ -16,7 +16,8 @@ export enum ACTION_NAME {
   ROW_ADD = "ROW_ADD",
   ROWS_REMOVE = "ROW_REMOVE",
   ROWS_SET_PARAM = "ROW_SET_PARAM",
-  ROWS_SET_UTS = "ROWS_SET_UTS"
+  ROWS_SET_UTS = "ROW_SET_UTS",
+  ROWS_TOGGLE_EDIT = "ROW_TOGGLE_EDIT"
 }
 
 export type ActionType = {
@@ -44,11 +45,12 @@ export type ActionType = {
   name: ACTION_NAME.ROWS_SET_UTS
   payload: {
     rowsId: number[]
-    param: keyof RowModel
-    value: UpdateTimeStrategyItem
+    value: UpdateTimeStrategyModel
   }
+} | {
+  name: ACTION_NAME.ROWS_TOGGLE_EDIT
+  payload: number[] | null
 }
- 
 
 export const reducer: (state: StateModel, action: ActionType) => StateModel | null = (state, action) => {
   //special case for config change
@@ -125,6 +127,7 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
       }else {
         return {
           ...row,
+          isBusy: false, //for the case of too big update time to recheck momentearly
           [action.payload.param]: action.payload.value
         };
       }
@@ -135,6 +138,29 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
     };
     break;
   case ACTION_NAME.ROWS_SET_UTS:
+    const utsChangedRows = state.rows.map(row => {
+      if(!action.payload.rowsId.includes(row.id)) {
+        return row;
+      }else {
+        return {
+          ...row,
+          updateTimeStrategy: action.payload.value
+        };
+      }
+    });
+    ret = {
+      ...state,
+      rows: utsChangedRows
+    };
+    break;
+  case ACTION_NAME.ROWS_TOGGLE_EDIT:
+    if(JSON.stringify(action.payload) === JSON.stringify(state.rowEditing)) {
+      return null;
+    }
+    ret = {
+      ...state,
+      rowEditing: action.payload
+    };
     break;
   default: 
     console.error("Unknown app action: ", action);

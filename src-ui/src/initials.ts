@@ -7,6 +7,7 @@ export const getInitialState: () => StateModel = () => {
     lastChanged: 0,
     rows: getInitialRows(),
     isConfigOpen: false,
+    rowEditing: null,
     zoom: 100
   };
 };
@@ -20,18 +21,21 @@ export const getADefaultRow: () => RowModel = () => {
     id: genId(),
     label: "DefaultRow",
     address: "localhost",
-    updateTimeStrategy: [
-
-    ],
+    updateTimeStrategy: {
+      [HOST_STATE.online]: 10000,
+      [HOST_STATE.error]: 5000,
+      [HOST_STATE.timeout]: 2000,
+      [HOST_STATE.unchecked]: 1000
+    },
     lastPing: {
-      status: HOST_STATE.unchecked,
+      status: HOST_STATE.timeout,
       address: "",
       time: 0,
       avgDellay: 0,
       ttl: null
     },
-    picture: "ico_play",
-    color: ROW_COLOR.gray,
+    picture: "pic_pingMonitor",
+    color: ROW_COLOR.Gray,
     size: ROW_SIZE.x2h,
     isCollapsed: true,
     isBusy: false,
