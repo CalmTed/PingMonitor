@@ -6,6 +6,7 @@ const en = {
   titleExport: "Export rows",
   titleImport: "Import rows",
   titleFullscreen: "Toggle fullscreen",
+  titlePauseAll: "Pause all",
 
   menuItemSettings: "Settings",
   menuItemExport: "Export",
@@ -62,6 +63,7 @@ const ua: typeof en = {
   titleExport: "Експортувати налаштування",
   titleImport: "Імпортувати налаштування",
   titleFullscreen: "Повноекраний режим",
+  titlePauseAll: "Призупинити всі",
 
   menuItemSettings: "Налаштування",
   menuItemExport: "Ексопрт",
@@ -118,6 +120,7 @@ const fr: typeof en = {
   titleExport: "Exporter des lignes",
   titleImport: "Importer des lignes",
   titleFullscreen: "Toggle fullscreen",
+  titlePauseAll: "Pause all",
 
   menuItemSettings: "Les paramètres",
   menuItemExport: "Exporter",

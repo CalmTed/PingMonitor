@@ -49,6 +49,16 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
     //   document.exitFullscreen();
     // }
   };
+  const handlePauseAll = () => {
+    store.dispatch({
+      name: ACTION_NAME.ROWS_SET_PARAM,
+      payload: {
+        rowsId: store.state.rows.filter(row => !row.isPaused).map(row => row.id),
+        param: "isPaused",
+        value: true
+      }
+    });
+  };
   return <MenuStyle>
     <ToolItem store={store} icon="ico_menu" title="titleMenu" classes="menuButton" onClick={() => { return; }}/>
     <MenuList>
@@ -59,6 +69,10 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
     </MenuList>
     <ToolItem store={store} icon="ico_plus" title="titleAdd" onClick={handleAddRow}></ToolItem>
     <ToolItem store={store} icon="ico_fullscreen" title="titleFullscreen" onClick={handleFullscreen}></ToolItem>
+    {
+      String(store.state.rows.filter(row => row.isPaused === false).length) !== "0" && 
+      <ToolItem store={store} icon="ico_pause" title="titlePauseAll" onClick={handlePauseAll}></ToolItem>
+    }
   </MenuStyle>;
 };
 

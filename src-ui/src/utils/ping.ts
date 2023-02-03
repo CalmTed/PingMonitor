@@ -9,20 +9,30 @@ export interface parseResultInterface {
   address: string
   time: number
   avgDellay: number
-  ttl: number | null
+  ttl: number
 }
 
 const ping = async (address: string, packetsNumber = defaultPacketsNumber, packetsSize = defaultPacketsSize) => {
   //-a for resolving addreses to ip
   //-n number of packets
   //-l size of packet
-  const cmd = new Command("pinging", ["-4", "-a", "-n", `${packetsNumber}`, "-l", `${packetsSize}`, address]);
-  const parseResult:(arg: string) => parseResultInterface | null = str => {
+  const cmd = new Command("pinging", ["-4", "-a", "-n", `${packetsNumber}`, "-l", `${packetsSize}`, address.trim()]);
+  const parseResult:(arg: string) => parseResultInterface = str => {
     const date = new Date();
+    const zero = 0, one = 1, hour = 3600, minute = 60;
+    //ERROR
+    if(isNaN(parseInt(str.replace(address, "").replace(/[^0-9]/g, "")))) {
+      return {
+        status: HOST_STATE.error,
+        address: "0.0.0.0",
+        time: date.getHours() * hour + date.getMinutes() * minute + date.getSeconds(),
+        avgDellay: 0,
+        ttl: 0
+      };
+    }
     const ttlStart = 4;
     const ttlEnd = 7;
     const defaultDellay = 0;
-    const one = 1, hour = 3600, minute = 60;
     console.debug(str);
     const addrIndexStart = str.indexOf("[") + one;
     const addrIndexEnd = str.indexOf("]");
@@ -30,15 +40,15 @@ const ping = async (address: string, packetsNumber = defaultPacketsNumber, packe
     const dellayLastIndex = str.lastIndexOf("=");
     const avgDellay = parseInt(str.substring(dellayLastIndex, str.length).replace(/\D+/g, "")) || defaultDellay;
     const tllLastIndex = str.lastIndexOf("TTL=");
-    const ttl = parseInt(str.substring(tllLastIndex + ttlStart, tllLastIndex + ttlEnd).replace(/\D+/g, "")) || null;
-    console.log("NO TIMEOUNT HERE YET");
-    if(!addr) {
+    const ttl = parseInt(str.substring(tllLastIndex + ttlStart, tllLastIndex + ttlEnd).replace(/\D+/g, "")) || zero;
+    const isTimeout = str.replace(address, "").includes("100%");
+    if(isTimeout) {
       return {
-        status: HOST_STATE.error,
-        address: "",
+        status: HOST_STATE.timeout,
+        address: "0.0.0.0",
         time: date.getHours() * hour + date.getMinutes() * minute + date.getSeconds(),
-        avgDellay: Infinity,
-        ttl: ttl || null
+        avgDellay: 0,
+        ttl: 0
       };
     }
     return {

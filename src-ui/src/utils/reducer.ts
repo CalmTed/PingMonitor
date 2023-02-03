@@ -1,6 +1,7 @@
 import { ROW_COLOR, ROW_SIZE } from "src/constants";
 import { getADefaultRow } from "src/initials";
 import { RowModel, StateModel, UpdateTimeStrategyModel } from "src/models";
+import { parseResultInterface } from "./ping";
 
 enum ACTION_GROUP {
   app = "APP",
@@ -17,7 +18,8 @@ export enum ACTION_NAME {
   ROWS_REMOVE = "ROW_REMOVE",
   ROWS_SET_PARAM = "ROW_SET_PARAM",
   ROWS_SET_UTS = "ROW_SET_UTS",
-  ROWS_TOGGLE_EDIT = "ROW_TOGGLE_EDIT"
+  ROWS_TOGGLE_EDIT = "ROW_TOGGLE_EDIT",
+  ROWS_REPORT_PING = "ROW_REPORT_PING"
 }
 
 export type ActionType = {
@@ -50,6 +52,12 @@ export type ActionType = {
 } | {
   name: ACTION_NAME.ROWS_TOGGLE_EDIT
   payload: number[] | null
+} | {
+  name: ACTION_NAME.ROWS_REPORT_PING,
+  payload: {
+    rowId: number,
+    result: parseResultInterface
+  }
 }
 
 export const reducer: (state: StateModel, action: ActionType) => StateModel | null = (state, action) => {
@@ -122,12 +130,13 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
     break;
   case ACTION_NAME.ROWS_SET_PARAM:
     const changedRows = state.rows.map(row => {
+      const resetBusy = action.payload.param === "isPaused" && !action.payload.value;
       if(!action.payload.rowsId.includes(row.id)) {
         return row;
       }else {
         return {
           ...row,
-          isBusy: false, //for the case of too big update time to recheck momentearly
+          isBusy: resetBusy ? false : row.isBusy,
           [action.payload.param]: action.payload.value
         };
       }
@@ -144,6 +153,7 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
       }else {
         return {
           ...row,
+          isBusy: false, //in case of 99sec or NaN... oto not ot get stack
           updateTimeStrategy: action.payload.value
         };
       }
@@ -160,6 +170,23 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
     ret = {
       ...state,
       rowEditing: action.payload
+    };
+    break;
+  case ACTION_NAME.ROWS_REPORT_PING:
+    const reportChangedRows = state.rows.map(row => {
+      if(action.payload.rowId !== row.id || !row.isBusy || action.payload.result.time === row.lastPing.time) {
+        return row;
+      }else {
+        return {
+          ...row,
+          isBusy: false,
+          lastPing: action.payload.result
+        };
+      }
+    });
+    ret = {
+      ...state,
+      rows: reportChangedRows
     };
     break;
   default: 

@@ -1,10 +1,12 @@
-import React, { FC } from "react";
+import React, { FC, useEffect } from "react";
 import { RowModel, StoreModel } from "src/models";
 import { ACTION_NAME } from "src/utils/reducer";
 import styled from "styled-components";
 import { Icon } from "./Icon";
 import { ROW_SIZE } from "src/constants";
 import { CMItemModel } from "src/utils/contextMenuHook";
+import ping from "src/utils/ping";
+import { writeHist } from "src/utils/history";
 
 interface TileRowModel{
   store: StoreModel
@@ -76,7 +78,7 @@ const TileRowStyle = styled.div`
       .rowPart1,.rowPart2{
         width: 50%;
         height: 50%;
-      }
+      } 
       .rowPart3{
         width: 100%;
         height: 50%;
@@ -133,6 +135,62 @@ const TileRowStyle = styled.div`
 `;
 
 export const TileRow: FC<TileRowModel> = ({store, row}) => {
+  const  hour = 3600, minute = 60, zero = 0, thausand = 1000;
+  const checkTime = () => {
+    if (row.isPaused) {
+      return;
+    }
+    if (row.isBusy) {
+      return;
+    }
+    const date = new Date();
+    const updateTime = row.updateTimeStrategy[row.lastPing.status] / thausand;
+    const t = date.getHours() * hour + date.getMinutes() * minute + date.getSeconds();
+    const isZero = row.lastPing.time === zero;
+    const timeLeft = (row.lastPing.time + updateTime - t) * thausand;
+    if (timeLeft > zero && !isZero) {
+      return timeLeft;
+    }
+    
+    store.dispatch({
+      name: ACTION_NAME.ROWS_SET_PARAM,
+      payload: {
+        rowsId: [row.id],
+        param: "isBusy",
+        value: true
+      }
+    });
+    checkPing();
+  };
+  useEffect(() => {
+    const timeleft = checkTime();
+    let timeoutId: number | undefined;
+    if(timeleft) {
+      timeoutId = setTimeout(() => {
+        checkTime();
+      }, timeleft);
+    }
+    return () => {
+      timeoutId ? clearTimeout(timeoutId) : null;
+    };
+  });
+  const checkPing = async () => {
+    const results = await ping(row.address);
+    await writeHist({
+      addressIP: results.address,
+      time: results.time,
+      state: results.status,
+      dellay: results.avgDellay,
+      ttl: results.ttl
+    });
+    store.dispatch({
+      name: ACTION_NAME.ROWS_REPORT_PING,
+      payload: {
+        rowId: row.id,
+        result: results
+      }
+    });
+  };
   const handleDelete = () => {
     store.dispatch({
       name: ACTION_NAME.ROWS_REMOVE,
@@ -215,19 +273,15 @@ export const TileRow: FC<TileRowModel> = ({store, row}) => {
     { row.size !== ROW_SIZE.x1 && 
       <div className="rowPart2">
         <span className={`status ${row.lastPing.status}`}>{row.lastPing.status}</span>
-        <span className="dellay">{row.lastPing.avgDellay} {store.t("ms")}</span>
+        <span className="dellay">{row.lastPing.avgDellay} {store.t("ms")} / {row.updateTimeStrategy[row.lastPing.status] / thausand} {store.t("s")}</span>
       </div>
     }
     { row.size === ROW_SIZE.x6 && 
       <div className="rowPart4">
-        <span className={`status ${row.lastPing.status}`}>{row.lastPing.status}</span>
-        <span className="dellay">{row.lastPing.avgDellay} {store.t("ms")}</span>
       </div>
     }
     { ![ROW_SIZE.x1, ROW_SIZE.x2v, ROW_SIZE.x2h].includes(row.size) && 
       <div className="rowPart3">
-        <span className={`status ${row.lastPing.status}`}>{row.lastPing.status}</span>
-        <span className="dellay">{row.lastPing.avgDellay} {store.t("ms")}</span>
       </div>
     }
     

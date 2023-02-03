@@ -29,10 +29,10 @@ export const getADefaultRow: () => RowModel = () => {
     },
     lastPing: {
       status: HOST_STATE.timeout,
-      address: "",
+      address: "0.0.0.0",
       time: 0,
       avgDellay: 0,
-      ttl: null
+      ttl: 0
     },
     picture: "pic_pingMonitor",
     color: ROW_COLOR.Gray,

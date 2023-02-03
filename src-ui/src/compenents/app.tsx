@@ -1,4 +1,4 @@
-import React, { FC, useEffect } from "react";
+import React, { FC, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { ActionType, StateModel, StoreModel } from "src/models";
 import { customHook } from "src/utils/customHook";
@@ -34,8 +34,21 @@ const AppStyle = styled.div`
 `; 
 
 const App: FC<AppInterface> = ({state, dispatch}) => {
+  //first render sett all rows to not busy
+  const firstTime = useRef(true);
   //hotkeys
   useEffect(() => {
+    if(firstTime.current) {
+      dispatch({
+        name: ACTION_NAME.ROWS_SET_PARAM,
+        payload: {
+          rowsId: state.rows.map(row => row.id),
+          param: "isBusy",
+          value: false
+        }
+      });
+      firstTime.current = false;
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if(["Equal", "Minus", "Digit0"].includes(e.code) && e.ctrlKey) { 
         e.preventDefault();

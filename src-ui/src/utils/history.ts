@@ -1,3 +1,4 @@
+import { HOST_STATE } from "src/constants";
 import addZero from "./addZero";
 import { readFile, writeFile } from "./fs";
 
@@ -8,6 +9,7 @@ export const getHistFileList: () => Promise<string[]> = async () => {
 };
 
 export const readHistDay: (arg: string) => Promise<{addreses: string[], data:string[][]} | null> = async (fileName) => {
+  //[hhmmss25525525525510001001
   //read a file
   const fileContent = await readFile(fileName);
   if(!fileContent) {
@@ -18,8 +20,8 @@ export const readHistDay: (arg: string) => Promise<{addreses: string[], data:str
   //get all addreses
   const addresses = new Set();
   const zero = 0;
-  const substrStart =  19;
-  const substrEnd = 7;
+  const substrStart =  20;//from the end
+  const substrEnd = 8;
   fileBigIntArray.forEach(item => {
     const string = item.toString();
     addresses.add(string.substring(string.length - substrStart, string.length - substrEnd));
@@ -44,6 +46,7 @@ export const readHistDay: (arg: string) => Promise<{addreses: string[], data:str
 interface writeHistModel{
   time: number
   addressIP: string
+  state: HOST_STATE
   dellay: number
   ttl: number
 }
@@ -51,27 +54,29 @@ interface writeHistModel{
 
 
 
-export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time, addressIP, dellay, ttl}) => {
+export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time, addressIP, state, dellay, ttl}) => {
+  const one = 1, sixteen = 16, two = 2;
   const targetPartsNumber = 4;
   const targetPartLength = 3;
-  const minNumber = 1111;
-  const one = 1, sixteen = 16, two = 2;
+  const minNumber = 0;
   const targetTTLlength = 3;
   const targetDellayLength = 4;
   
   const addressToNumber: (addr: string) => string | null = (addr) => {
     const parts = addr.split(".");
-    if(parts.length !== targetPartsNumber || Number.isNaN(parseInt(parts.join(""))) || parseInt(parts.join("")) < minNumber) {
+    if(parts.length < targetPartsNumber || Number.isNaN(parseInt(parts.join(""))) || parseInt(parts.join("")) < minNumber) {
       return null;
     }
     return parts.map(item => addZero(item, targetPartLength)).join("");
   };
   //convert address to number
-
   const addresLine = addressToNumber(addressIP);
-  
+
+  //convert host state to number
+  const stateNum = Object.values(HOST_STATE).indexOf(state);
+
   //convert to hex
-  const line = `${time}${addresLine}${addZero(String(dellay), targetDellayLength)}${addZero(String(ttl), targetTTLlength)}`;
+  const line = `${time}${addresLine}${stateNum}${addZero(String(dellay), targetDellayLength)}${addZero(String(ttl), targetTTLlength)}`;
   const lineNum = BigInt(line);
   const lineHex = lineNum.toString(sixteen);
   //append to file
