@@ -64,7 +64,7 @@
     "default-case-last":"error",
     "eqeqeq":"error",
     "max-lines-per-function": ["warn",
-      200],
+      400],
     "max-depth": ["error",
       7],
     "no-magic-numbers":["warn",

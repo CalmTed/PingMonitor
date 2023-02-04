@@ -8,8 +8,12 @@ export const getHistFileList: () => Promise<string[]> = async () => {
   return ["20230128.txt"];
 };
 
-export const readHistDay: (arg: string) => Promise<{addreses: string[], data:string[][]} | null> = async (fileName) => {
-  //[hhmmss25525525525510001001
+export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:string[][]} | null> = async (fileName) => {
+  //hhmmss99999910001001
+  if (!fileName) {
+    const date = new Date(), one = 1, two = 2;
+    fileName = `${date.getFullYear()}${addZero(String(date.getMonth() + one), two)}${addZero(String(date.getDate()), two)}.txt`;
+  }
   //read a file
   const fileContent = await readFile(fileName);
   if(!fileContent) {
@@ -18,20 +22,20 @@ export const readHistDay: (arg: string) => Promise<{addreses: string[], data:str
   //convert hex to numbers
   const fileBigIntArray = fileContent?.split(" ").filter(item => item.length).map(item => BigInt("0x" + item));
   //get all addreses
-  const addresses = new Set();
+  const rowIds = new Set();
   const zero = 0;
-  const substrStart =  20;//from the end
+  const substrStart =  14;//from the end
   const substrEnd = 8;
   fileBigIntArray.forEach(item => {
     const string = item.toString();
-    addresses.add(string.substring(string.length - substrStart, string.length - substrEnd));
+    rowIds.add(string.substring(string.length - substrStart, string.length - substrEnd));
   });
   //filter by addreses
   const data: string[][] = [];
   fileBigIntArray.forEach(item => {
     const string = item.toString();
-    const address = string.substring(string.length - substrStart, string.length - substrEnd);
-    const index = [...addresses].indexOf(address);
+    const rowId = string.substring(string.length - substrStart, string.length - substrEnd);
+    const index = [...rowIds].indexOf(rowId);
     if(!data[index]) {
       data[index] = [];
     }
@@ -39,13 +43,13 @@ export const readHistDay: (arg: string) => Promise<{addreses: string[], data:str
     data[index].push(noAddrString);
   });
   return {
-    addreses: [...addresses] as string[],
+    rowIds: [...rowIds] as string[],
     data
   };
 };
 interface writeHistModel{
   time: number
-  addressIP: string
+  rowId: number
   state: HOST_STATE
   dellay: number
   ttl: number
@@ -54,29 +58,16 @@ interface writeHistModel{
 
 
 
-export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time, addressIP, state, dellay, ttl}) => {
+export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time, rowId, state, dellay, ttl}) => {
   const one = 1, sixteen = 16, two = 2;
-  const targetPartsNumber = 4;
-  const targetPartLength = 3;
-  const minNumber = 0;
   const targetTTLlength = 3;
   const targetDellayLength = 4;
-  
-  const addressToNumber: (addr: string) => string | null = (addr) => {
-    const parts = addr.split(".");
-    if(parts.length < targetPartsNumber || Number.isNaN(parseInt(parts.join(""))) || parseInt(parts.join("")) < minNumber) {
-      return null;
-    }
-    return parts.map(item => addZero(item, targetPartLength)).join("");
-  };
-  //convert address to number
-  const addresLine = addressToNumber(addressIP);
-
+  const rowIdTargetLenght = 6;
   //convert host state to number
   const stateNum = Object.values(HOST_STATE).indexOf(state);
 
   //convert to hex
-  const line = `${time}${addresLine}${stateNum}${addZero(String(dellay), targetDellayLength)}${addZero(String(ttl), targetTTLlength)}`;
+  const line = `${time}${addZero(String(rowId), rowIdTargetLenght)}${stateNum}${addZero(String(dellay), targetDellayLength)}${addZero(String(ttl), targetTTLlength)}`;
   const lineNum = BigInt(line);
   const lineHex = lineNum.toString(sixteen);
   //append to file

@@ -59,12 +59,22 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
       }
     });
   };
+  const handleUnalarmAll = () => {
+    store.dispatch({
+      name: ACTION_NAME.ROWS_SET_PARAM,
+      payload: {
+        rowsId: store.state.rows.filter(row => row.isAlarmed).map(row => row.id),
+        param: "isAlarmed",
+        value: false
+      }
+    });
+  };
   return <MenuStyle>
     <ToolItem store={store} icon="ico_menu" title="titleMenu" classes="menuButton" onClick={() => { return; }}/>
     <MenuList>
       <MenuItem store={store} icon="ico_settings" name="menuItemSettings" title="titleSettings" onClick={handleOpenConfig}></MenuItem>
-      <MenuItem store={store} icon="ico_export" name="menuItemExport" title="titleExport" onClick={() => { return; }}></MenuItem>
-      <MenuItem store={store} icon="ico_import" name="menuItemImport" title="titleImport" onClick={() => { return; }}></MenuItem>
+      {/* <MenuItem store={store} icon="ico_export" name="menuItemExport" title="titleExport" onClick={() => { return; }}></MenuItem>
+      <MenuItem store={store} icon="ico_import" name="menuItemImport" title="titleImport" onClick={() => { return; }}></MenuItem> */}
 
     </MenuList>
     <ToolItem store={store} icon="ico_plus" title="titleAdd" onClick={handleAddRow}></ToolItem>
@@ -72,6 +82,10 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
     {
       String(store.state.rows.filter(row => row.isPaused === false).length) !== "0" && 
       <ToolItem store={store} icon="ico_pause" title="titlePauseAll" onClick={handlePauseAll}></ToolItem>
+    }
+    {
+      String(store.state.rows.filter(row => row.isAlarmed === true).length) !== "0" && 
+      <ToolItem store={store} icon="ico_alarmOff" title="titleUnalarmAll" onClick={handleUnalarmAll}></ToolItem>
     }
   </MenuStyle>;
 };

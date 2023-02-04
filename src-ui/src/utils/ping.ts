@@ -10,6 +10,7 @@ export interface parseResultInterface {
   time: number
   avgDellay: number
   ttl: number
+  date: string
 }
 
 const ping = async (address: string, packetsNumber = defaultPacketsNumber, packetsSize = defaultPacketsSize) => {
@@ -20,14 +21,18 @@ const ping = async (address: string, packetsNumber = defaultPacketsNumber, packe
   const parseResult:(arg: string) => parseResultInterface = str => {
     const date = new Date();
     const zero = 0, one = 1, hour = 3600, minute = 60;
+    const time = date.getHours() * hour + date.getMinutes() * minute + date.getSeconds();
+    //date for the case if paused at 12AM on one day and unpaused next day at 10AM(before) it cant "get busy"
+    const dateString = `${date.getFullYear()}${date.getMonth()}${date.getDate()}`;
     //ERROR
     if(isNaN(parseInt(str.replace(address, "").replace(/[^0-9]/g, "")))) {
       return {
         status: HOST_STATE.error,
         address: "0.0.0.0",
-        time: date.getHours() * hour + date.getMinutes() * minute + date.getSeconds(),
+        time: time,
         avgDellay: 0,
-        ttl: 0
+        ttl: 0,
+        date: dateString
       };
     }
     const ttlStart = 4;
@@ -46,17 +51,19 @@ const ping = async (address: string, packetsNumber = defaultPacketsNumber, packe
       return {
         status: HOST_STATE.timeout,
         address: "0.0.0.0",
-        time: date.getHours() * hour + date.getMinutes() * minute + date.getSeconds(),
+        time: time,
         avgDellay: 0,
-        ttl: 0
+        ttl: 0,
+        date: dateString
       };
     }
     return {
       status: HOST_STATE.online,
       address: addr === "::1" ? "0.0.0.0" : addr,
-      time: date.getHours() * hour + date.getMinutes() * minute + date.getSeconds(),
+      time: time,
       avgDellay: avgDellay,
-      ttl: ttl
+      ttl: ttl,
+      date: dateString
     };
   };
   const dirtyResult = (await cmd.execute()).stdout;

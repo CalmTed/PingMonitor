@@ -56,7 +56,9 @@ export type ActionType = {
   name: ACTION_NAME.ROWS_REPORT_PING,
   payload: {
     rowId: number,
-    result: parseResultInterface
+    result: parseResultInterface,
+    isAlarmed?: boolean,
+    isMuted?: boolean
   }
 }
 
@@ -179,6 +181,8 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
       }else {
         return {
           ...row,
+          isAlarmed: action.payload.isAlarmed ? action.payload.isAlarmed : row.isAlarmed,
+          isMuted: action.payload.isMuted ? action.payload.isMuted : row.isMuted,
           isBusy: false,
           lastPing: action.payload.result
         };

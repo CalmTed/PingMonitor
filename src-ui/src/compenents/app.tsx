@@ -34,10 +34,9 @@ const AppStyle = styled.div`
 `; 
 
 const App: FC<AppInterface> = ({state, dispatch}) => {
-  //first render sett all rows to not busy
   const firstTime = useRef(true);
-  //hotkeys
   useEffect(() => {
+    //first render sett all rows to not busy
     if(firstTime.current) {
       dispatch({
         name: ACTION_NAME.ROWS_SET_PARAM,
@@ -49,6 +48,14 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
       });
       firstTime.current = false;
     }
+    const zero = 0;
+    const audio = (document.querySelector("#siren") as HTMLAudioElement);
+    if(state.rows.filter(row => row.isAlarmed).length > zero) {
+      audio.paused ? audio.play() : null;
+    }else{
+      !audio.paused ? audio.pause() : null;
+    }
+    //hotkeys
     const handleKeyDown = (e: KeyboardEvent) => {
       if(["Equal", "Minus", "Digit0"].includes(e.code) && e.ctrlKey) { 
         e.preventDefault();
@@ -61,6 +68,7 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
         });
       }
     };
+    //closing context menu
     const handleMouseUp = (e: MouseEvent) => {
       const target = (e.target as HTMLElement);
       const parent1 = target?.parentElement || null;

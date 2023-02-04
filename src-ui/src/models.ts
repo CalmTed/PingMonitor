@@ -15,7 +15,7 @@ export interface StoreModel {
   showAlert: (header: string, text: string, oncancel: () => void, onconfirm: () => void) => void
   showPrompt: (header: string, text: string, type: PROMPT_TYPES, oncancel: () => void, onconfirm: (arg: string) => void, confirmButtonTitle?: string, options?: Option[]) => void 
 
-  showContextMenu: (top: number, left: number, items: CMItemModel[]) => void
+  showContextMenu: (top: number, left: number, items: (CMItemModel | null)[]) => void
   hideContextMenu: () => void
 }
 

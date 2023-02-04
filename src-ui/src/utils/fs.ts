@@ -14,8 +14,18 @@ const getDirectory = async (name: string = pmPrefix) => {
 };
 export const writeFile = async (name: string, newContent: string, append = false) => {
   const path = `${(await getDirectory())}\\${name}`;
-  const content = append ? (await readTextFile(path, {dir: baseDirectory})) + newContent : newContent;
-  await writeTextFile(path, content, {dir: baseDirectory});
+  let oldContent = "";
+  if (append) {
+    if((await exists(path, {dir: baseDirectory}))) {
+      oldContent = await readTextFile(path, {dir: baseDirectory}) || "";
+    }
+  }
+  const content = append ? oldContent + newContent : newContent;
+  try{
+    await writeTextFile(path, content, {dir: baseDirectory}); 
+  }catch (e) {
+    console.log(e);
+  }
 };
 
 export const readFile = async (name: string) => {

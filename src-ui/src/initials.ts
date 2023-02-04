@@ -32,7 +32,8 @@ export const getADefaultRow: () => RowModel = () => {
       address: "0.0.0.0",
       time: 0,
       avgDellay: 0,
-      ttl: 0
+      ttl: 0,
+      date: ""
     },
     picture: "pic_pingMonitor",
     color: ROW_COLOR.Gray,
@@ -47,6 +48,6 @@ export const getADefaultRow: () => RowModel = () => {
 };
 
 const genId = () => {
-  const ID_LENGTH = 1000000;
+  const ID_LENGTH = 100000;
   return Math.round(Math.random() * ID_LENGTH);
 };

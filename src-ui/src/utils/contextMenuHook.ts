@@ -32,12 +32,12 @@ export const contextMenuHook = () => {
       items: []
     });
   };
-  const showContextMenu = (top: number, left: number, items: CMItemModel[]) => {
+  const showContextMenu = (top: number, left: number, items: (CMItemModel | null)[]) => {
     setContextMenuData({
       isShown: true,
       top,
       left,
-      items
+      items: items.filter(item => item !== null) as CMItemModel[]
     });
   };
   return {

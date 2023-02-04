@@ -7,6 +7,7 @@ const en = {
   titleImport: "Import rows",
   titleFullscreen: "Toggle fullscreen",
   titlePauseAll: "Pause all",
+  titleUnalarmAll: "Turn all alarms off",
 
   menuItemSettings: "Settings",
   menuItemExport: "Export",
@@ -34,6 +35,7 @@ const en = {
   contextMenuMute: "Mute",
   contextMenuUnmute: "Unmute",
   contextMenuEdit: "Edit",
+  contextMenuUnalarm: "Turn alarm off",
 
   rowTitlePicture: "Picture",
   rowTitleName: "Name",
@@ -64,6 +66,7 @@ const ua: typeof en = {
   titleImport: "Імпортувати налаштування",
   titleFullscreen: "Повноекраний режим",
   titlePauseAll: "Призупинити всі",
+  titleUnalarmAll: "Виключити сирени для всіх рядків",
 
   menuItemSettings: "Налаштування",
   menuItemExport: "Ексопрт",
@@ -91,6 +94,7 @@ const ua: typeof en = {
   contextMenuMute: "Вимкнути звук",
   contextMenuUnmute: "Увімкнути звук",
   contextMenuEdit: "Редагувати",
+  contextMenuUnalarm: "Виключити сирену",
   
   rowTitlePicture: "Зображення",
   rowTitleName: "Ім'я",
@@ -121,6 +125,7 @@ const fr: typeof en = {
   titleImport: "Importer des lignes",
   titleFullscreen: "Toggle fullscreen",
   titlePauseAll: "Pause all",
+  titleUnalarmAll: "Turn all alarms off",
 
   menuItemSettings: "Les paramètres",
   menuItemExport: "Exporter",
@@ -149,6 +154,7 @@ const fr: typeof en = {
   contextMenuMute: "Mute",
   contextMenuUnmute: "Unmute",
   contextMenuEdit: "Edit",
+  contextMenuUnalarm: "Turn alarm off",
   
   rowTitlePicture: "Picture",
   rowTitleName: "Name",
