@@ -20,7 +20,7 @@ export const writeFile = async (name: string, newContent: string, append = false
       oldContent = await readTextFile(path, {dir: baseDirectory}) || "";
     }
   }
-  const content = append ? oldContent + newContent : newContent;
+  const content = oldContent + newContent;
   try{
     await writeTextFile(path, content, {dir: baseDirectory}); 
   }catch (e) {

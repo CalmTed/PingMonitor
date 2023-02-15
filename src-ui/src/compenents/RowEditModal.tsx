@@ -7,8 +7,9 @@ import { ICONS } from "src/utils/iconsData";
 import Select from "./Select";
 import { Icon } from "./Icon";
 import styled from "styled-components";
-import { HOST_STATE, ROW_COLOR, ROW_SIZE } from "src/constants";
+import { HOST_STATE, ROW_COLOR, ROW_SIZE, ZERO } from "src/constants";
 import { Word } from "src/utils/lang";
+import { getADefaultRow } from "src/initials";
 
 interface RowEditModalModel{
   store: StoreModel
@@ -31,6 +32,7 @@ const RowEditModalStyle = styled.div`
       border: 0.1em solid var(--text-color);
       opacity: 0.5;
       border-radius: var(--radius);
+      transition: all .2s;
       --u: 1em;
       --w: var(--u);
       --h: var(--u);
@@ -41,6 +43,10 @@ const RowEditModalStyle = styled.div`
       &.${ROW_SIZE.x2v}{
         --w: var(--u);
         --h: calc(var(--u) * 2);
+      }
+      &.${ROW_SIZE.x3}{
+        --w: calc(var(--u) * 3);
+        --h: calc(var(--u) * 1);
       }
       &.${ROW_SIZE.x4}{
         --w: calc(var(--u) * 2);
@@ -64,7 +70,6 @@ const RowEditModalStyle = styled.div`
     }
   }
 `;
-
 export const RowEditModal:FC<RowEditModalModel> = ({store}) => {
   const handleClose = () => {
     store.dispatch({
@@ -86,21 +91,19 @@ export const RowEditModal:FC<RowEditModalModel> = ({store}) => {
     if(ids === null) {
       return null;
     }
-    const ret: RowModel = store.state.rows.filter(row => {
-      if(ids.includes(row.id)) {
-        return row;
-      }
-    })[0];//just showing one for now
-    return ret;
+    const retObj = getADefaultRow();
+    Object.keys(getADefaultRow()).map(key => {
+      const name = key as keyof RowModel;
+      const editingRows = store.state.rows.filter(row => ids.includes(row.id));
+      const firstRowData = editingRows[0];
+      retObj[name] = (editingRows.filter(row => JSON.stringify(row[name]) !== JSON.stringify(firstRowData[name])).length > ZERO ?  null : firstRowData[name]) as never;
+    });
+    
+    return retObj;
   };
   const k = 1000;
   const rowsData = getCommonRowsData(store.state.rowEditing);
-  const picOptions = Object.keys(ICONS).filter(pic => pic.includes("pic_")).map(pic => {
-    return {
-      label: pic,
-      value: pic
-    };
-  });
+
   const handleUTSChange:(state: HOST_STATE, value: string) => void = (state, value) => {
     const min = 1;
     const max = 99;
@@ -126,50 +129,65 @@ export const RowEditModal:FC<RowEditModalModel> = ({store}) => {
       }
     });
   };
-  const colorOptions = Object.entries(ROW_COLOR).map(e => {
+  const picOptions = [...Object.keys(ICONS).filter(pic => pic.includes("pic_")).map(pic => {
+    return {
+      label: pic,
+      value: pic
+    };
+  }), {
+    label: store.t("multiple"),
+    value: null
+  }];
+  const colorOptions = [...Object.entries(ROW_COLOR).map(e => {
     return {
       label: store.t(`color${e[0]}` as Word),
       value: e[1]
     };
-  });
-  const sizeOptions = Object.entries(ROW_SIZE).map(e => {
+  }), {
+    label: store.t("multiple"),
+    value: null
+  }];
+  const sizeOptions = [...Object.entries(ROW_SIZE).map(e => {
     return {
       label: e[0],
       value: e[1]
     };
-  });
+  }), {
+    label: store.t("multiple"),
+    value: null
+  }];
   return <Modal isShown={store.state.rowEditing !== null} onClose={handleClose}>
     <h1>{store.t("headerEditRow")}</h1>
     {rowsData && <RowEditModalStyle>
       <label>
         {store.t("rowTitlePicture")}:
         <Select value={rowsData.picture} options={picOptions} onChange={(newVal) => { handleParamChange("picture", newVal); }}/>
-        <Icon icon={rowsData.picture}/>
+        {rowsData.picture && <Icon icon={rowsData.picture}/>}
       </label>
       <label>
         {store.t("rowTitleName")}:
-        <Input value={rowsData.label} onChange={(newVal) => { handleParamChange("label", newVal); }}/>
+        <Input value={rowsData.label || ""} placeholder={rowsData.label ? "" : store.t("multiple")} onChange={(newVal) => { handleParamChange("label", newVal); }}/>
       </label>
       <label>
         {store.t("rowTitleAddress")}:
-        <Input value={rowsData.address} onChange={(newVal) => { handleParamChange("address", newVal); }}/>
+        <Input value={rowsData.address || ""} placeholder={rowsData.address ? "" : store.t("multiple")} onChange={(newVal) => { handleParamChange("address", newVal); }}/>
       </label>
       <label>
         {store.t("rowTitleSize")}:
         <Select value={rowsData.size} options={sizeOptions} onChange={(newVal) => { handleParamChange("size", newVal); }}/>
-        <div className={`sizeVisual ${rowsData.size}`} />
+        {rowsData.size && <div className={`sizeVisual ${rowsData.size}`} />}
       </label>
       <label>
         {store.t("rowTitleColor")}:
         <Select value={rowsData.color} options={colorOptions} onChange={(newVal) => { handleParamChange("color", newVal); }}/>
-        <div className="circle" style={{"backgroundColor": rowsData.color}} />
+        {rowsData.color && <div className="circle" style={{"backgroundColor": rowsData.color}} />}
       </label>
       <b>{store.t("rowTitleUTS")}:</b>
       {(Object.keys(HOST_STATE)).map(key => {
         const state = key as HOST_STATE;
         return <label key={state} className="indent">
           {state}
-          <Input value={String(rowsData.updateTimeStrategy[state] / k)} onChange={(newVal) => { handleUTSChange(state, newVal); }} css={{"width": "6em"}}/>
+          <Input value={String(rowsData.updateTimeStrategy?.[state] / k || "")}  placeholder={rowsData.updateTimeStrategy?.[state] ? "" : store.t("multiple")}  onChange={(newVal) => { handleUTSChange(state, newVal); }} css={{"width": "6em"}}/>
         </label>;
       }
       )}

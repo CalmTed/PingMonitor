@@ -122,7 +122,7 @@ const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel
       { type === PROMPT_TYPES.select && 
         ( 
           <div className="inputs">
-            <Select value={selectValue} options={options || []} onChange={(newValue) => { setSelectValue(newValue); } }/>
+            <Select value={selectValue || ""} options={options || []} onChange={(newValue) => { setSelectValue(newValue); } }/>
           </div>
         )
       }

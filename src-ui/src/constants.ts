@@ -36,6 +36,7 @@ export enum ROW_SIZE {
   x1 = "x1",
   x2h = "x2h",
   x2v = "x2v",
+  x3 = "x3",
   x4 = "x4",
   x6 = "x6",
 }
@@ -45,3 +46,6 @@ export enum PROMPT_TYPES {
   select = "select",
   text = "text"
 }
+
+export const ZERO = 0, ONE = 1, TWO = 2, FIVE = 5, EIGHT = 8, SIXTEEN = 16, HUNDRED = 100, THAUSAND = 1000;
+export const HOURinSECONDS = 3600, MINUTEinSECONDS = 60;

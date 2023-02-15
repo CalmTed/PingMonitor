@@ -28,6 +28,9 @@ const en = {
   configUnmuteOnOnline: "Unmute row on getting online",
   configTimeToAlarm: "Offline time before alarm activation",
   configHideAddress: "Hide address",
+  configHistoryClasteringStartMIN: "Time to start clastering history (MIN)",
+  configHistoryClasteringSizeMIN: "Size to a history claster (MIN)",
+  minigraphMaxTimeMIN: "Scale of row minigraph (MIN)",
 
   contextMenuPlay: "Start",
   contextMenuPause: "Pause",
@@ -36,6 +39,8 @@ const en = {
   contextMenuUnmute: "Unmute",
   contextMenuEdit: "Edit",
   contextMenuUnalarm: "Turn alarm off",
+  contextMenuUnselect: "Unselect",
+  contextMenuSelect: "Select",
 
   rowTitlePicture: "Picture",
   rowTitleName: "Name",
@@ -54,7 +59,8 @@ const en = {
   colorPink: "Pink",
 
   s: "s",
-  ms: "ms"
+  ms: "ms",
+  multiple: "[multiple]"
 };
 
 const ua: typeof en = {
@@ -87,6 +93,9 @@ const ua: typeof en = {
   configUnmuteOnOnline: "Увімкнути звук рядка при відновленні зв'язку",
   configTimeToAlarm: "Час до спрацювання сирени",
   configHideAddress: "Приховати адресу",
+  configHistoryClasteringStartMIN: "Час початку кластеризації історії (ХВ)",
+  configHistoryClasteringSizeMIN: "Розмір одного кластеру історії (ХВ)",
+  minigraphMaxTimeMIN: "Час відображення мініграфу рядка (ХВ)",
 
   contextMenuPlay: "Розпочати",
   contextMenuPause: "Призупинити",
@@ -95,6 +104,8 @@ const ua: typeof en = {
   contextMenuUnmute: "Увімкнути звук",
   contextMenuEdit: "Редагувати",
   contextMenuUnalarm: "Виключити сирену",
+  contextMenuUnselect: "Зняти виділення",
+  contextMenuSelect: "Виділити",
   
   rowTitlePicture: "Зображення",
   rowTitleName: "Ім'я",
@@ -113,7 +124,8 @@ const ua: typeof en = {
   colorPink: "Рожевий",
 
   s: "с",
-  ms: "мс"
+  ms: "мс",
+  multiple: "[різні значення]"
 };
 
 const fr: typeof en = {
@@ -146,7 +158,9 @@ const fr: typeof en = {
   configUnmuteOnOnline: "Activer le son de la ligne lorsque la connexion est rétablie",
   configTimeToAlarm: "Offline time before alarm activation",
   configHideAddress: "Hide address",
-
+  configHistoryClasteringStartMIN: "Time to start clastering history (MIN)",
+  configHistoryClasteringSizeMIN: "Size to a history claster (MIN)",
+  minigraphMaxTimeMIN: "Scale of row minigraph (MIN)",
   
   contextMenuPlay: "Start",
   contextMenuPause: "Pause",
@@ -155,6 +169,8 @@ const fr: typeof en = {
   contextMenuUnmute: "Unmute",
   contextMenuEdit: "Edit",
   contextMenuUnalarm: "Turn alarm off",
+  contextMenuUnselect: "Unselect",
+  contextMenuSelect: "Select",
   
   rowTitlePicture: "Picture",
   rowTitleName: "Name",
@@ -173,7 +189,8 @@ const fr: typeof en = {
   colorPink: "Pink",
 
   s: "s",
-  ms: "ms"
+  ms: "ms",
+  multiple: "[multiple]"
 };
 
 export type Word = keyof typeof en; 

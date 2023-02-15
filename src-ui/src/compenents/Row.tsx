@@ -3,20 +3,23 @@ import { RowModel, StoreModel } from "src/models";
 import { ACTION_NAME } from "src/utils/reducer";
 import styled from "styled-components";
 import { Icon } from "./Icon";
-import { HOST_STATE, ROW_SIZE } from "src/constants";
+import { EIGHT, HOST_STATE, HUNDRED, MINUTEinSECONDS, ONE, ROW_SIZE, THAUSAND, ZERO } from "src/constants";
 import { CMItemModel } from "src/utils/contextMenuHook";
-import ping from "src/utils/ping";
-import { readHistDay, writeHist } from "src/utils/history";
+import ping, { parseResultInterface } from "src/utils/ping";
+import { writeHist } from "src/utils/history";
+import { TileRowGraph } from "./TileRowGraph";
+import { toReadibleDuration } from "src/utils/toReadible";
 
 interface TileRowModel{
   store: StoreModel
   row: RowModel
+  hist: string[]
 }
 
 const TileRowStyle = styled.div`
   display: flex;
   flex-wrap: wrap;
-  tranition: var(--transition);
+  transition: transform .2s ease;
   border-radius: var(--radius);
   margin: 0.2em;
   border-width 0.2em;
@@ -44,8 +47,16 @@ const TileRowStyle = styled.div`
     background-image: repeating-linear-gradient(45deg, var(--row-color) 0, var(--row-color) 2px, transparent 0, transparent 16px);
   }
 
-  &.busy{
+  &.busy:not(.alarmed){
     --row-color: transparent;
+  }
+  &.busy.alarmed{
+    transform: scale(0.95);
+    --row-color: var(--red);
+    .indicator{
+      margin-left: 0em;
+      margin-top: 0em;
+    }
   }
 
   border-color: var(--row-color);
@@ -74,6 +85,14 @@ const TileRowStyle = styled.div`
       height: 100%;
     }
   }
+  &.size${ROW_SIZE.x3}{
+    grid-column: span 3;
+    grid-row: span 1;
+    .rowPart1,.rowPart2,.rowPart4{
+      width: 33%;
+      height: 100%;
+    }
+}
   &.size${ROW_SIZE.x4}{
       grid-column: span 2;
       grid-row: span 2;
@@ -101,7 +120,8 @@ const TileRowStyle = styled.div`
   //INDACATOR
 
   .indicator{
-    height: 1em;
+    min-height: 0.7em;
+    min-width: 0.7em;
     position: absolute;
     font-family: "Material Icons";
     background: var(--bg-color);
@@ -111,14 +131,18 @@ const TileRowStyle = styled.div`
     border: 0.1em solid var(--row-color);
     margin-left: -0.23em;
     margin-top: -0.33em;
-    transition: transform .2s ease;
+    transition: transform .2s ease, margin .2s ease;
     opacity: 0;
+    cursor: pointer;
     transform: scale(0.8);
     .icon{
       width: 1em;
     }
   }
-  &.alarmed .indicator, &.muted .indicator{
+  &:first-child:hover .indicator{
+    margin-left: 1.7em;
+  }
+  &.alarmed .indicator, &.muted .indicator, &.selected .indicator, &:hover .indicator{
     opacity: 1;
     transform: scale(1);
   }
@@ -143,7 +167,7 @@ const TileRowStyle = styled.div`
       opacity: 0.6;
     }
   }
-  .rowPart2,.rowPart3,.rowPart4{
+  & .rowPart2,& .rowPart3,& .rowPart4{
     display: flex;
     flex-wrap: wrap;
     align-content: center;
@@ -162,10 +186,37 @@ const TileRowStyle = styled.div`
       margin-top: 1.4em;
     }
   }
+  & .rowPart3{
+    --graph-red: var(--red);
+    --graph-green: var(--green);
+  }
+  &.paused .rowPart3{
+    --graph-red: var(--gray);
+    --graph-green: var(--gray);
+  }
+  & .rowPart4{
+    display: flex;
+    flex-wrap: wrap;
+    div{
+      width: 100%;
+    }
+    .changesHist{
+      margin-top: 1em;
+      max-height: 4em;
+      overflow: auto;
+      width: 100%;
+      displat: flex;
+      flex-wrap: wrap;
+      span{
+        display: flex;
+        width: 100%;
+      }
+    }
+  }
 `;
 
-export const TileRow: FC<TileRowModel> = ({store, row}) => {
-  const  hour = 3600, minute = 60, zero = 0, thausand = 1000;
+export const TileRow: FC<TileRowModel> = ({store, row, hist}) => {
+  const  hour = 3600, minute = 60, thausand = 1000;
   const checkTime = () => {
     if (row.isPaused) {
       return;
@@ -175,12 +226,20 @@ export const TileRow: FC<TileRowModel> = ({store, row}) => {
     }
     const date = new Date();
     const dateString = `${date.getFullYear()}${date.getMonth()}${date.getDate()}`;
-    const updateTime = row.updateTimeStrategy[row.lastPing.status] / thausand;
     const t = date.getHours() * hour + date.getMinutes() * minute + date.getSeconds();
-    const isZero = row.lastPing.time === zero;
-    const isToday = dateString === row.lastPing.date || false;
-    const timeLeft = (row.lastPing.time + updateTime - t) * thausand;
-    if (timeLeft > zero && !isZero && isToday) {
+    const lastPing = row.lastPings?.[row.lastPings.length - ONE] || {
+      status: HOST_STATE.unchecked,
+      address: "",
+      time: 0,
+      avgDellay: 0,
+      ttl: 0,
+      date: ""
+    };
+    const updateTime = row.updateTimeStrategy[lastPing.status] / thausand;
+    const isZero = lastPing.time === ZERO;
+    const isToday = dateString === lastPing.date || false;
+    const timeLeft = (lastPing.time + updateTime - t) * thausand;
+    if (timeLeft > ZERO && !isZero && isToday) {
       return timeLeft;
     }
     store.dispatch({
@@ -214,56 +273,54 @@ export const TileRow: FC<TileRowModel> = ({store, row}) => {
       dellay: results.avgDellay,
       ttl: results.ttl
     });
-    const hist = await readHistDay();
-    const getLatStates:(hist: string[], tta: number) => [number, HOST_STATE][] = (hist, tta) => {
-      //[tttt]sdddddttl
-      //[[0, HOST_STATE.error]];
-      const timeSubstrStart = 0, timeSubstrEnd = 8, stateSubstrStart = 8, stateSubstrEnd = 7;
+    // const hist = await readHistDay();
+    const isNonOnlinePastLimit:(hist: parseResultInterface[], timeToActivate: number) => boolean = (hist, timeToActivate) => {
+      if(hist.length === ZERO) {
+        return false;   
+      }
+      //IF there are no online reports in the last TTA limit 
+      //AND first hist item as older then TTA limit
+      //THEN true
       const d = new Date();
       const timeNow = d.getHours() * hour + d.getMinutes() * minute + d.getSeconds();
-      return hist.map(histItem => {
-        const hl = histItem.length;
-        const time = parseInt(histItem.substring(timeSubstrStart, hl - timeSubstrEnd));
-        const stateIndex = parseInt(histItem.substring(hl - stateSubstrStart, hl - stateSubstrEnd));
-        const state = Object.keys(HOST_STATE)[stateIndex] as HOST_STATE;
-        if(state !== HOST_STATE.online || time < timeNow - (tta / thausand)) {
-          return undefined;
-        }
-        return [time, state];
-      }).filter(item => typeof item !== "undefined") as [number, HOST_STATE][];
+      const TTALimit = timeNow - (timeToActivate / THAUSAND);
+      const lastOnlineReports = hist.filter(item => item.time > TTALimit && item.status === HOST_STATE.online);
+      const firstReportIsOlderThenTTA = hist[0].time < TTALimit;
+      return !lastOnlineReports.length && firstReportIsOlderThenTTA ? true : false;
+
     };
-    
-    const rowHist = hist ? hist.data?.[hist.rowIds.indexOf(String(row.id))] || undefined : undefined;
-    const lastOnlineStates = rowHist ? getLatStates(rowHist, store.config.timeToAlarm) : null;
-    //filter last (timeToAlarm)s
-    //left only online
-    //if length > 0
-    //then false
-    //else true
-    const isAlarmed = (lastOnlineStates && !row.isMuted) ? lastOnlineStates.length === zero : false;//alarm on non online more than config.timeToAlarm
+    const rowHist = row.lastPings;
+    const isAlarmed = (!row.isMuted && !row.isPaused) && isNonOnlinePastLimit(rowHist, store.config.timeToAlarm);
+
     //unmute on getting online
-    const isMuted = results.status === HOST_STATE.online && row.lastPing.status !== HOST_STATE.online && store.config.unmuteOnOnline;
+    const isMuted = (
+      row.isMuted
+      && results.status === HOST_STATE.online 
+      && (row.lastPings[row.lastPings.length - ONE]?.status || HOST_STATE.online) !== HOST_STATE.online 
+      && store.config.unmuteOnOnline
+    ) ? false : undefined;
     store.dispatch({
       name: ACTION_NAME.ROWS_REPORT_PING,
       payload: {
         rowId: row.id,
         result: results,
+        timeToAlarmMS: store.config.timeToAlarm,
         isAlarmed: isAlarmed,
         isMuted: isMuted
       }
     });
   };
-  const handleDelete = () => {
+  const handleDelete = (rows = [row.id]) => {
     store.dispatch({
       name: ACTION_NAME.ROWS_REMOVE,
-      payload: [row.id]
+      payload: rows
     });
   };
-  const handleChange = (prop: keyof RowModel, newVal: string | boolean) => {
+  const handleChange = (prop: keyof RowModel, newVal: string | boolean, rows:number[] = [row.id]) => {
     store.dispatch({
       name: ACTION_NAME.ROWS_SET_PARAM,
       payload: {
-        rowsId: [row.id],
+        rowsId: rows,
         param: prop,
         value: newVal
       }
@@ -273,30 +330,32 @@ export const TileRow: FC<TileRowModel> = ({store, row}) => {
     e.preventDefault();
     const top = e.pageY;
     const left = e.pageX;
+    const selectedRows = store.state.rows.filter(row => row.isSelected).map(row => row.id);
+    const targetRows = (selectedRows.length > ZERO && row.isSelected) ? selectedRows : [row.id];
     const playButton = row.isPaused ? {
       label: "contextMenuPlay",
       icon: "ico_play",
       onClick: () => {
-        handleChange("isPaused", false);
+        handleChange("isPaused", false, targetRows);
       }
     } as CMItemModel : {
       label: "contextMenuPause",
       icon: "ico_pause",
       onClick: () => {
-        handleChange("isPaused", true);
+        handleChange("isPaused", true, targetRows);
       }
     } as CMItemModel;
     const muteButton = row.isMuted ? {
       label: "contextMenuUnmute",
       icon: "ico_soundOn",
       onClick: () => {
-        handleChange("isMuted", false);
+        handleChange("isMuted", false, targetRows);
       }
     } as CMItemModel : {
       label: "contextMenuMute",
       icon: "ico_soundOff",
       onClick: () => {
-        handleChange("isMuted", true);
+        handleChange("isMuted", true, targetRows);
       }
     } as CMItemModel;
     const editButton = {
@@ -305,7 +364,7 @@ export const TileRow: FC<TileRowModel> = ({store, row}) => {
       onClick: () => {
         store.dispatch({
           name: ACTION_NAME.ROWS_TOGGLE_EDIT,
-          payload: [row.id]
+          payload: targetRows
         });
       }
     } as CMItemModel;
@@ -313,28 +372,117 @@ export const TileRow: FC<TileRowModel> = ({store, row}) => {
       label: "contextMenuUnalarm",
       icon: "ico_alarmOff",
       onClick: () => {
-        handleChange("isAlarmed", false);
+        handleChange("isAlarmed", false, targetRows);
       }
     } as CMItemModel : null;
+    const selectButton = row.isSelected ? {
+      label: "contextMenuUnselect",
+      icon: "ico_checkmark",
+      onClick: () => {
+        handleChange("isSelected", false, [row.id]);  
+      }
+    } as CMItemModel : {
+      label: "contextMenuSelect",
+      icon: "ico_checkmark",
+      onClick: () => {
+        handleChange("isSelected", true, [row.id]);  
+      }
+    } as CMItemModel;
     store.showContextMenu(top, left, [
-      alarmButton ? alarmButton : null,
+      alarmButton,
       playButton,
       editButton,
       muteButton,
+      selectButton,
       {
         label: "contextMenuRemove",
         icon: "ico_trash",
         onClick: () => {
-          handleDelete();
+          handleDelete(targetRows);
         }
       }
     ]);
   };
+  const toggleSelect = () => {
+    handleChange("isSelected", !row.isSelected);
+  };
+  const getStats = (hist: string[]) => {
+    const ret = {
+      stats: {
+        [HOST_STATE.online]: 0,
+        [HOST_STATE.error]: 0,
+        [HOST_STATE.timeout]: 0,
+        [HOST_STATE.unchecked]: 0
+      },
+      onlineRate: 0, //0-100
+      hist: [] as {
+        status: number
+        time: number
+        duration: number
+      }[]
+    };
+    let statusNow: number;
+    hist.map((item, i, arr) => {
+      //[28759 0 0000 128]
+      const timeStart = 0; //without length
+      const timeEnd = 8;
+      const statusStart = 8;
+      const statusEnd = 7;
+      
+      const curLength = item.length;
+      const curStatus = parseInt(item.slice(curLength - statusStart, curLength - statusEnd));
+      //if first or last THEN skip
+      if(i === ZERO) {
+        //set statusNow
+        statusNow = curStatus;
+      }else{
+        //get prev time & state
+        const prv = arr[i - ONE];
+        const prvLength = prv.length;
+        const prvTime = parseInt(prv.slice(timeStart, prvLength - timeEnd));
+        const prvStatus = parseInt(prv.slice(prvLength - statusStart, prvLength - statusEnd));
+        const curTime = parseInt(item.slice(timeStart, prvLength - timeEnd));
+        const diffTime = curTime - prvTime;
+        //add diff of time to according state
+        ret.stats[Object.values(HOST_STATE)[prvStatus] as HOST_STATE] += diffTime;
+        //if now state is different add to change (whitch was, how long lasted)
+        if(curStatus !== statusNow) {
+          const lastStatusTime = ret?.hist[ret.hist.length - ONE]?.time || curTime;
+          ret.hist.push({
+            status: statusNow,
+            time: curTime,
+            duration: curTime - lastStatusTime
+          });
+          //update statusNow
+          //IMPORTANT TO ASSING THIS ONLY AFTER PUSHING
+          statusNow = curStatus;
+        }else if(i === arr.length - ONE) { //on last item add stats untill now
+          const lastStatusTime = ret?.hist[ret.hist.length - ONE]?.time || curTime;
+          ret.hist.push({
+            status: statusNow,
+            time: curTime,
+            duration: curTime - lastStatusTime
+          });
+        }
+      }
+    });
+    ret.onlineRate =  Math.round(HUNDRED / (ret.stats[HOST_STATE.online] + ret.stats[HOST_STATE.error] + ret.stats[HOST_STATE.timeout]) * ret.stats[HOST_STATE.online]);
+    return ret;
+  };
+ 
+  const lastPingData = row.lastPings[row.lastPings.length - ONE];
+  const stats = [ROW_SIZE.x3, ROW_SIZE.x6].includes(row.size) ? getStats(hist) : null; 
+  const histForGraph = hist.filter(item => {
+    const d = new Date();
+    const timeNow =  d.getHours() * hour + d.getMinutes() * minute + d.getSeconds();
+    const latestTime = timeNow - (store.config.minigraphMaxTime * MINUTEinSECONDS);
+    return parseInt(item.slice(ZERO, item.length - EIGHT)) > latestTime;
+  });
   return <TileRowStyle
-    className={`row tileRow ${row.lastPing.status} size${row.size}${row.isPaused ? " paused" : ""}${row.isBusy ? " busy" : ""}${row.isAlarmed ? " alarmed" : ""}${row.isMuted ? " muted" : ""}`}
+    className={`row tileRow ${lastPingData?.status || ""} size${row.size}${row.isPaused ? " paused" : ""}${row.isBusy ? " busy" : ""}${row.isAlarmed ? " alarmed" : ""}${row.isMuted ? " muted" : ""}${row.isSelected ? " selected" : ""}`}
     onContextMenu={handleContextMenu}
   >
-    <div className="indicator">
+    <div className="indicator" onClick={toggleSelect}>
       { row.isAlarmed &&
         <Icon icon="ico_alarmOn" css={{"--icon-color": "var(--red)"} as React.CSSProperties}/>
       }
@@ -352,16 +500,25 @@ export const TileRow: FC<TileRowModel> = ({store, row}) => {
     </div>
     { row.size !== ROW_SIZE.x1 && 
       <div className="rowPart2">
-        <span className={`status ${row.lastPing.status}`}>{row.lastPing.status}</span>
-        <span className="dellay">{row.lastPing.status === HOST_STATE.online ? row.lastPing.avgDellay : "-"} {store.t("ms")} / {row.updateTimeStrategy[row.lastPing.status] / thausand} {store.t("s")}</span>
+        <span className={`status ${lastPingData?.status || HOST_STATE.unchecked}`}>{lastPingData?.status || HOST_STATE.unchecked}</span>
+        <span className="dellay">{(lastPingData?.status || HOST_STATE.unchecked) === HOST_STATE.online ? (lastPingData?.avgDellay || "-") : "-"} {store.t("ms")} / {row.updateTimeStrategy[(lastPingData?.status || HOST_STATE.unchecked)] / thausand} {store.t("s")}</span>
       </div>
     }
-    { row.size === ROW_SIZE.x6 && 
+    { [ROW_SIZE.x3, ROW_SIZE.x6].includes(row.size)  && 
       <div className="rowPart4">
+        <div>{HOST_STATE.online.toUpperCase()}: {toReadibleDuration(stats?.stats[HOST_STATE.online], store)} / {stats?.onlineRate || "-"}%</div>
+        <div>{HOST_STATE.error.toUpperCase()}: {toReadibleDuration(stats?.stats[HOST_STATE.error], store)}</div>
+        <div>{HOST_STATE.timeout.toUpperCase()}: {toReadibleDuration(stats?.stats[HOST_STATE.timeout], store)}</div>
+        <div className="changesHist">{
+          stats?.hist.reverse().map(item => {
+            return <span key={item.time}>{toReadibleDuration(item.time, store)}: {Object.values(HOST_STATE)[item.status]} ({toReadibleDuration(item.duration, store)})</span>;
+          })
+        }</div>
       </div>
     }
-    { ![ROW_SIZE.x1, ROW_SIZE.x2v, ROW_SIZE.x2h].includes(row.size) && 
+    { ((ROW_SIZE.x4 === row.size || ROW_SIZE.x6 === row.size) && histForGraph.length > ZERO) && 
       <div className="rowPart3">
+        <TileRowGraph size={row.size} hist={histForGraph}></TileRowGraph>
       </div>
     }
     

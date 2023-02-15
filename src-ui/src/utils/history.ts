@@ -1,7 +1,13 @@
-import { HOST_STATE } from "src/constants";
+import { FIVE, HOST_STATE, HOURinSECONDS, MINUTEinSECONDS, ONE, SIXTEEN, ZERO } from "src/constants";
 import addZero from "./addZero";
 import { readFile, writeFile } from "./fs";
+import { getConfig } from "./config";
 
+
+let histLastUpadte = 0;
+const histUpdateRate = 10000;
+let histLastClastered = 0;
+const histClasteringUpdateRate = 5000;
 export const getHistFileList: () => Promise<string[]> = async () => {
   //lookup for a file
   console.warn("TODO HERE");
@@ -9,7 +15,7 @@ export const getHistFileList: () => Promise<string[]> = async () => {
 };
 
 export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:string[][]} | null> = async (fileName) => {
-  //hhmmss99999910001001
+  //[(1-67000) 999999 1 0001 001]
   if (!fileName) {
     const date = new Date(), one = 1, two = 2;
     fileName = `${date.getFullYear()}${addZero(String(date.getMonth() + one), two)}${addZero(String(date.getDate()), two)}.txt`;
@@ -19,8 +25,9 @@ export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:stri
   if(!fileContent) {
     return null;
   }
+  const fileArray = fileContent?.split(" ");
   //convert hex to numbers
-  const fileBigIntArray = fileContent?.split(" ").filter(item => item.length).map(item => BigInt("0x" + item));
+  const fileBigIntArray = fileArray.filter(item => item.length).map(item => BigInt("0x" + item));
   //get all addreses
   const rowIds = new Set();
   const zero = 0;
@@ -39,8 +46,8 @@ export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:stri
     if(!data[index]) {
       data[index] = [];
     }
-    const noAddrString = string.substring(zero, string.length - substrStart) + string.substring(string.length - substrEnd, string.length);
-    data[index].push(noAddrString);
+    const noIDString = string.substring(zero, string.length - substrStart) + string.substring(string.length - substrEnd, string.length);
+    data[index].push(noIDString);
   });
   return {
     rowIds: [...rowIds] as string[],
@@ -56,9 +63,8 @@ interface writeHistModel{
 }
 
 
-
-
 export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time, rowId, state, dellay, ttl}) => {
+  const config = getConfig();
   const one = 1, sixteen = 16, two = 2;
   const targetTTLlength = 3;
   const targetDellayLength = 4;
@@ -70,9 +76,115 @@ export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time,
   const line = `${time}${addZero(String(rowId), rowIdTargetLenght)}${stateNum}${addZero(String(dellay), targetDellayLength)}${addZero(String(ttl), targetTTLlength)}`;
   const lineNum = BigInt(line);
   const lineHex = lineNum.toString(sixteen);
+  
   //append to file
   const d = new Date();
   const fileName = `${d.getFullYear()}${addZero(String(d.getMonth() + one), two)}${addZero(String(d.getDate()), two)}.txt`;
-  await writeFile(fileName, lineHex + " ", true);
+  const localHistory = localStorage.getItem(`hist_${fileName}`) || "";
+  const updatedLocalHistory = `${localHistory} ${lineHex} `;
+  
+  //clastering every 5 sec
+  if(d.getTime() > histLastClastered + histClasteringUpdateRate) {
+    histLastClastered = d.getTime();
+    const bigIntArray = updatedLocalHistory.split(" ").filter(item => item.length).map(item => BigInt("0x" + item));
+    const claster = (array: bigint[]) => {
+      //sort by rowid
+      const sortedByIdArray = array.sort((a, b) => {
+        // [49467 057459 0 0805 048n]
+        const idStart = 14;
+        const idEnd = 8;
+        const aString = a.toString();
+        const aLength = aString.length;
+        const bString = b.toString();
+        const bLength = bString.length;
+        const idA = aString.substring(aLength - idStart, aLength - idEnd);
+        const idB = bString.substring(bLength - idStart, bLength - idEnd);
+        return parseInt(idA) - parseInt(idB);
+      });
+      //remove some
+      const clasteredArray = sortedByIdArray.filter((cur, i, arr) => {
+        if(!i || i === arr.length - ONE) {
+          return true;
+        }
+        // [49467 057459 0 0805 048n]
+        const idStart = 14;
+        const idEnd = 8;
+        const statusStart = 8;
+        const statusEnd = 7;
+        const ttlStart = 3;
+        const ttlEnd = 0;
+        const timeStart = ZERO; //without string length
+        const timeEnd = 14;
+
+        const curString = String(cur);
+        const curLength = curString.length;
+        const curStatusIndex = curString.substring(curLength - statusStart, curLength - statusEnd);
+        const curTTL = curString.substring(curLength - ttlStart, curLength - ttlEnd);
+        const curId = curString.substring(curLength - idStart, curLength - idEnd);
+        const curTime = parseInt(curString.substring(timeStart, curLength - timeEnd));
+        
+        //we checked for i > 0 before
+        const prvString = String(arr[i - ONE]);
+        const prvLength = prvString.length;
+        const prvStatusIndex = prvString.substring(prvLength - statusStart, prvLength - statusEnd);
+        const prvTTL = prvString.substring(prvLength - ttlStart, prvLength - ttlEnd);
+        const prvId = prvString.substring(prvLength - idStart, prvLength - idEnd);
+        const prvTime = parseInt(prvString.substring(timeStart, prvLength - timeEnd));
+        const date = new Date();
+        const t = date.getHours() * HOURinSECONDS + date.getMinutes() * MINUTEinSECONDS + date.getSeconds();
+        if(
+          // IF same status and same ttl
+          curStatusIndex === prvStatusIndex
+          && curTTL === prvTTL
+          && curId === prvId
+          // AND previus is closer then claster size
+          && Math.abs(prvTime - curTime) < config.historyClasteringSizeMIN * MINUTEinSECONDS
+          // AND time is bigger then config.clasteringStart
+          && curTime < t - config.historyClasteringStartMIN * MINUTEinSECONDS
+        ) {
+          // THEN remove self
+          //return false if needed to remove
+          return false;
+        }
+        return true;
+      });
+      
+      //sort by time
+      const sortedByTimeArray = clasteredArray.sort((a, b) => {
+        // [49467 057459 0 0805 048n]
+        const timeStart = 0;//without length
+        const timeEnd = 14;
+        const aString = a.toString();
+        const aLength = aString.length;
+        const bString = b.toString();
+        const bLength = bString.length;
+        const timeA = parseInt(aString.substring(timeStart, aLength - timeEnd));
+        const timeB = parseInt(bString.substring(timeStart, bLength - timeEnd));
+        return timeA - timeB;
+      });
+      return sortedByTimeArray;
+    };
+    //converting back to hex and joining to one string
+    const clasteredHist = claster(bigIntArray).map(item => item.toString(SIXTEEN)).join(" ");
+    //save localy once again  
+    localStorage.setItem(`hist_${fileName}`, clasteredHist);
+  }else{
+    //saving localy without clastering
+    localStorage.setItem(`hist_${fileName}`, updatedLocalHistory);
+  }
+  
+  
+  //saving history
+  if(d.getTime() > histLastUpadte + histUpdateRate) {
+    histLastUpadte = d.getTime();
+    await writeFile(fileName, localStorage.getItem(`hist_${fileName}`) || "");
+    //removing other days data
+    for(let i = ZERO; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if(key && key.slice(ZERO, FIVE) === "hist_" && !key.replace("hist_", "").includes(fileName)) {
+        localStorage.removeItem(key);
+      }
+    }
+  }
   return lineHex;
 };

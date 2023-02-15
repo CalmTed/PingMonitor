@@ -105,8 +105,8 @@ const Select: FC<SelectModel> = ({value, options, onChange}) => {
       <button className="input input-outline selectTitle"><span>{ options.find(option => option.value === value)?.label || value}</span></button>
       <div className="selectOptions">
         {
-          options.map(({label, value}) => {
-            return (<p key={value} className={"selectOption" + ((value === value || label === value) ? " selected" : "")} onMouseDown={() => { handleSelectSet(value); }} >{label}</p>);
+          options.filter(item => item.value).map(({label, value}) => {
+            return (<p key={value} className={"selectOption" + ((value === value || label === value) ? " selected" : "")} onMouseDown={() => { value ? handleSelectSet(value) : null; }} >{label}</p>);
           })
         }
       </div>

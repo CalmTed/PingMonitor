@@ -27,14 +27,7 @@ export const getADefaultRow: () => RowModel = () => {
       [HOST_STATE.timeout]: 2000,
       [HOST_STATE.unchecked]: 1000
     },
-    lastPing: {
-      status: HOST_STATE.timeout,
-      address: "0.0.0.0",
-      time: 0,
-      avgDellay: 0,
-      ttl: 0,
-      date: ""
-    },
+    lastPings: [],
     picture: "pic_pingMonitor",
     color: ROW_COLOR.Gray,
     size: ROW_SIZE.x2h,

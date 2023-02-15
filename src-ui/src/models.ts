@@ -36,7 +36,7 @@ export interface RowModel{
   color: ROW_COLOR
   size: ROW_SIZE
   picture: IconName
-  lastPing: parseResultInterface
+  lastPings: parseResultInterface[]
   isCollapsed: boolean
   isBusy: boolean
   isPaused: boolean
@@ -55,7 +55,7 @@ export interface UpdateTimeStrategyModel{
 
 export interface Option{
   label: string
-  value: string
+  value: string | null
 }
 export { ActionType };
 

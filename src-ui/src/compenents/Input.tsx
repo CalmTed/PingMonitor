@@ -7,6 +7,7 @@ interface InputModel {
   onSubmit?: (newValue: string) => void
   disabled?: boolean
   css?: React.CSSProperties
+  placeholder?: string
 }
 
 const InputStyle = styled.input`
@@ -28,7 +29,7 @@ border: 0.1em solid var(--text-color);
 }
 `;
 
-const Input: FC<InputModel> = ({value, onChange, onSubmit, disabled, css}) => {
+const Input: FC<InputModel> = ({value, onChange, onSubmit, disabled, css, placeholder}) => {
   const handleKeyUp = (e: React.KeyboardEvent) => {
     const value = (e.target as HTMLInputElement).value;
     if(e.code === "Enter") {
@@ -43,6 +44,7 @@ const Input: FC<InputModel> = ({value, onChange, onSubmit, disabled, css}) => {
       value={value}
       disabled={disabled}
       style={css}
+      placeholder={placeholder}
     />
   );
 };

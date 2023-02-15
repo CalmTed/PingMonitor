@@ -1,4 +1,4 @@
-import { ROW_COLOR, ROW_SIZE } from "src/constants";
+import { ONE, ROW_COLOR, ROW_SIZE, THAUSAND, TWO } from "src/constants";
 import { getADefaultRow } from "src/initials";
 import { RowModel, StateModel, UpdateTimeStrategyModel } from "src/models";
 import { parseResultInterface } from "./ping";
@@ -57,8 +57,9 @@ export type ActionType = {
   payload: {
     rowId: number,
     result: parseResultInterface,
+    timeToAlarmMS: number
     isAlarmed?: boolean,
-    isMuted?: boolean
+    isMuted?: boolean,
   }
 }
 
@@ -176,15 +177,19 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
     break;
   case ACTION_NAME.ROWS_REPORT_PING:
     const reportChangedRows = state.rows.map(row => {
-      if(action.payload.rowId !== row.id || !row.isBusy || action.payload.result.time === row.lastPing.time) {
+      if(action.payload.rowId !== row.id || !row.isBusy || action.payload.result.time === row.lastPings[row.lastPings.length - ONE]?.time) {
         return row;
       }else {
+        const d = new Date();
+        const hour = 3600, min = 60;
+        const timeNow = (d.getHours() * hour + d.getMinutes() * min + d.getSeconds());
+        const historyTimeLimit = timeNow - (action.payload.timeToAlarmMS * TWO) / THAUSAND; //dubling tta time for extra memory
         return {
           ...row,
-          isAlarmed: action.payload.isAlarmed ? action.payload.isAlarmed : row.isAlarmed,
-          isMuted: action.payload.isMuted ? action.payload.isMuted : row.isMuted,
+          isAlarmed: typeof action.payload.isAlarmed !== "undefined" ? action.payload.isAlarmed : row.isAlarmed,
+          isMuted: typeof action.payload.isMuted !== "undefined" ? action.payload.isMuted : row.isMuted,
           isBusy: false,
-          lastPing: action.payload.result
+          lastPings: [...row.lastPings.filter(pingData => pingData.time > historyTimeLimit), action.payload.result]
         };
       }
     });

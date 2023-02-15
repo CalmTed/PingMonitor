@@ -1,8 +1,9 @@
 import React, { FC, useEffect, useState } from "react";
-import { VIEW_TYPE } from "src/constants";
+import { HUNDRED, ONE, VIEW_TYPE } from "src/constants";
 import { StoreModel } from "src/models";
 import styled from "styled-components";
 import { TileRow } from "./Row";
+import { readHistDay } from "src/utils/history";
 
 const ViewStyle = styled.div`
   width: calc(100vw - 1em);
@@ -17,9 +18,12 @@ const ViewStyle = styled.div`
   overflow-y: auto;
 `;
 
+const rowHistUpdateRate = 10000;
+let rowHostLastUpdate = 0;
+
 export const View: FC<{store: StoreModel}> = ({store}) => {
   const getViewStyle: () => React.CSSProperties = () => {
-    const one = 1, hundred = 100, zoomFactor = one / (store.state.zoom / hundred);
+    const zoomFactor = ONE / (store.state.zoom / HUNDRED);
     const body = document.body;
     const width = body.clientWidth * zoomFactor;
     const height = body.clientHeight * zoomFactor;
@@ -33,7 +37,20 @@ export const View: FC<{store: StoreModel}> = ({store}) => {
     } as React.CSSProperties;
   };
   const [size, setSize] = useState(getViewStyle());
+  const [hist, setHist] = useState({
+    rowIds: [] as string[],
+    data: [] as string[][]
+  });
   useEffect(() => {
+    const timeNow = new Date().getTime();
+    if(timeNow > rowHostLastUpdate + rowHistUpdateRate) {
+      rowHostLastUpdate = timeNow;
+      readHistDay().then(hist => {
+        if(hist) {
+          setHist(hist);
+        }
+      });
+    }
     window.addEventListener("resize", checkSize, {passive: false});
     return () => {
       window.removeEventListener("resize", checkSize);
@@ -42,16 +59,20 @@ export const View: FC<{store: StoreModel}> = ({store}) => {
   const checkSize = () => {
     const styleOnRender = getViewStyle();
     if(JSON.stringify(styleOnRender) !== JSON.stringify(size)) {
-      setSize(getViewStyle());
+      setSize(styleOnRender);
     }
   };
   checkSize();
+  const getHist = (rowId: number) => {
+    const index = hist.rowIds.map(id => parseInt(id)).indexOf(rowId);
+    return hist && index !== -ONE ? hist.data[index] : ([] as string[]);
+  };
   return <ViewStyle
     className={`view${VIEW_TYPE.tiles ? " tiles" : " timeline"}`}
     style={size}
   >
     {store.config.view === VIEW_TYPE.tiles && <>
-      {store.state.rows.map(row => <TileRow key={row.id} store={store} row={row}></TileRow>)}
+      {store.state.rows.map(row => <TileRow key={row.id} store={store} row={row} hist={getHist(row.id)}></TileRow>)}
     </>}
   </ViewStyle>;
 };

@@ -21,6 +21,7 @@ interface AppInterface {
 }
 
 const AppStyle = styled.div`
+  user-select: none;
   &:not(:focus-within) .toolItem{
     opacity: 0;
     visibility: hidden;
@@ -67,6 +68,17 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
           payload: newZoom
         });
       }
+      if(e.code === "KeyA" && e.ctrlKey) { 
+        const isAllSelected = store.state.rows.filter(row => !row.isSelected).length === zero;
+        store.dispatch({
+          name: ACTION_NAME.ROWS_SET_PARAM,
+          payload: {
+            rowsId: store.state.rows.map(row => row.id),
+            param: "isSelected",
+            value: !isAllSelected
+          }
+        });
+      }
     };
     //closing context menu
     const handleMouseUp = (e: MouseEvent) => {
@@ -75,22 +87,40 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
       const parent2 = parent1?.parentElement || null;
       const parent3 = parent2?.parentElement || null;
       const parent4 = parent3?.parentElement || null;
-      const hasClass: (node: HTMLElement | null) => boolean = (node) => {
+      const hasClass: (node: HTMLElement | null, classes: string) => boolean = (node, classes) => {
         if(!node || typeof node?.className !== "string") {
           return false;
         }
-        return node.className.includes("contextMenuItem") || false;
+        return node.className.includes(classes) || false;
       };
-      const isContextMenuItself = hasClass(target) || hasClass(parent1) || hasClass(parent2) || hasClass(parent3) || hasClass(parent4);
+      //hiding contextmenu
+      const isContextMenuItself = hasClass(target, "contextMenuItem") || hasClass(parent1, "contextMenuItem") || hasClass(parent2, "contextMenuItem") || hasClass(parent3, "contextMenuItem") || hasClass(parent4, "contextMenuItem");
       if(contextMenuData.isShown && !isContextMenuItself) {
         store.hideContextMenu();
       }
+      //unselecting all rows
+      const isViewClicked = hasClass(target, "view");
+      if(isViewClicked) {
+        store.dispatch({
+          name: ACTION_NAME.ROWS_SET_PARAM,
+          payload: {
+            rowsId: state.rows.filter(row => row.isSelected).map(row => row.id),
+            param: "isSelected",
+            value: false
+          }
+        });
+      }
+    };
+    const handleContextMenu = (e:MouseEvent) => {
+      e.preventDefault();
     };
     document.addEventListener("keydown", handleKeyDown, {passive: false});
     document.addEventListener("mouseup", handleMouseUp, {passive: false});
+    document.addEventListener("contextmenu", handleContextMenu, {passive: false});
     return () => {
       document.removeEventListener("mouseup", handleMouseUp);
       document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("contextmenu", handleContextMenu);
     };
   });
   const {toastData, showToast, alertData, showAlert, promptData, showPrompt} = customHook();

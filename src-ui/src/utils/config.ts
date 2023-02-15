@@ -13,7 +13,10 @@ export const getConfig: () => ConfigModel = () => {
     [CONFIG_NAMES.view]: list[CONFIG_NAMES.view].value as VIEW_TYPE,
     [CONFIG_NAMES.unmuteOnOnline]: list[CONFIG_NAMES.unmuteOnOnline].value as boolean,
     [CONFIG_NAMES.timeToAlarm]: list[CONFIG_NAMES.timeToAlarm].value as number,
-    [CONFIG_NAMES.hideAddress]: list[CONFIG_NAMES.hideAddress].value as boolean
+    [CONFIG_NAMES.hideAddress]: list[CONFIG_NAMES.hideAddress].value as boolean,
+    [CONFIG_NAMES.historyClasteringStartMIN]: list[CONFIG_NAMES.historyClasteringStartMIN].value as number,
+    [CONFIG_NAMES.historyClasteringSizeMIN]: list[CONFIG_NAMES.historyClasteringSizeMIN].value as number,
+    [CONFIG_NAMES.minigraphMaxTime]: list[CONFIG_NAMES.minigraphMaxTime].value as number
   };
   return ret;
 };
@@ -94,18 +97,15 @@ export type ConfigItemType = {
   options: Option[]
 }
 
-//config list
-//default new row rule
-//defeult new row
-//history save limit
-//time to alarm
-//unmute on getting online
 export enum CONFIG_NAMES {
   language = "language",
   unmuteOnOnline = "unmuteOnOnline",
   hideAddress = "hideAddress",
   timeToAlarm = "timeToAlarm",
-  view = "view"
+  view = "view",
+  historyClasteringStartMIN =  "historyClasteringStartMIN",
+  historyClasteringSizeMIN = "historyClasteringSizeMIN",
+  minigraphMaxTime = "minigraphMaxTime"
 }
 
 export interface ConfigListModel {
@@ -114,6 +114,10 @@ export interface ConfigListModel {
   [CONFIG_NAMES.unmuteOnOnline]: ConfigItemType
   [CONFIG_NAMES.hideAddress]: ConfigItemType
   [CONFIG_NAMES.timeToAlarm]: ConfigItemType
+  [CONFIG_NAMES.historyClasteringStartMIN]: ConfigItemType
+  [CONFIG_NAMES.historyClasteringSizeMIN]: ConfigItemType
+  [CONFIG_NAMES.minigraphMaxTime]: ConfigItemType
+
 }
 
 export type ConfigModel = {
@@ -122,6 +126,9 @@ export type ConfigModel = {
   [CONFIG_NAMES.unmuteOnOnline]: boolean
   [CONFIG_NAMES.timeToAlarm]: number
   [CONFIG_NAMES.hideAddress]: boolean
+  [CONFIG_NAMES.historyClasteringStartMIN]: number
+  [CONFIG_NAMES.historyClasteringSizeMIN]: number
+  [CONFIG_NAMES.minigraphMaxTime]: number
 };
 
 const initialConfig: ConfigListModel = {
@@ -180,8 +187,8 @@ const initialConfig: ConfigListModel = {
     group: "configGroupRow",
     label: "configTimeToAlarm",
     type: CONFIG_TYPE.number,
-    defaultValue: 10000,
-    value: 10000,  
+    defaultValue: 11000,
+    value: 11000,  
     min: 1000,
     max: 30000,
     step: 1000
@@ -193,5 +200,38 @@ const initialConfig: ConfigListModel = {
     type: CONFIG_TYPE.boolean,
     defaultValue: false,
     value: false
+  },
+  [CONFIG_NAMES.historyClasteringStartMIN] : {
+    name: CONFIG_NAMES.historyClasteringStartMIN,
+    group: "configGroupRow",
+    label: "configHistoryClasteringStartMIN",
+    type: CONFIG_TYPE.number,
+    defaultValue: 1,
+    value: 1,
+    min: 1,
+    max: 3600,
+    step: 1
+  },
+  [CONFIG_NAMES.historyClasteringSizeMIN] : {
+    name: CONFIG_NAMES.historyClasteringSizeMIN,
+    group: "configGroupRow",
+    label: "configHistoryClasteringSizeMIN",
+    type: CONFIG_TYPE.number,
+    defaultValue: 5,
+    value: 5,
+    min: 1,
+    max: 3600,
+    step: 1
+  },
+  [CONFIG_NAMES.minigraphMaxTime] : {
+    name: CONFIG_NAMES.minigraphMaxTime,
+    group: "configGroupRow",
+    label: "minigraphMaxTimeMIN",
+    type: CONFIG_TYPE.number,
+    defaultValue: 5,
+    value: 5,
+    min: 1,
+    max: 3600,
+    step: 1
   }
 };
