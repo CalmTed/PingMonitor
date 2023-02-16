@@ -26,6 +26,9 @@ export interface StateModel{
   rowEditing: number[] | null
   isConfigOpen: boolean
   zoom: number
+  timelineStart: number
+  timelineEnd: number
+  dateOpened: string | null
 }
 
 export interface RowModel{

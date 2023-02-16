@@ -11,6 +11,7 @@ enum ACTION_GROUP {
 export enum ACTION_NAME {
   APP_SET_CONFIG_OPEN_STATE = "APP_SET_CONFIG_OPEN_STATE",
   APP_SET_ZOOM = "APP_SET_ZOOM",
+  APP_SET_TIMELINE_RANGE = "APP_SET_TIMELINE_RANGE",
 
   CONFIG_RERENDER = "CONFIG_RERENDER",
 
@@ -29,7 +30,13 @@ export type ActionType = {
 | {
   name: ACTION_NAME.APP_SET_ZOOM
   payload: number
-}   | {
+} | {
+  name: ACTION_NAME.APP_SET_TIMELINE_RANGE
+  payload: {
+    start: number
+    end: number
+  }
+} | {
   name: ACTION_NAME.CONFIG_RERENDER
 } | {
   name: ACTION_NAME.ROW_ADD
@@ -107,6 +114,22 @@ const appReducer: (state: StateModel, action: ActionType) => StateModel | null =
       ...state,
       zoom: action.payload
     };
+    break;
+  case ACTION_NAME.APP_SET_TIMELINE_RANGE:
+    const minRange = 0;
+    const maxRange = 86400;
+    const minDiff = 300;
+    if(
+      // state.timelineStart !== action.payload.start && state.timelineEnd !== action.payload.end
+      action.payload.end < maxRange && action.payload.start > minRange
+      && action.payload.end - action.payload.start > minDiff 
+    ) {
+      ret = {
+        ...state,
+        timelineStart: action.payload.start,
+        timelineEnd: action.payload.end
+      };
+    }
     break;
   default: 
     console.error("Unknown app action: ", action);

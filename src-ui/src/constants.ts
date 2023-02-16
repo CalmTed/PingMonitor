@@ -22,14 +22,13 @@ export enum HOST_STATE {
 }
 
 export enum ROW_COLOR {
-  Gray = "#333",
-  Red = "#f44",
-  Orange = "orange",
-  Yellow = "yellow",
   Green = "#4f4",
-  Blue = "#44f",
+  Blue = "blue",
+  Yellow = "yellow",
+  Orange = "orange",
   Purple = "purple",
-  Pink = "pink",
+  Gray = "#333",
+  White = "#fff"
 }
 
 export enum ROW_SIZE {
@@ -47,5 +46,5 @@ export enum PROMPT_TYPES {
   text = "text"
 }
 
-export const ZERO = 0, ONE = 1, TWO = 2, FIVE = 5, EIGHT = 8, SIXTEEN = 16, HUNDRED = 100, THAUSAND = 1000;
+export const ZERO = 0, ONE = 1, TWO = 2, FIVE = 5, EIGHT = 8, SIXTEEN = 16, TWENTY_FOUR = 24, HUNDRED = 100, THAUSAND = 1000;
 export const HOURinSECONDS = 3600, MINUTEinSECONDS = 60;

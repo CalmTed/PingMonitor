@@ -8,7 +8,10 @@ export const getInitialState: () => StateModel = () => {
     rows: getInitialRows(),
     isConfigOpen: false,
     rowEditing: null,
-    zoom: 100
+    zoom: 100,
+    timelineStart: 0,
+    timelineEnd: 86400,
+    dateOpened: null
   };
 };
 
@@ -29,7 +32,7 @@ export const getADefaultRow: () => RowModel = () => {
     },
     lastPings: [],
     picture: "pic_pingMonitor",
-    color: ROW_COLOR.Gray,
+    color: ROW_COLOR.Green,
     size: ROW_SIZE.x2h,
     isCollapsed: true,
     isBusy: false,
