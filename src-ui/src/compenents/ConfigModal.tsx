@@ -69,8 +69,8 @@ interface ConfigItemComponentModel{
 const ConfigItemComponentStyle = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.8em;
-  height: 3em;
+  gap: 1.3em;
+  min-height: 3em;
 `;
 
 const ConfigItemComponent:FC<ConfigItemComponentModel> = ({store, item}) => {

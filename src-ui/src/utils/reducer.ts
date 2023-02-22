@@ -1,4 +1,4 @@
-import { ONE, ROW_COLOR, ROW_SIZE, THAUSAND, TWO } from "src/constants";
+import { DAYinSECONDS, ONE, ROW_COLOR, ROW_SIZE, THAUSAND, TWO } from "src/constants";
 import { getADefaultRow } from "src/initials";
 import { RowModel, StateModel, UpdateTimeStrategyModel } from "src/models";
 import { parseResultInterface } from "./ping";
@@ -117,17 +117,17 @@ const appReducer: (state: StateModel, action: ActionType) => StateModel | null =
     break;
   case ACTION_NAME.APP_SET_TIMELINE_RANGE:
     const minRange = 0;
-    const maxRange = 86400;
+    const maxRange = DAYinSECONDS;
     const minDiff = 300;
     if(
-      // state.timelineStart !== action.payload.start && state.timelineEnd !== action.payload.end
-      action.payload.end < maxRange && action.payload.start > minRange
-      && action.payload.end - action.payload.start > minDiff 
+      (action.payload.end <= maxRange || action.payload.start >= minRange)
+      && (action.payload.start !== state.timelineStart || action.payload.end !== state.timelineEnd)
+      && action.payload.end - action.payload.start > minDiff
     ) {
       ret = {
         ...state,
-        timelineStart: action.payload.start,
-        timelineEnd: action.payload.end
+        timelineStart: action.payload.start >= minRange && action.payload.start <= maxRange - minDiff ? action.payload.start : state.timelineStart,
+        timelineEnd: action.payload.end <= maxRange && action.payload.end >= minRange + minDiff ? action.payload.end : state.timelineEnd
       };
     }
     break;
@@ -206,13 +206,13 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
         const d = new Date();
         const hour = 3600, min = 60;
         const timeNow = (d.getHours() * hour + d.getMinutes() * min + d.getSeconds());
-        const historyTimeLimit = timeNow - (action.payload.timeToAlarmMS * TWO) / THAUSAND; //dubling tta time for extra memory
+        const historyTimeLimit = timeNow - (action.payload.timeToAlarmMS * TWO); //dubling tta time for extra memory
         return {
           ...row,
           isAlarmed: typeof action.payload.isAlarmed !== "undefined" ? action.payload.isAlarmed : row.isAlarmed,
           isMuted: typeof action.payload.isMuted !== "undefined" ? action.payload.isMuted : row.isMuted,
           isBusy: false,
-          lastPings: [...row.lastPings.filter(pingData => pingData.time > historyTimeLimit), action.payload.result]
+          lastPings: [...row.lastPings.filter(pingData => pingData.time > historyTimeLimit && pingData.time < timeNow * THAUSAND), action.payload.result]
         };
       }
     });

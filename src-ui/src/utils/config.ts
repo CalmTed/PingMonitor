@@ -187,11 +187,11 @@ const initialConfig: ConfigListModel = {
     group: "configGroupRow",
     label: "configTimeToAlarm",
     type: CONFIG_TYPE.number,
-    defaultValue: 11000,
-    value: 11000,  
-    min: 1000,
-    max: 30000,
-    step: 1000
+    defaultValue: 30,
+    value: 30,  
+    min: 10,
+    max: 3600,
+    step: 1
   },
   [CONFIG_NAMES.hideAddress]: {
     name: CONFIG_NAMES.hideAddress,
@@ -206,8 +206,8 @@ const initialConfig: ConfigListModel = {
     group: "configGroupRow",
     label: "configHistoryClasteringStartMIN",
     type: CONFIG_TYPE.number,
-    defaultValue: 1,
-    value: 1,
+    defaultValue: 5,
+    value: 5,
     min: 1,
     max: 3600,
     step: 1
@@ -228,8 +228,8 @@ const initialConfig: ConfigListModel = {
     group: "configGroupRow",
     label: "minigraphMaxTimeMIN",
     type: CONFIG_TYPE.number,
-    defaultValue: 5,
-    value: 5,
+    defaultValue: 10,
+    value: 10,
     min: 1,
     max: 3600,
     step: 1

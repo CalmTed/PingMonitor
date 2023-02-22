@@ -5,9 +5,9 @@ import { getConfig } from "./config";
 
 
 let histLastUpadte = 0;
-const histUpdateRate = 10000;
+const histUpdateRate = 1000;
 let histLastClastered = 0;
-const histClasteringUpdateRate = 5000;
+const histClasteringUpdateRate = 10000;
 export const getHistFileList: () => Promise<string[]> = async () => {
   //lookup for a file
   console.warn("TODO HERE");

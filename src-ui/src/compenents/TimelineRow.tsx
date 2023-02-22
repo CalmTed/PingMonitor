@@ -19,16 +19,15 @@ const TimelineRowStyle = styled.div`
   display: flex;
   flex-wrap: nowrap;
   margin: 0.2em 0;
-  overflow: hidden;
-  background-color: var(--bg-color);
-  
+  overflow: hidden; 
+  position: relative;
 
   --row-color: var(--gray);
   --graph-green: var(--rowGroupColor);
   --graph-red: var(--red);
   .head{
     transition: var(--transition);
-    width: 15em;
+    width: calc(var(--sidebarWidth) - 3em);
     height: 8em;
     padding: 0.5em 1em;
     border-width 0.2em;
@@ -49,6 +48,7 @@ const TimelineRowStyle = styled.div`
   
   .tail{
     height: 9em;
+    width: 100%;
   }
   
   
@@ -162,7 +162,7 @@ const TimelineRowGraphStyle = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: calc(100% - var(--sidebarWidth) + 1em);
   path{
     stroke-width: 0.4em;
   }

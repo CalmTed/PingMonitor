@@ -8,7 +8,7 @@ import { CMItemModel } from "src/utils/contextMenuHook";
 import ping, { parseResultInterface } from "src/utils/ping";
 import { writeHist } from "src/utils/history";
 import { TileRowGraph } from "./RowGraph";
-import { toReadibleDuration } from "src/utils/toReadible";
+import { toReadibleDuration, toReadibleTime } from "src/utils/toReadible";
 
 interface TileRowModel{
   store: StoreModel
@@ -265,19 +265,24 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
       if(hist.length === ZERO) {
         return false;   
       }
+
+      // if there is hisrory older then TTA
+      // and there are not even one online ping
+
       //IF there are no online reports in the last TTA limit 
       //AND first hist item as older then TTA limit
       //THEN true
       const d = new Date();
       const timeNow = d.getHours() * HOURinSECONDS + d.getMinutes() * MINUTEinSECONDS + d.getSeconds();
-      const TTALimit = timeNow - (timeToActivate / THAUSAND);
-      const lastOnlineReports = hist.filter(item => item.time > TTALimit && item.status === HOST_STATE.online);
+      const TTALimit = timeNow - (timeToActivate);
+      const lastReports = hist.filter(item => item.time > TTALimit);
+      const lastOnlineReports = lastReports.filter(item => item.status === HOST_STATE.online);
       const firstReportIsOlderThenTTA = hist[0].time < TTALimit;
-      return !lastOnlineReports.length && firstReportIsOlderThenTTA ? true : false;
+      return !lastOnlineReports.length && lastReports.length > ZERO && firstReportIsOlderThenTTA ? true : false; 
 
     };
     const rowHist = row.lastPings;
-    const isAlarmed = (!row.isMuted && !row.isPaused) && isNonOnlinePastLimit(rowHist, store.config.timeToAlarm);
+    const isAlarmed = !row.isMuted && !row.isPaused && isNonOnlinePastLimit(rowHist, store.config.timeToAlarm) ? true : undefined;
 
     //unmute on getting online
     const isMuted = (
@@ -525,7 +530,7 @@ export const TileRow: FC<TileRowModel> = ({store, row, hist}) => {
         <div>{HOST_STATE.timeout.toUpperCase()}: {toReadibleDuration(stats?.stats[HOST_STATE.timeout], store)}</div>
         <div className="changesHist">{
           stats?.hist.reverse().map(item => {
-            return <span key={item.time}>{toReadibleDuration(item.time, store)}: {Object.values(HOST_STATE)[item.status]} ({toReadibleDuration(item.duration, store)})</span>;
+            return <span key={item.time}>{toReadibleTime(item.time)}: {Object.values(HOST_STATE)[item.status]} ({toReadibleDuration(item.duration, store)})</span>;
           })
         }</div>
       </div>

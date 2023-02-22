@@ -192,7 +192,6 @@ const PathStyle = styled.g`
 `;
 
 export const Line:FC<LineComponentModel> = ({width, height, margin, maxDellay, minTime = ZERO, maxTime = HUNDRED, hist}) => { 
-  // const minTime = hist[0].time;
   const timeRange = maxTime - minTime;
   const oneSecKoof = (width - margin * TWO) / timeRange;
   const dellayKoof = (height - margin * TWO) / (maxDellay || ONE);
@@ -205,10 +204,11 @@ export const Line:FC<LineComponentModel> = ({width, height, margin, maxDellay, m
         return (height - margin) - (item.dellay * dellayKoof); //inverting Y
       };
       if(i === ZERO) {
-        return `m${getX(item)}, ${getY(item)}`;
+        // return `M${getX(item)}, ${getY(item)} L${getX(item)},${(height - margin * TWO)}`;
       }
       if(i === arr.length - ONE) {
-        return `M${getX(item)},${getY(item)} m${getX(arr[0])},${getY(arr[0])} z`;
+        // return `M${getX(item)},${getY(item)} M${getX(arr[0])},${getY(arr[0])} z`;
+        // return `M${getX(item)},${getY(item)} m${getX(arr[0])},${getY(arr[0])} z`;
       }
       const x1 = getX(item);
       const y1 = getY(item);

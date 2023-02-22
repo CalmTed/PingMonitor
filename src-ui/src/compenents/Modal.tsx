@@ -22,7 +22,7 @@ const ModalStyle = styled.div`
     left: 0;
     width: 100vw;
     height: 100vh;
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(0px);
   }
   .container{
     top: 5vh;
@@ -32,11 +32,13 @@ const ModalStyle = styled.div`
     border-radius: var(--radius);
     padding: 1em 2em;
     overflow-y: auto;
+    transform: translateY(1em);
   }
   &.shown{
     .backdrop,.container{
       opacity: 1;
       visibility: visible;
+      transform: translateY(0em);
     }
   }
 `;

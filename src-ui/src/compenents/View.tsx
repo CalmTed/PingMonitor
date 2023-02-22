@@ -1,11 +1,13 @@
 import React, { FC, useEffect, useState } from "react";
-import { HUNDRED, ONE, VIEW_TYPE } from "src/constants";
+import { DAYinSECONDS, HUNDRED, ONE, TWO, VIEW_TYPE, ZERO } from "src/constants";
 import { StoreModel } from "src/models";
 import styled from "styled-components";
 import { TileRow } from "./TileRow";
 import { readHistDay } from "src/utils/history";
 import { TimelineRow } from "./TimelineRow";
 import { ACTION_NAME } from "src/utils/reducer";
+import { toReadibleTime } from "src/utils/toReadible";
+import { TimeGrid } from "./TimeGrid";
 
 const ViewStyle = styled.div`
   &.tiles{
@@ -29,24 +31,96 @@ const ViewStyle = styled.div`
     align-content: flex-start;
     justify-content: flex-start;
     transition: var(--transition);
+    --sidebarWidth: 17em;
     .datePicker{
 
     }
-    .timelineSlider{
+    .sliderBlock{
       position: fixed;
-      width: calc(100% - 15em);
-      margin-left: 15em;
-      bottom: 2em;
+      width: calc(100% - 21em);
+      bottom: 0;
+      left: var(--sidebarWidth);
       height: 4em;
       input{
         width: calc(100% - 2em);
       }
     } 
+    .timeSlider{
+      width: 100%;
+      height: 100%;
+      & div{
+        position: absolute;
+      }
+      & .slider{
+        width: 100%;
+        height: 0.4em;
+        border-radius: 0.1em;
+        background: rgba(94, 94, 94, 0.67);
+        backdrop-filter: blur(10px);
+      }
+      & .startHandle, & .endHandle{
+        display: inline-block;
+        cursor: pointer;
+        border-radius: 0.5em;
+        width: 1.7em;
+        aspect-ratio: 1;
+        background: rgba(94, 94, 94, 0.8);
+        backdrop-filter: blur(10px);
+        transform: translateY(-0.75em);
+        --beforeContent: "";
+        :before{
+          content: var(--beforeContent);
+          background: var(--bc-bg);
+          box-shadow: var(--shadow);
+          backdrop-filter: blur(5px);
+          padding: 0.2em 0.5em;
+          border-radius: var(--radius);
+          transform: translate(-1.8em, -1.5em);
+          opacity: 0;
+          position: absolute;
+          transition: var(--transition);
+        }
+        :hover{
+          :before{
+            opacity: 1;          
+            transform: translate(-1.8em, -1.9em);
+          }
+        }
+      }
+      --timeLineStart: 25%;
+      --timeLineEnd: 50%;
+      & .startHandle{
+        margin-left: calc(var(--timeLineStart) - 1.5em);
+      }
+      & .endHandle{
+        margin-left: calc(calc(var(--timeLineEnd)) + 0.5em);
+      }
+      & .rangeHandle{
+        display: block;
+        height: 0.8em;
+        width: calc(var(--timeLineEnd) - var(--timeLineStart) + 0.6em);
+        background: var(--bg-color);
+        cursor: pointer;
+        background: rgba(94, 94, 94, 0.8);
+        backdrop-filter: blur(10px);
+        transform: translate(0.1em,-0.25em);
+        
+        margin-left: calc(var(--timeLineStart));
+      }
+    }
+
   }
 `;
 
-const rowHistUpdateRate = 10000;
+const rowHistUpdateRate = 3000;
 let rowHostLastUpdate = 0;
+
+let mouseDownTarget = null as "start" | "range" | "end" | null;
+let mouseDownPixel = ZERO as number;
+let currentStart = ZERO as number;
+let currentEnd = ZERO as number;
+let currentDifferenceInTime = ZERO as number; //for optimization
+
 
 export const View: FC<{store: StoreModel}> = ({store}) => {
   
@@ -129,52 +203,106 @@ interface TimelineViewModel{
 }
 
 const TimelineView: FC<TimelineViewModel> = ({store, getHist}) => {
-  const handleTimelineRangeChange: (arg: {min: number, max: number}) => void = ({min, max}) => {
-    store.dispatch({
-      name: ACTION_NAME.APP_SET_TIMELINE_RANGE,
-      payload:{
-        start: min,
-        end: max
-      }
-    }); 
+  const handleMouseDown = (e: React.MouseEvent, target: "start" | "range" | "end") => {
+    if(!mouseDownTarget) {
+      mouseDownTarget = target;
+      mouseDownPixel = e.clientX;  
+      currentStart = store.state.timelineStart;
+      currentEnd = store.state.timelineEnd;
+    }
   };
-
+  const handleMouseMove = (e: MouseEvent) => {
+    if(mouseDownTarget) {
+      const currentX = e.clientX;
+      const wrapper = document.querySelector(".timeSlider"); 
+      const width = wrapper?.clientWidth || ONE;
+      const defferenceInPixels = currentX - mouseDownPixel;
+      const pixelsToTimeKoof = DAYinSECONDS / width;
+      const differenceInTime = Math.round(pixelsToTimeKoof * defferenceInPixels);
+      
+      if(differenceInTime !== currentDifferenceInTime) {
+        store.dispatch({
+          name: ACTION_NAME.APP_SET_TIMELINE_RANGE,
+          payload: {
+            start: mouseDownTarget !== "end" ? currentStart + differenceInTime : currentStart,
+            end: mouseDownTarget !== "start" ? currentEnd + differenceInTime : currentEnd
+          }
+        });
+        currentDifferenceInTime = differenceInTime;
+      }
+    }
+  };
+  const handleMouseUp = () => {
+    if(mouseDownTarget) {
+      mouseDownTarget = null;
+    }
+  };
+  useEffect(() => {
+    window.addEventListener("mouseup", handleMouseUp, {passive: false});
+    window.addEventListener("mousemove", handleMouseMove, {passive: false});
+    return () => {
+      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("mousemove", handleMouseMove);
+    };
+  });
+  const speed = 5;
+  const handleWheelCapture = (e: React.WheelEvent) => {
+    if(e.deltaX === ZERO) {
+      const timeDifferrenceY = e.deltaY * speed;
+      store.dispatch({
+        name: ACTION_NAME.APP_SET_TIMELINE_RANGE,
+        payload: {
+          start: store.state.timelineStart - (timeDifferrenceY / TWO),
+          end: store.state.timelineEnd + (timeDifferrenceY / TWO)
+        }
+      });
+    }
+    if(e.deltaY === ZERO) {
+      const timeDifferrence = e.deltaX * speed;
+      store.dispatch({
+        name: ACTION_NAME.APP_SET_TIMELINE_RANGE,
+        payload: {
+          start: store.state.timelineStart + (timeDifferrence),
+          end: store.state.timelineEnd + (timeDifferrence)
+        }
+      });
+    }
+  };
   return <ViewStyle
     className="view timeline"
+    onWheelCapture={handleWheelCapture}
   >
-    {store.state.rows.map(row => <TimelineRow key={row.id} store={store} row={row} hist={getHist(row.id)}></TimelineRow>)}
-    <div className="datePicker">
-
+    <TimeGrid store={store} />
+    <div className="rowList">
+      {store.state.rows.map(row => <TimelineRow key={row.id} store={store} row={row} hist={getHist(row.id)}></TimelineRow>)}
     </div>
-    <div className="timelineSlider">
-      <input
-        type="range"
-        min={0}
-        max={86400}
-        step={1}
-        value={store.state.timelineStart}
-        onChange={(event) => {
-          const value = parseInt(event.target.value); 
-          handleTimelineRangeChange({
-            max: store.state.timelineEnd,
-            min: value
-          });
-        }}
-      />
-      <input
-        type="range"
-        min={0}
-        max={86400}
-        step={1}
-        value={store.state.timelineEnd}
-        onChange={(event) => {
-          const value = parseInt((event.target as HTMLInputElement).value);
-          handleTimelineRangeChange({
-            max: value,
-            min: store.state.timelineStart
-          });
-        }}
-      />
+    <div className="datePicker">
+      {/* {toReadibleTime(store.state.timelineStart)} - {toReadibleTime(store.state.timelineEnd)} */}
+    </div>
+    <div className="sliderBlock">
+      <div className="timeSlider"
+        style={{
+          "--timeLineStart" : ((HUNDRED) / (DAYinSECONDS) * store.state.timelineStart) + "%",
+          "--timeLineEnd": ((HUNDRED) / (DAYinSECONDS) * store.state.timelineEnd) + "%"
+        } as React.CSSProperties}
+      >
+        <div className="slider"></div>
+        <div className="startHandle"
+          style={{
+            "--beforeContent":`"${toReadibleTime(store.state.timelineStart)}"`
+          } as React.CSSProperties}
+          onMouseDown={(e) => handleMouseDown(e, "start")}
+        ></div>
+        <div className="endHandle"
+          style={{
+            "--beforeContent":`"${toReadibleTime(store.state.timelineEnd)}"`
+          } as React.CSSProperties}
+          onMouseDown={(e) => handleMouseDown(e, "end")}
+        ></div>
+        <div className="rangeHandle"
+          onMouseDown={(e) => handleMouseDown(e, "range")}
+        ></div>
+      </div>
     </div>
   </ViewStyle>;
 };
