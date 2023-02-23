@@ -17,7 +17,8 @@
         "setFullscreen": true
       },
       "dialog": {
-        "open": true  
+        "open": true,
+        "save": true
       },
       "shell": {
         "all": true,
@@ -33,6 +34,7 @@
         "exists": true,
         "createDir": true,
         "readFile": true,
+        "readDir": true,
         "writeFile": true
       },
       "path": {

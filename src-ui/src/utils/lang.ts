@@ -32,6 +32,20 @@ const en = {
   configHistoryClasteringSizeMIN: "Size to a history claster (MIN)",
   minigraphMaxTimeMIN: "Scale of row minigraph (MIN)",
 
+  promptDeletedRowsInHistHeader: "There are some deleted rows in history",
+  promptDeletedRowsInHistText: "Do you want to recreate them? (name and address are not stored in history)",
+  promptWhatDoYouWhantToExport: "What do you want to export?",
+  promptWhatDoYouWhantToImport: "What do you what to import?",
+  optionHistJSON: "Ping history in json",
+  optionConfig: "Configuration",
+  optionState: "Rows state",
+
+  toastExported: "Exported",
+  toastExportError: "Export Error!",
+  toastImportError: "Import Error!",
+  toastConfigImported: "Configuration imported!",
+  toastStateImported: "State imported!",
+
   contextMenuPlay: "Start",
   contextMenuPause: "Pause",
   contextMenuRemove: "Remove",
@@ -57,10 +71,12 @@ const en = {
   colorBlue: "Blue",
   colorPurple: "Purple",
   colorPink: "Pink",
+  colorWhite: "White",
 
   s: "s",
   ms: "ms",
-  multiple: "[multiple]"
+  multiple: "[multiple]",
+  cancel: "Сancel"
 };
 
 const ua: typeof en = {
@@ -97,6 +113,21 @@ const ua: typeof en = {
   configHistoryClasteringSizeMIN: "Розмір одного кластеру історії (ХВ)",
   minigraphMaxTimeMIN: "Час відображення мініграфу рядка (ХВ)",
 
+  
+  promptDeletedRowsInHistHeader: "В історії є строки які були видалені",
+  promptDeletedRowsInHistText: "Відтвирити ті строки? (Ім'я, адреса у історії не зберігаються)",
+  promptWhatDoYouWhantToExport: "Що саме потрібно експортувати?",
+  promptWhatDoYouWhantToImport: "Що саме потрібно імпортувати?",
+  optionHistJSON: "Історію у json форматі",
+  optionConfig: "Налаштування",
+  optionState: "Стан строк",
+
+  toastExported: "Експортовано",
+  toastExportError: "Помилка експортування!",
+  toastImportError: "Помилка імпортування!",
+  toastConfigImported: "Налаштування імпортовано!",
+  toastStateImported: "Стан рядків імпортовано!",
+
   contextMenuPlay: "Розпочати",
   contextMenuPause: "Призупинити",
   contextMenuRemove: "Видалити",
@@ -122,10 +153,12 @@ const ua: typeof en = {
   colorBlue: "Синій",
   colorPurple: "Фіолетовий",
   colorPink: "Рожевий",
+  colorWhite: "Білий",
 
   s: "с",
   ms: "мс",
-  multiple: "[різні значення]"
+  multiple: "[різні значення]",
+  cancel: "Відмінити"
 };
 
 const fr: typeof en = {
@@ -161,7 +194,22 @@ const fr: typeof en = {
   configHistoryClasteringStartMIN: "Time to start clastering history (MIN)",
   configHistoryClasteringSizeMIN: "Size to a history claster (MIN)",
   minigraphMaxTimeMIN: "Scale of row minigraph (MIN)",
+
   
+  promptDeletedRowsInHistHeader: "There are some deleted rows in history",
+  promptDeletedRowsInHistText: "Do you want to recreate them? (Name and address could not be restored)",
+  promptWhatDoYouWhantToExport: "What do you want to export?",
+  promptWhatDoYouWhantToImport: "What do you what to import?",
+  optionHistJSON: "Ping history in json",
+  optionConfig: "Configuration",
+  optionState: "Rows state",
+
+  toastExported: "Exported",
+  toastExportError: "Export Error!",
+  toastImportError: "Import Error!",
+  toastConfigImported: "Configuration imported!",
+  toastStateImported: "State imported!",
+
   contextMenuPlay: "Start",
   contextMenuPause: "Pause",
   contextMenuRemove: "Remove",
@@ -187,10 +235,12 @@ const fr: typeof en = {
   colorBlue: "Blue",
   colorPurple: "Purple",
   colorPink: "Pink",
+  colorWhite: "White",
 
   s: "s",
   ms: "ms",
-  multiple: "[multiple]"
+  multiple: "[multiple]",
+  cancel: "Сancel"
 };
 
 export type Word = keyof typeof en; 

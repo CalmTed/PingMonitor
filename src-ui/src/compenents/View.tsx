@@ -1,13 +1,15 @@
 import React, { FC, useEffect, useState } from "react";
-import { DAYinSECONDS, HUNDRED, ONE, TWO, VIEW_TYPE, ZERO } from "src/constants";
-import { StoreModel } from "src/models";
+import { DAYinSECONDS, HUNDRED, ONE, PROMPT_TYPES, TWO, VIEW_TYPE, ZERO } from "src/constants";
+import { Option, StoreModel } from "src/models";
 import styled from "styled-components";
 import { TileRow } from "./TileRow";
-import { readHistDay } from "src/utils/history";
-import { TimelineRow } from "./TimelineRow";
+import { getHistFileList, readHistDay } from "src/utils/history";
 import { ACTION_NAME } from "src/utils/reducer";
 import { toReadibleTime } from "src/utils/toReadible";
 import { TimeGrid } from "./TimeGrid";
+import Select from "./Select";
+import addZero from "src/utils/addZero";
+import { SortableList, SortableItem } from "./TimeLineSortable";
 
 const ViewStyle = styled.div`
   &.tiles{
@@ -31,19 +33,36 @@ const ViewStyle = styled.div`
     align-content: flex-start;
     justify-content: flex-start;
     transition: var(--transition);
-    --sidebarWidth: 17em;
+    .rowList{
+      margin: 4em 0;
+    }
     .datePicker{
-
+      position: fixed;
+      width: var(--sidebarWidth);
+      height: 4em;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(0, 5em);
+      transition: var(--transition);
+      backdrop-filter: blur(5px);
+      .input{
+        background: var(--bg-color);
+      }
     }
     .sliderBlock{
       position: fixed;
       width: calc(100% - 21em);
       bottom: 0;
       left: var(--sidebarWidth);
-      height: 4em;
-      input{
-        width: calc(100% - 2em);
-      }
+      height: 2em;
+      transition: var(--transition);
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(0, 5em); 
     } 
     .timeSlider{
       width: 100%;
@@ -112,7 +131,7 @@ const ViewStyle = styled.div`
   }
 `;
 
-const rowHistUpdateRate = 3000;
+const rowHistUpdateRate = 5000;
 let rowHostLastUpdate = 0;
 
 let mouseDownTarget = null as "start" | "range" | "end" | null;
@@ -132,13 +151,49 @@ export const View: FC<{store: StoreModel}> = ({store}) => {
     const timeNow = new Date().getTime();
     if(timeNow > rowHostLastUpdate + rowHistUpdateRate) {
       rowHostLastUpdate = timeNow;
-      readHistDay().then(hist => {
+      readHistDay(store.config.view === VIEW_TYPE.timeline ? store.state.dateOpened : undefined).then(hist => {
         if(hist) {
           setHist(hist);
         }
       });
     }
   });
+  const handleDateChange = (newVal: string) => {
+    store.dispatch({
+      name: ACTION_NAME.APP_SET_DATE,
+      payload: newVal
+    });
+    readHistDay(newVal).then(hist => {
+      if(hist) {
+        const stateRowsIds = store.state.rows.map(row => row.id);
+        const histRowsIds = hist.rowIds.map(row => parseInt(row));
+        if(JSON.stringify(histRowsIds) !== JSON.stringify(stateRowsIds)) {
+          const uncreatedRowsIds = histRowsIds.filter(histRow => !stateRowsIds.includes(histRow));
+          if(uncreatedRowsIds.length !== ZERO) {
+            store.showPrompt(
+              store.t("promptDeletedRowsInHistHeader"),
+              store.t("promptDeletedRowsInHistText"),
+              PROMPT_TYPES.confirm,
+              () => { null; },
+              (res:string) => {
+                console.log(res);
+                if(res === "true") {
+                  uncreatedRowsIds.map(item => {
+                    store.dispatch({
+                      name: ACTION_NAME.ROW_ADD,
+                      payload:{
+                        id: item
+                      }
+                    });
+                  });
+                }
+              });
+          }
+        }
+        setHist(hist);
+      }
+    });
+  };
 
   const getHist = (rowId: number) => {
     const index = hist.rowIds.map(id => parseInt(id)).indexOf(rowId);
@@ -149,7 +204,7 @@ export const View: FC<{store: StoreModel}> = ({store}) => {
       <TilesView  store={store} getHist={getHist}/>
     }
     {store.config.view === VIEW_TYPE.timeline && 
-      <TimelineView  store={store} getHist={getHist}/>
+      <TimelineView  store={store} getHist={getHist} handleDateChange={handleDateChange}/>
     }
   </>;
 };
@@ -200,9 +255,12 @@ const TilesView: FC<TilesViewModel> = ({store, getHist}) => {
 interface TimelineViewModel{
   store: StoreModel
   getHist: (arg: number) => string[]
+  handleDateChange: (name: string) => void
 }
 
-const TimelineView: FC<TimelineViewModel> = ({store, getHist}) => {
+const TimelineView: FC<TimelineViewModel> = ({store, getHist, handleDateChange}) => {
+  const [hoverTime, setHoverTime] = useState(ZERO);
+  const [dateOptions, setDateOptions] = useState([] as Option[]);
   const handleMouseDown = (e: React.MouseEvent, target: "start" | "range" | "end") => {
     if(!mouseDownTarget) {
       mouseDownTarget = target;
@@ -238,6 +296,17 @@ const TimelineView: FC<TimelineViewModel> = ({store, getHist}) => {
     }
   };
   useEffect(() => {
+    getHistFileList().then((list) => {
+      const oplist = list.map(item => {
+        return {
+          label: item,
+          value: item
+        }; 
+      }).reverse();
+      if(JSON.stringify(oplist) !== JSON.stringify(dateOptions)) {
+        setDateOptions(oplist);
+      }
+    });
     window.addEventListener("mouseup", handleMouseUp, {passive: false});
     window.addEventListener("mousemove", handleMouseMove, {passive: false});
     return () => {
@@ -268,16 +337,68 @@ const TimelineView: FC<TimelineViewModel> = ({store, getHist}) => {
       });
     }
   };
+  const handleMouseMoveGraph = (e: React.MouseEvent) => {
+    const x = e.clientX;
+    const graphElement = document.querySelector(".timeGrid") as HTMLElement;
+    const startX = graphElement?.offsetLeft || ZERO;
+    const width = graphElement?.clientWidth || HUNDRED;
+    const koof = (store.state.timelineEnd - store.state.timelineStart) / width;
+    const targetTime = store.state.timelineStart + ((x - startX) *  koof);
+    if(hoverTime !== targetTime) {
+      setHoverTime(targetTime);
+    } 
+  };
+  const date = new Date();
+  const dateToday = `${date.getFullYear()}${addZero(String(date.getMonth() + ONE), TWO)}${addZero(String(date.getDate()), TWO)}.txt`;
+  const isHistoryShowing = store.state.dateOpened !== dateToday;
+  const handleSortEnd = ({oldIndex, newIndex}: {oldIndex: number, newIndex: number}) => {
+    store.dispatch({
+      name: ACTION_NAME.ROWS_SWAP,
+      payload:{
+        from: oldIndex,
+        to: newIndex
+      }
+    });
+  };
   return <ViewStyle
     className="view timeline"
-    onWheelCapture={handleWheelCapture}
   >
-    <TimeGrid store={store} />
+    <TimeGrid
+      store={store} 
+      hoverTime={hoverTime} 
+      onWheelCapture={handleWheelCapture} 
+    />
     <div className="rowList">
-      {store.state.rows.map(row => <TimelineRow key={row.id} store={store} row={row} hist={getHist(row.id)}></TimelineRow>)}
+      <SortableList
+        onSortEnd={handleSortEnd}
+        axis={"y"}
+        lockAxis="y"
+        lockToContainerEdges={true}
+        lockOffset={["10%", "10%"]}
+        useDragHandle={true}
+      >
+        {store.state.rows.map((row, i) => 
+          <SortableItem
+            index={i}
+            key={row.id}
+            store={store}
+            row={row}
+            hist={getHist(row.id)}
+            onWheelCapture={handleWheelCapture}
+            onMouseMoveCapture={handleMouseMoveGraph}
+            hoverTime={hoverTime}
+          >
+          </SortableItem>)} 
+      </SortableList>
     </div>
-    <div className="datePicker">
-      {/* {toReadibleTime(store.state.timelineStart)} - {toReadibleTime(store.state.timelineEnd)} */}
+    <div className={`datePicker ${isHistoryShowing ? " history" : ""}`}>
+      <Select
+        value={store.state.dateOpened || ""}
+        options={dateOptions}
+        onChange={handleDateChange}
+        styles={ isHistoryShowing ? {"borderColor":"var(--red)"} as React.CSSProperties : undefined} 
+        optionsUptop={true}
+      />
     </div>
     <div className="sliderBlock">
       <div className="timeSlider"

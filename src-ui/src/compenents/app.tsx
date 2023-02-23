@@ -14,6 +14,7 @@ import { ACTION_NAME } from "src/utils/reducer";
 import { ContextMenu } from "./ContextMenu";
 import { contextMenuHook } from "src/utils/contextMenuHook";
 import { RowEditModal } from "./RowEditModal";
+import { appWindow } from "@tauri-apps/api/window";
 
 interface AppInterface {
   state: StateModel
@@ -27,10 +28,15 @@ const AppStyle = styled.div`
     visibility: hidden;
     transform: scale(0.7);
   }
-  :hover .toolItem{
+  :hover .toolItem, :hover .sliderBlock, :hover .datePicker{
     opacity: 1;
     visibility: visible;
     transform: scale(1);
+  }
+  :hover .sliderBlock, :hover .datePicker{
+    opacity: 1;
+    visibility: visible;
+    transform: translate(0);
   }
 `; 
 
@@ -77,6 +83,12 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
             param: "isSelected",
             value: !isAllSelected
           }
+        });
+      }
+      if(e.code === "KeyF" && e.ctrlKey) {
+        e.preventDefault();
+        appWindow.isFullscreen().then((isFullscreen) => {
+          appWindow.setFullscreen(!isFullscreen);
         });
       }
     };
@@ -151,6 +163,7 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
       type={promptData.type}
       oncancel={promptData.oncancel}
       onconfirm={promptData.onconfirm}
+      t={getT(config.language || LANG_CODE.en)}
       confirmButtonTitle={promptData.confirmButtonTitle}
       options={promptData.options} 
     />

@@ -5,7 +5,7 @@ import styled from "styled-components";
 
 type allowedSizeType = ROW_SIZE.x4 | ROW_SIZE.x6;
 
-type pingReport = {
+export type pingReport = {
   time: number,
   status: number,
   dellay: number,
@@ -185,8 +185,6 @@ interface LineComponentModel {
 
 const PathStyle = styled.g`
   & path{
-    // transition: all .1s ease;
-    fill: none;
     stroke-width: 0.15em;
   }
 `;
@@ -196,20 +194,13 @@ export const Line:FC<LineComponentModel> = ({width, height, margin, maxDellay, m
   const oneSecKoof = (width - margin * TWO) / timeRange;
   const dellayKoof = (height - margin * TWO) / (maxDellay || ONE);
   const getD:(arg: pingReport[], isOnline: boolean) => string = (hist, isOnline) => {
-    return hist.map((item, i, arr) => {
+    return hist.map((item) => {
       const getX:(arg: pingReport) => number = (item) => {
         return margin + (item.time - minTime) * oneSecKoof;
       };
       const getY:(arg: pingReport) => number = (item) => {
         return (height - margin) - (item.dellay * dellayKoof); //inverting Y
       };
-      if(i === ZERO) {
-        // return `M${getX(item)}, ${getY(item)} L${getX(item)},${(height - margin * TWO)}`;
-      }
-      if(i === arr.length - ONE) {
-        // return `M${getX(item)},${getY(item)} M${getX(arr[0])},${getY(arr[0])} z`;
-        // return `M${getX(item)},${getY(item)} m${getX(arr[0])},${getY(arr[0])} z`;
-      }
       const x1 = getX(item);
       const y1 = getY(item);
       if((item.status === ZERO && isOnline)) {
@@ -225,24 +216,20 @@ export const Line:FC<LineComponentModel> = ({width, height, margin, maxDellay, m
   const pathDNonOnline = getD(hist, false);
   return <PathStyle>
     <path
-      className="hoverAction"
       d={pathDNonOnline}
       style={{
         stroke: "var(--graph-red)"
       }}
       strokeLinecap="round"
       strokeLinejoin="round"
-      rx="0.1"
     />
     <path
-      className="hoverAction"
       d={pathD}
       style={{
         stroke: "var(--graph-green)"
       }}
       strokeLinecap="round"
       strokeLinejoin="round"
-      rx="0.1"
     />;
   </PathStyle>;
 };

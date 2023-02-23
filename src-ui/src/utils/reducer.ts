@@ -1,4 +1,4 @@
-import { DAYinSECONDS, ONE, ROW_COLOR, ROW_SIZE, THAUSAND, TWO } from "src/constants";
+import { DAYinSECONDS, ONE, ROW_COLOR, ROW_SIZE, THAUSAND, TWO, ZERO } from "src/constants";
 import { getADefaultRow } from "src/initials";
 import { RowModel, StateModel, UpdateTimeStrategyModel } from "src/models";
 import { parseResultInterface } from "./ping";
@@ -12,6 +12,8 @@ export enum ACTION_NAME {
   APP_SET_CONFIG_OPEN_STATE = "APP_SET_CONFIG_OPEN_STATE",
   APP_SET_ZOOM = "APP_SET_ZOOM",
   APP_SET_TIMELINE_RANGE = "APP_SET_TIMELINE_RANGE",
+  APP_SET_DATE = "APP_SET_DATE",
+  APP_IMPORT_STATE = "APP_IMPORT_STATE",
 
   CONFIG_RERENDER = "CONFIG_RERENDER",
 
@@ -20,7 +22,8 @@ export enum ACTION_NAME {
   ROWS_SET_PARAM = "ROW_SET_PARAM",
   ROWS_SET_UTS = "ROW_SET_UTS",
   ROWS_TOGGLE_EDIT = "ROW_TOGGLE_EDIT",
-  ROWS_REPORT_PING = "ROW_REPORT_PING"
+  ROWS_REPORT_PING = "ROW_REPORT_PING",
+  ROWS_SWAP = "ROW_SWAP",
 }
 
 export type ActionType = {
@@ -37,9 +40,18 @@ export type ActionType = {
     end: number
   }
 } | {
+  name: ACTION_NAME.APP_SET_DATE
+  payload: string
+} | {
+  name: ACTION_NAME.APP_IMPORT_STATE
+  payload: StateModel
+} | {
   name: ACTION_NAME.CONFIG_RERENDER
 } | {
   name: ACTION_NAME.ROW_ADD
+  payload?:{
+    id: number
+  }
 } | {
   name: ACTION_NAME.ROWS_REMOVE
   payload: number[]
@@ -67,6 +79,12 @@ export type ActionType = {
     timeToAlarmMS: number
     isAlarmed?: boolean,
     isMuted?: boolean,
+  }
+} | {
+  name: ACTION_NAME.ROWS_SWAP,
+  payload: {
+    from: number,
+    to: number
   }
 }
 
@@ -131,6 +149,21 @@ const appReducer: (state: StateModel, action: ActionType) => StateModel | null =
       };
     }
     break;
+  case ACTION_NAME.APP_SET_DATE:
+    if(typeof action.payload === "string") {
+      ret = {
+        ...state,
+        dateOpened: action.payload
+      };
+    }
+    break;
+  case ACTION_NAME.APP_IMPORT_STATE:
+    if(typeof action.payload === "object" && JSON.stringify(Object.keys(action.payload).sort()) === JSON.stringify(Object.keys(state).sort())) {
+      ret = {
+        ...action.payload
+      };
+    }
+    break;
   default: 
     console.error("Unknown app action: ", action);
   }
@@ -141,7 +174,7 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
   let ret: StateModel | null = null;
   switch(action.name) {
   case ACTION_NAME.ROW_ADD:
-    const updatedRows = [...state.rows, getADefaultRow()];
+    const updatedRows = [...state.rows, getADefaultRow(action?.payload?.id)];
     ret = {
       ...state,
       rows: updatedRows
@@ -219,6 +252,17 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
     ret = {
       ...state,
       rows: reportChangedRows
+    };
+    break;
+  case ACTION_NAME.ROWS_SWAP:
+    if(action.payload.from === action.payload.to) {
+      break;
+    }
+    const r = JSON.parse(JSON.stringify(state.rows));
+    r.splice(action.payload.to, ZERO, r.splice(action.payload.from, ONE)[0]);
+    ret = {
+      ...state,
+      rows: r
     };
     break;
   default: 

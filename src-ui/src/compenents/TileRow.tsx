@@ -140,7 +140,7 @@ const TileRowStyle = styled.div`
     }
   }
   &:first-child:hover .indicator{
-    margin-left: 1.7em;
+    margin-top: 1.7em;
   }
   &.alarmed .indicator, &.muted .indicator, &.selected .indicator, &:hover .indicator{
     opacity: 1;
@@ -260,18 +260,10 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
       dellay: results.avgDellay,
       ttl: results.ttl
     });
-    // const hist = await readHistDay();
     const isNonOnlinePastLimit:(hist: parseResultInterface[], timeToActivate: number) => boolean = (hist, timeToActivate) => {
       if(hist.length === ZERO) {
         return false;   
       }
-
-      // if there is hisrory older then TTA
-      // and there are not even one online ping
-
-      //IF there are no online reports in the last TTA limit 
-      //AND first hist item as older then TTA limit
-      //THEN true
       const d = new Date();
       const timeNow = d.getHours() * HOURinSECONDS + d.getMinutes() * MINUTEinSECONDS + d.getSeconds();
       const TTALimit = timeNow - (timeToActivate);
@@ -279,7 +271,6 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
       const lastOnlineReports = lastReports.filter(item => item.status === HOST_STATE.online);
       const firstReportIsOlderThenTTA = hist[0].time < TTALimit;
       return !lastOnlineReports.length && lastReports.length > ZERO && firstReportIsOlderThenTTA ? true : false; 
-
     };
     const rowHist = row.lastPings;
     const isAlarmed = !row.isMuted && !row.isPaused && isNonOnlinePastLimit(rowHist, store.config.timeToAlarm) ? true : undefined;

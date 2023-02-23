@@ -6,6 +6,8 @@ interface SelectModel {
   value: string;
   options: Option[] 
   onChange: (newValue:string) => void
+  styles?: React.CSSProperties
+  optionsUptop?: boolean
 }
 
 const SelectStyle = styled.div`
@@ -70,9 +72,17 @@ const SelectStyle = styled.div`
   max-height: 30vh;
   overflow-y: auto;
   z-index: 9000;
+  &.uptop{
+    transform: scale(0) translate(0, calc(-100% - 3em));
+    transform-origin: bottom;
+  }
 }
 .selectTitle:focus + .selectOptions{
   transform: scale(1);
+  opacity: 1;
+}
+.selectTitle:focus + .selectOptions.uptop{
+  transform: scale(1) translate(0, calc(-100% - 3em));
   opacity: 1;
 }
 .selectOption{
@@ -94,7 +104,7 @@ const SelectStyle = styled.div`
 }
 `;
 
-const Select: FC<SelectModel> = ({value, options, onChange}) => {
+const Select: FC<SelectModel> = ({value, options, onChange, styles, optionsUptop}) => {
   const handleSelectSet = (newValue: string) => {
     if(newValue !== value) {
       onChange(newValue);
@@ -102,8 +112,8 @@ const Select: FC<SelectModel> = ({value, options, onChange}) => {
   };
   return (
     <SelectStyle className="select">
-      <button className="input input-outline selectTitle"><span>{ options.find(option => option.value === value)?.label || value}</span></button>
-      <div className="selectOptions">
+      <button className="input input-outline selectTitle" style={styles}><span>{ options.find(option => option.value === value)?.label || value}</span></button>
+      <div className={`selectOptions${optionsUptop ? " uptop" : ""}`}>
         {
           options.filter(item => item.value).map(({label, value}) => {
             return (<p key={value} className={"selectOption" + ((value === value || label === value) ? " selected" : "")} onMouseDown={() => { value ? handleSelectSet(value) : null; }} >{label}</p>);

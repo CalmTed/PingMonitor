@@ -1,7 +1,9 @@
 import { HOST_STATE, ROW_COLOR, ROW_SIZE, VERSION } from "./constants";
 import { RowModel, StateModel } from "./models";
+import addZero from "./utils/addZero";
 
 export const getInitialState: () => StateModel = () => {
+  const date = new Date(), one = 1, two = 2;
   return {
     version: VERSION,
     lastChanged: 0,
@@ -11,7 +13,7 @@ export const getInitialState: () => StateModel = () => {
     zoom: 100,
     timelineStart: 0,
     timelineEnd: 86400,
-    dateOpened: null
+    dateOpened: `${date.getFullYear()}${addZero(String(date.getMonth() + one), two)}${addZero(String(date.getDate()), two)}.txt`
   };
 };
 
@@ -19,9 +21,9 @@ export const getInitialRows: () => RowModel[] = () => {
   return [getADefaultRow()];
 };
 
-export const getADefaultRow: () => RowModel = () => {
+export const getADefaultRow: (id?: number) => RowModel = (id = genId()) => {
   return {
-    id: genId(),
+    id: id,
     label: "DefaultRow",
     address: "localhost",
     updateTimeStrategy: {

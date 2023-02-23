@@ -63,6 +63,18 @@ export const setConfig: (name: keyof ConfigListModel, value: ConfigItemType) => 
   }
 };
 
+export const importConfig: (config: ConfigModel) => void = (config) => {
+  const importedKeys = Object.keys(config);
+  Object.entries(getConfigList()).map(([key, val]: [string, any]) => {
+    if(importedKeys.includes(key)) {
+      setConfig(key as keyof ConfigListModel, {
+        ...val,
+        value: config[key as keyof ConfigListModel]
+      });
+    }
+  });
+};
+
 export type ConfigItemType = {
   name: CONFIG_NAMES
   group: Word

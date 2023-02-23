@@ -5,6 +5,7 @@ import styled from "styled-components";
 import Button from "./Button";
 import Select from "./Select";
 import Input from "./Input";
+import { Word } from "src/utils/lang";
 
 interface PromptComponentModel {
   isShown: boolean
@@ -13,6 +14,7 @@ interface PromptComponentModel {
   type: PROMPT_TYPES
   oncancel: () => void
   onconfirm : (arg: string) => void
+  t: (w: Word) => string
   options?: Option[]
   confirmButtonTitle?: string
 }
@@ -35,7 +37,7 @@ const PromptStyle = styled.div`
     cursor: pointer;
   }
   & .container{
-    width: 18em;
+    width: 22em;
     min-height: 8em;
     max-height: 16em;
     left: calc(50vw - 10em);
@@ -90,7 +92,7 @@ const PromptStyle = styled.div`
 `;
 
 
-const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel, onconfirm, options, confirmButtonTitle}) => {
+const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel, onconfirm, t, options, confirmButtonTitle}) => {
   const defaultOption = typeof options === "object" ? options[0].value : "";
   const [selectValue, setSelectValue] = useState(defaultOption);
   if(selectValue === "" && selectValue !== defaultOption) {
@@ -134,7 +136,7 @@ const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel
         )
       }
       <div className="buttons">
-        <Button onClick={() => handleConfirm(false)} title="Cancel" type="secondary"/>
+        <Button onClick={() => handleConfirm(false)} title={t("cancel")} type="secondary"/>
         <Button onClick={() => handleConfirm(true)} title={confirmButtonTitle ? confirmButtonTitle : "OK"} type="primary"/>
       </div>
     </div>

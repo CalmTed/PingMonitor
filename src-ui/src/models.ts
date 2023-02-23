@@ -28,7 +28,7 @@ export interface StateModel{
   zoom: number
   timelineStart: number
   timelineEnd: number
-  dateOpened: string | null
+  dateOpened: string
 }
 
 export interface RowModel{

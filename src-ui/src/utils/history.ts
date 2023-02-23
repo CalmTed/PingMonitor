@@ -1,6 +1,6 @@
-import { FIVE, HOST_STATE, HOURinSECONDS, MINUTEinSECONDS, ONE, SIXTEEN, ZERO } from "src/constants";
+import { FIVE, HOST_STATE, HOURinSECONDS, MINUTEinSECONDS, ONE, SIXTEEN, TWO, ZERO } from "src/constants";
 import addZero from "./addZero";
-import { readFile, writeFile } from "./fs";
+import { readFile, readFolderItems, writeFile } from "./fs";
 import { getConfig } from "./config";
 
 
@@ -10,8 +10,12 @@ let histLastClastered = 0;
 const histClasteringUpdateRate = 10000;
 export const getHistFileList: () => Promise<string[]> = async () => {
   //lookup for a file
-  console.warn("TODO HERE");
-  return ["20230128.txt"];
+  const items = await readFolderItems("");
+  if(!items) {
+    const date = new Date();
+    return [`${date.getFullYear()}${addZero(String(date.getMonth() + ONE), TWO)}${addZero(String(date.getDate()), TWO)}.txt`];
+  }
+  return items.filter(item => /[0-9]{8}.txt/g.test(item?.name || "")).map(item => item.name || "");
 };
 
 export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:string[][]} | null> = async (fileName) => {

@@ -1,11 +1,13 @@
 import React, { FC, useEffect, useState } from "react";
-import { HUNDRED, ONE, ZERO } from "src/constants";
+import { HUNDRED, ONE, TWO, ZERO } from "src/constants";
 import { StateModel, StoreModel } from "src/models";
 import { toReadibleTime } from "src/utils/toReadible";
 import styled from "styled-components";
 
 interface TimeGridModel{
   store: StoreModel
+  hoverTime: number
+  onWheelCapture: (e:React.WheelEvent) => void
 }
 
 interface timeType {
@@ -24,7 +26,7 @@ const TimeGridStyle = styled.div`
   width: calc(100% - var(--sidebarWidth) - 0.2em);
   height: calc(100% - 0.8em);
   left: var(--sidebarWidth);
-  .grids{
+  .grids, .hoverLine{
     strokeWidth: 1em;
     stroke: var(--gray);
   }
@@ -33,7 +35,7 @@ const TimeGridStyle = styled.div`
   }
 `;
 
-export const TimeGrid: FC<TimeGridModel> = ({store}) => {
+export const TimeGrid: FC<TimeGridModel> = ({store, hoverTime, onWheelCapture}) => {
   const [svgSize, setSvgSize] = useState({
     width: 1000,
     height: 600
@@ -62,18 +64,20 @@ export const TimeGrid: FC<TimeGridModel> = ({store}) => {
       43200: 7200,
       100000: 14400
     };
+    const widthToHalf = 800;
     const ret:timeType[] = [];
     const range = state.timelineEnd - state.timelineStart;
     const closestTimeStep = Object.entries(timeToStepTime).filter(item => parseInt(item[0]) < range).reverse()[0] || ["1", HUNDRED];
-    const startingDifference = (closestTimeStep[1] - state.timelineStart % closestTimeStep[1]);
+    const selectedStepTime = closestTimeStep[1] * (svgSize.width < widthToHalf ? TWO : ONE);
+    const startingDifference = (selectedStepTime - state.timelineStart % selectedStepTime);
     const timeToPixelsKoof = svgSize.width / range;
-    for(let i = ZERO; i < range / closestTimeStep[1]; i++) {
-      const time = state.timelineStart + startingDifference + (closestTimeStep[1] * i);
+    for(let i = ZERO; i < range / selectedStepTime; i++) {
+      const time = state.timelineStart + startingDifference + (selectedStepTime * i);
       const x = (time - state.timelineStart) * timeToPixelsKoof;
       ret.push({
         time,
         x,
-        label: toReadibleTime(state.timelineStart + startingDifference + (closestTimeStep[1] * i))
+        label: toReadibleTime(state.timelineStart + startingDifference + (selectedStepTime * i))
       });
     }
     return ret;
@@ -83,10 +87,26 @@ export const TimeGrid: FC<TimeGridModel> = ({store}) => {
       return `M ${time.x} 0, L${time.x} ${svgSize.height}`;
     }).join(" ");
   };
+  const getHoverLineD = (x: number, svgSize: svgSizeType) => {
+    
+    return `M ${x} 0, L${x} ${svgSize.height}`;
+  };
   const times = getTimes(store.state);
+  
+  const hoverData = ((state: StateModel, hoverTime: number) => {
+    const range = state.timelineEnd - state.timelineStart;
+    const timeToPixelsKoof = svgSize.width / range;
+    const x = (hoverTime - state.timelineStart) * timeToPixelsKoof;
+    return {
+      x,
+      label: toReadibleTime(hoverTime)
+    };
+  })(store.state, hoverTime);
+
   const labelOffsetLeft = 30;
   return <TimeGridStyle
     className="timeGrid"
+    onWheelCapture={onWheelCapture}
   >
     <svg
       viewBox={`0 0 ${svgSize.width} ${svgSize.height}`}
@@ -101,6 +121,21 @@ export const TimeGrid: FC<TimeGridModel> = ({store}) => {
           {time.label}
         </text>;
       })}
+      <path className="hoverLine" d={getHoverLineD(hoverData.x, svgSize)} />
+      <rect
+        x={hoverData.x - labelOffsetLeft}
+        width={labelOffsetLeft * TWO}
+        y={0}
+        height={26}
+        fill="var(--bg-color)"
+      ></rect>
+      <text
+        key={`${hoverData.x}${hoverData.label}`}
+        x={hoverData.x - labelOffsetLeft}
+        y={13}
+      >
+        {hoverData.label}
+      </text>;
     </svg>
   </TimeGridStyle>;
 };

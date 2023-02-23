@@ -1,10 +1,13 @@
 import React, { FC } from "react";
-import { StoreModel } from "src/models";
+import { StateModel, StoreModel } from "src/models";
 import { Word } from "src/utils/lang";
 import styled from "styled-components";
 import { Icon, IconName } from "./Icon";
 import { ACTION_NAME } from "src/utils/reducer";
 import { appWindow } from "@tauri-apps/api/window";
+import { PROMPT_TYPES, VIEW_TYPE } from "src/constants";
+import { EXPORT_TYPE, IMPORT_TYPE, exportData, importData } from "src/utils/importExport";
+import { ConfigListModel, ConfigModel, importConfig, setConfig } from "src/utils/config";
 
 interface MenuComponentModel{
   store: StoreModel
@@ -17,12 +20,19 @@ const MenuStyle = styled.div`
     visibility: visible;
     opacity: 1;
   }
+  &.horizontal .menuButton:focus + .menuList, &.horizontal .menuList:focus-within{
+    top: 5em;
+    left: 0.5em;
+  }
   top: 0;
   left: 0;
   position: fixed;
   display: flex;
   flex-wrap: wrap;
   width: 4em;
+  &.horizontal{
+    flex-wrap: nowrap;
+  }
 `;
 
 export const Menu: FC<MenuComponentModel> = ({store}) => {
@@ -42,12 +52,6 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
     appWindow.isFullscreen().then((isFullscreen) => {
       appWindow.setFullscreen(!isFullscreen);
     });
-    // document.documentElement.requestFullscreen();
-    // if (!document.fullscreenElement) {
-    //   null;
-    // } else if (document.exitFullscreen) {
-    //   document.exitFullscreen();
-    // }
   };
   const handlePauseAll = () => {
     store.dispatch({
@@ -69,12 +73,67 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
       }
     });
   };
-  return <MenuStyle>
+  const handleExport = () => {
+    const exportOptions = [
+      {
+        label: store.t("optionState"),
+        value: EXPORT_TYPE.rowsState
+      },
+      {
+        label: store.t("optionConfig"),
+        value: EXPORT_TYPE.config
+      },
+      {
+        label: store.t("optionHistJSON"),
+        value: EXPORT_TYPE.historyInJSON
+      }
+    ];
+    store.showPrompt(store.t("promptWhatDoYouWhantToExport"), "", PROMPT_TYPES.select, () => { null; }, (ret) => { 
+      exportData(store, ret as EXPORT_TYPE).then((isExported) => {
+        if(isExported) {
+          store.showToast(store.t("toastExported"), "ico_export");
+        }else{
+          store.showToast(store.t("toastExportError"), "ico_export");
+        }
+      });
+    }, undefined, exportOptions);
+  };
+  const handleImport = () => {
+    const importOptions = [
+      {
+        label: store.t("optionState"),
+        value: IMPORT_TYPE.rowsState
+      },
+      {
+        label: store.t("optionConfig"),
+        value: IMPORT_TYPE.config
+      }
+    ];
+    store.showPrompt(store.t("promptWhatDoYouWhantToImport"), "", PROMPT_TYPES.select, () => { null; }, (ret) => { 
+      importData(store, ret as IMPORT_TYPE).then((result) => {
+        if(!result) {
+          store.showToast(store.t("toastImportError"), "ico_import");
+        }
+        if(ret === IMPORT_TYPE.rowsState) {
+          store.dispatch({
+            name: ACTION_NAME.APP_IMPORT_STATE,
+            payload: result as StateModel
+          });
+          store.showToast(store.t("toastStateImported"), "ico_import");
+        }
+        if(ret === IMPORT_TYPE.config) {
+          importConfig(result as ConfigModel);
+          store.showToast(store.t("toastConfigImported"), "ico_import");
+        }
+      });
+    }, undefined, importOptions);
+  };
+  return <MenuStyle className="horizontal">
     <ToolItem store={store} icon="ico_menu" title="titleMenu" classes="menuButton" onClick={() => { return; }}/>
     <MenuList>
       <MenuItem store={store} icon="ico_settings" name="menuItemSettings" title="titleSettings" onClick={handleOpenConfig}></MenuItem>
-      {/* <MenuItem store={store} icon="ico_export" name="menuItemExport" title="titleExport" onClick={() => { return; }}></MenuItem>
-      <MenuItem store={store} icon="ico_import" name="menuItemImport" title="titleImport" onClick={() => { return; }}></MenuItem> */}
+      <MenuItem store={store} icon="ico_export" name="menuItemExport" title="titleExport" onClick={handleExport}></MenuItem>
+      <MenuItem store={store} icon="ico_import" name="menuItemImport" title="titleImport" onClick={handleImport}></MenuItem>
 
     </MenuList>
     <ToolItem store={store} icon="ico_plus" title="titleAdd" onClick={handleAddRow}></ToolItem>
@@ -103,7 +162,6 @@ const ToolItemStyle = styled.div`
   width: 100%;
   aspect-ratio: 1;
   cursor: pointer;
-  display: inline-block;
   margin: 0.2em;
   padding: 0.2em;
   border-radius: var(--radius);
