@@ -7,16 +7,10 @@ import { getRowMethods } from "./TileRow";
 import { Icon } from "./Icon";
 import { Guides, Line, decodePingReport, pingReport } from "./RowGraph";
 import { toReadibleTime } from "src/utils/toReadible";
-import { RowHandler } from "./TimeLineSortable";
+import { SortableHandle } from "react-sortable-hoc";
 
-export interface TimelineRowModel{
-  store: StoreModel
-  row: RowModel
-  hist: string[]
-  onWheelCapture: (e: React.WheelEvent) => void
-  onMouseMoveCapture: (e: React.MouseEvent) => void
-  hoverTime: number
-}
+export const RowHandler:any = SortableHandle(() => <div className="dragHandle"></div>); //eslint-disable-line @typescript-eslint/no-explicit-any
+
 
 const TimelineRowStyle = styled.div`
   width: 100%;
@@ -40,6 +34,10 @@ const TimelineRowStyle = styled.div`
     border-color: var(--row-color);
     border-radius: var(--radius);  
     backdrop-filter: blur(5px);
+    :focus{
+      outline: 0.2em dashed #fff;
+      outline-offset: -0.4em;
+    }
     .label{
       margin-top: 0.1em;
       text-transform: uppercase;
@@ -137,25 +135,32 @@ const TimelineRowStyle = styled.div`
 
 `;
 
-export const TimelineRow: FC<TimelineRowModel> = ({store, row, hist, onWheelCapture, onMouseMoveCapture, hoverTime}) => {
+export interface TimelineRowModel{
+  store: StoreModel
+  row: RowModel
+  hist: string[]
+  onWheelCapture: (e: React.WheelEvent) => void
+  onMouseMoveCapture: (e: React.MouseEvent) => void
+  hoverTime: number
+  tabIndex?: number
+}
+
+export const TimelineRow: FC<TimelineRowModel> = ({store, row, hist, onWheelCapture, onMouseMoveCapture, hoverTime, tabIndex}) => {
   const methods = getRowMethods(store, row);
   useEffect(methods.useEffect);
-
-  const handleToggleCollapsed = () => {
-    methods.handleChange("isCollapsed", !row.isCollapsed, [row.id]);
-  };
-
   const lastPingData = row.lastPings[row.lastPings.length - ONE] as parseResultInterface | undefined;
   const classes = `tileRow ${lastPingData?.status || ""} ${row.isPaused ? " paused" : ""}${row.isBusy ? " busy" : ""}${row.isAlarmed ? " alarmed" : ""}${row.isMuted ? " muted" : ""}${row.isSelected ? " selected" : ""}${row.isCollapsed ? " collapsed" : ""}`;
-
   return <TimelineRowStyle
     className={`row timelineRow ${classes}`}
     onContextMenu={methods.handleContextMenu}
-    onDoubleClick={handleToggleCollapsed}
+    onDoubleClick={methods.handleToggleCollapsed}
     style={{"--rowGroupColor": row.color} as React.CSSProperties}
     title={String(row.id)}
   >
-    <div className="head">
+    <div className="head"    
+      tabIndex={tabIndex}
+      onKeyDown={methods.handleKeyDown}
+    > 
       <div className="indicator" onClick={methods.toggleSelect}>
         { row.isAlarmed &&
           <Icon icon="ico_alarmOn" css={{"--icon-color": "var(--red)"} as React.CSSProperties}/>
@@ -170,7 +175,7 @@ export const TimelineRow: FC<TimelineRowModel> = ({store, row, hist, onWheelCapt
       <RowHandler></RowHandler>
       <div className="label">{row.label}</div>
       {!store.config.hideAddress && <div className="address">{row.address}</div>}
-    </div> 
+    </div>
     <TimelineRowGraph
       store={store}
       histString={hist.length > ZERO ?  hist : []}
@@ -183,15 +188,7 @@ export const TimelineRow: FC<TimelineRowModel> = ({store, row, hist, onWheelCapt
   </TimelineRowStyle>;
 };
 
-interface TimelineRowGraphModel{
-  store: StoreModel
-  histString: string[]
-  isCollapsed: boolean
-  className?: string
-  onWheelCapture: (e: React.WheelEvent) => void
-  onMouseMoveCapture: (e: React.MouseEvent) => void
-  hoverTime: number
-}
+
 
 const TimelineRowGraphStyle = styled.div`
   display: flex;
@@ -219,6 +216,16 @@ const TimelineRowGraphStyle = styled.div`
     opacity: 1;
   }
 `;
+
+interface TimelineRowGraphModel{
+  store: StoreModel
+  histString: string[]
+  isCollapsed: boolean
+  className?: string
+  onWheelCapture: (e: React.WheelEvent) => void
+  onMouseMoveCapture: (e: React.MouseEvent) => void
+  hoverTime: number
+}
 
 const defaultGraphWigth = 1400;
 const defaultGraphHeight = 70;
@@ -265,7 +272,7 @@ const TimelineRowGraph:FC<TimelineRowGraphModel> = ({store, histString, isCollap
   return <TimelineRowGraphStyle
     onWheelCapture={onWheelCapture}
     onMouseMove={onMouseMoveCapture}
-    title={ hoverData ? `${hoverData.label}\n${hoverData.dellay}\n${hoverData.status}\nTTL: ${hoverData.ttl}` : ""}
+    title={ hoverData ? `${hoverData.label}\n${hoverData.dellay}${store.t("ms")}\n${hoverData.status}\nTTL: ${hoverData.ttl}` : ""}
   >
     <svg  
       width="100%"

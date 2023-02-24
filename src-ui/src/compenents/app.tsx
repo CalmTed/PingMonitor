@@ -15,6 +15,8 @@ import { ContextMenu } from "./ContextMenu";
 import { contextMenuHook } from "src/utils/contextMenuHook";
 import { RowEditModal } from "./RowEditModal";
 import { appWindow } from "@tauri-apps/api/window";
+import { AUTOSAVE_TIME_MIN, MINUTEinSECONDS, THAUSAND, TILE_ZOOM_SPEED, ZERO } from "src/constants";
+import { autoSave } from "src/utils/importExport";
 
 interface AppInterface {
   state: StateModel
@@ -23,22 +25,25 @@ interface AppInterface {
 
 const AppStyle = styled.div`
   user-select: none;
-  &:not(:focus-within) .toolItem{
+  & .toolItem{
     opacity: 0;
-    visibility: hidden;
-    transform: scale(0.7);
+    transform: scale(0.8);
   }
-  :hover .toolItem, :hover .sliderBlock, :hover .datePicker{
+  :hover .toolItem, :focus-within .toolItem {
     opacity: 1;
     visibility: visible;
     transform: scale(1);
   }
-  :hover .sliderBlock, :hover .datePicker{
+  :hover .sliderBlock, :hover .datePicker,
+  :focus-within .sliderBlock, :focus-within .datePicker
+  {
     opacity: 1;
     visibility: visible;
     transform: translate(0);
   }
 `; 
+
+let lastAutosave = new Date().getTime() + AUTOSAVE_TIME_MIN;
 
 const App: FC<AppInterface> = ({state, dispatch}) => {
   const firstTime = useRef(true);
@@ -55,9 +60,9 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
       });
       firstTime.current = false;
     }
-    const zero = 0;
+    //cheking if we need to turn on siren
     const audio = (document.querySelector("#siren") as HTMLAudioElement);
-    if(state.rows.filter(row => row.isAlarmed).length > zero) {
+    if(state.rows.filter(row => row.isAlarmed).length > ZERO) {
       audio.paused ? audio.play() : null;
     }else{
       !audio.paused ? audio.pause() : null;
@@ -66,16 +71,15 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if(["Equal", "Minus", "Digit0"].includes(e.code) && e.ctrlKey) { 
         e.preventDefault();
-        const speed = 10;
         const defaultZoom = 100;
-        const newZoom  = e.code === "Digit0" ? defaultZoom : e.code === "Equal" ? state.zoom + speed : state.zoom - speed;
+        const newZoom  = e.code === "Digit0" ? defaultZoom : e.code === "Equal" ? state.zoom + TILE_ZOOM_SPEED : state.zoom - TILE_ZOOM_SPEED;
         store.dispatch({
           name: ACTION_NAME.APP_SET_ZOOM,
           payload: newZoom
         });
       }
       if(e.code === "KeyA" && e.ctrlKey) { 
-        const isAllSelected = store.state.rows.filter(row => !row.isSelected).length === zero;
+        const isAllSelected = store.state.rows.filter(row => !row.isSelected).length === ZERO;
         store.dispatch({
           name: ACTION_NAME.ROWS_SET_PARAM,
           payload: {
@@ -83,6 +87,33 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
             param: "isSelected",
             value: !isAllSelected
           }
+        });
+      }
+      if(e.code === "KeyA" && !e.ctrlKey) {
+        store.dispatch({
+          name: ACTION_NAME.ROWS_SET_PARAM,
+          payload: {
+            rowsId: store.state.rows.map(row => row.id),
+            param: "isAlarmed",
+            value: false
+          }
+        });
+      }
+      if(e.code === "KeyP" && e.ctrlKey) {
+        e.preventDefault();
+        const isAllPaused = store.state.rows.filter(row => !row.isPaused).length === ZERO;
+        store.dispatch({
+          name: ACTION_NAME.ROWS_SET_PARAM,
+          payload: {
+            rowsId: store.state.rows.map(row => row.id),
+            param: "isPaused",
+            value: !isAllPaused
+          }
+        });
+      }
+      if(e.code === "KeyN" && e.ctrlKey) {
+        store.dispatch({
+          name: ACTION_NAME.ROW_ADD
         });
       }
       if(e.code === "KeyF" && e.ctrlKey) {
@@ -126,6 +157,13 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
     const handleContextMenu = (e:MouseEvent) => {
       e.preventDefault();
     };
+    //cheking for autosave
+    if(lastAutosave + (AUTOSAVE_TIME_MIN * MINUTEinSECONDS * THAUSAND) < new Date().getTime()) {
+      lastAutosave = new Date().getTime();
+      autoSave(store).then((result) => {
+        store.showToast(store.t(result ? "toastAutosaveSuccess" : "toastAutosaveFail"), "ico_export");
+      });
+    }
     document.addEventListener("keydown", handleKeyDown, {passive: false});
     document.addEventListener("mouseup", handleMouseUp, {passive: false});
     document.addEventListener("contextmenu", handleContextMenu, {passive: false});
@@ -150,12 +188,21 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
     hideContextMenu
   };
   const appZoomStyle = {"--zoom": state.zoom} as React.CSSProperties;
+  const isModalOpen = store.state.rowEditing !== null || store.state.isConfigOpen || alertData.isShown || promptData.isShown;
   return <AppStyle style={appZoomStyle}>
-    <View store={store}/>
+    <View store={store} isModalOpen={isModalOpen}/>
     <ContextMenu store={store} data={contextMenuData} />
-    <Menu store={store}/>
+    <Menu store={store} isTabable={!isModalOpen}/>
     <RowEditModal store={store} />
     <ConfigModal store={store} />
+    <Alert
+      isShown={alertData.isShown}
+      header={alertData.header}
+      text={alertData.text}
+      oncancel={alertData.oncancel}
+      onconfirm={alertData.onconfirm}
+      t={getT(config.language || LANG_CODE.en)}
+    />
     <Prompt 
       isShown={promptData.isShown}
       header={promptData.header}
@@ -167,14 +214,7 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
       confirmButtonTitle={promptData.confirmButtonTitle}
       options={promptData.options} 
     />
-    {alertData.isShown &&
-    <Alert 
-      isShown={alertData.isShown}
-      header={alertData.header}
-      text={alertData.text}
-      oncancel={alertData.oncancel}
-      onconfirm={alertData.onconfirm}
-    />}
+    
     <Toast
       isShown={toastData.isShown}
       text={toastData.text}

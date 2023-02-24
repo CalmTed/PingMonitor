@@ -3,18 +3,13 @@ import { RowModel, StoreModel } from "src/models";
 import { ACTION_NAME } from "src/utils/reducer";
 import styled from "styled-components";
 import { Icon } from "./Icon";
-import { EIGHT, HOST_STATE, HOURinSECONDS, HUNDRED, MINUTEinSECONDS, ONE, ROW_SIZE, THAUSAND, ZERO } from "src/constants";
+import { EIGHT, HOST_STATE, HOURinSECONDS, HUNDRED, MINUTEinSECONDS, ONE, ROW_SIZE, THAUSAND, TWO, ZERO } from "src/constants";
 import { CMItemModel } from "src/utils/contextMenuHook";
 import ping, { parseResultInterface } from "src/utils/ping";
 import { writeHist } from "src/utils/history";
 import { TileRowGraph } from "./RowGraph";
 import { toReadibleDuration, toReadibleTime } from "src/utils/toReadible";
-
-interface TileRowModel{
-  store: StoreModel
-  row: RowModel
-  hist: string[]
-}
+import addZero from "src/utils/addZero";
 
 const TileRowStyle = styled.div`
   display: flex;
@@ -27,8 +22,14 @@ const TileRowStyle = styled.div`
   overflow: hidden;
   background-color: var(--bg-color);
   --row-color: var(--gray);
+  :focus{
+    outline: 0.2em dashed #fff;
+    outline-offset: -0.5em;
+    & .indicator{
+      outline: 0.1em dashed #fff;
+    }
+  }
   &.online:not(.busy){
-    // --row-color: var(--green);
     --row-color: var(--rowGroupColor);
   }
   &.timeout:not(.busy), &.error:not(.busy){
@@ -215,6 +216,13 @@ const TileRowStyle = styled.div`
   }
 `;
 
+interface TileRowModel{
+  store: StoreModel
+  row: RowModel
+  hist: string[]
+  tabIndex?: number
+}
+
 export const getRowMethods = (store: StoreModel, row: RowModel) => {
   const checkTime = () => {
     if (row.isPaused) {
@@ -224,7 +232,7 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
       return;
     }
     const date = new Date();
-    const dateString = `${date.getFullYear()}${date.getMonth()}${date.getDate()}`;
+    const dateString = `${date.getFullYear()}${addZero((date.getMonth() + ONE).toString(), TWO)}${addZero(date.getDate().toString(), TWO)}`;
     const t = date.getHours() * HOURinSECONDS + date.getMinutes() * MINUTEinSECONDS + date.getSeconds();
     const lastPing = row.lastPings?.[row.lastPings.length - ONE] || {
       status: HOST_STATE.unchecked,
@@ -287,7 +295,7 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
       payload: {
         rowId: row.id,
         result: results,
-        timeToAlarmMS: store.config.timeToAlarm,
+        timeToAlarmS: store.config.timeToAlarm,
         isAlarmed: isAlarmed,
         isMuted: isMuted
       }
@@ -311,8 +319,8 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
   };
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    const top = e.pageY;
-    const left = e.pageX;
+    const top = e.clientY;
+    const left = e.clientX;
     const selectedRows = store.state.rows.filter(row => row.isSelected).map(row => row.id);
     const targetRows = (selectedRows.length > ZERO && row.isSelected) ? selectedRows : [row.id];
     const playButton = row.isPaused ? {
@@ -388,6 +396,48 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
   };
   const toggleSelect = () => {
     handleChange("isSelected", !row.isSelected);
+  
+  };
+  const handleToggleCollapsed = () => {
+    handleChange("isCollapsed", !row.isCollapsed, [row.id]);
+  };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if(e.code === "Space") {
+      toggleSelect();
+    }
+    if(e.code === "KeyC") {
+      handleToggleCollapsed();
+    }
+    if((e.code === "ArrowUp" || e.code === "ArrowDown") && e.ctrlKey) {
+      const oldIndex = store.state.rows.indexOf(row);
+      const length = store.state.rows.length;
+      if(oldIndex === -ONE || (e.code === "ArrowUp" && oldIndex === ZERO) || (e.code === "ArrowDown" && oldIndex === length)) {
+        return;
+      }
+      const newIndex = oldIndex + (e.code === "ArrowDown" ? ONE : -ONE);
+      store.dispatch({
+        name: ACTION_NAME.ROWS_SWAP,
+        payload:{
+          from: oldIndex,
+          to: newIndex
+        }
+      });
+    }
+    if(e.code === "Enter") {
+      const x = HUNDRED;
+      const y = HUNDRED;
+      const evt = new MouseEvent("contextmenu", {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y
+      });
+      e.target.dispatchEvent(evt);
+    }
+  };
+  const closeContextMenu = () => {
+    store.hideContextMenu();
   };
   return {
     checkTime,
@@ -396,6 +446,9 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
     handleChange,
     handleContextMenu,
     toggleSelect,
+    handleToggleCollapsed,
+    handleKeyDown,
+    closeContextMenu,
     useEffect: () => {
       const timeleft = checkTime();
       let timeoutId: number | undefined;
@@ -411,7 +464,7 @@ export const getRowMethods = (store: StoreModel, row: RowModel) => {
   };
 };
 
-export const TileRow: FC<TileRowModel> = ({store, row, hist}) => {
+export const TileRow: FC<TileRowModel> = ({store, row, hist, tabIndex}) => {
   const methods = getRowMethods(store, row);
   useEffect(methods.useEffect);
   
@@ -491,6 +544,8 @@ export const TileRow: FC<TileRowModel> = ({store, row, hist}) => {
     className={`row tileRow ${lastPingData?.status || ""} size${row.size}${row.isPaused ? " paused" : ""}${row.isBusy ? " busy" : ""}${row.isAlarmed ? " alarmed" : ""}${row.isMuted ? " muted" : ""}${row.isSelected ? " selected" : ""}`}
     onContextMenu={methods.handleContextMenu}
     style={{"--rowGroupColor": row.color} as React.CSSProperties}
+    tabIndex={tabIndex}
+    onKeyDown={methods.handleKeyDown}
   >
     <div className="indicator" onClick={methods.toggleSelect}>
       { row.isAlarmed &&

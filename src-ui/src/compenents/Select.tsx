@@ -2,14 +2,6 @@ import React, { FC} from "react";
 import { Option } from "src/models";
 import styled from "styled-components";
 
-interface SelectModel {
-  value: string;
-  options: Option[] 
-  onChange: (newValue:string) => void
-  styles?: React.CSSProperties
-  optionsUptop?: boolean
-}
-
 const SelectStyle = styled.div`
 .input{
   --input-color: var(--blue);
@@ -35,26 +27,26 @@ const SelectStyle = styled.div`
   max-height: 3.5em;
   overflow: hidden;
   text-overflow: ellipsis;
+  span{
+    width: 100%;
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+  :after{
+    content: '';
+    position: absolute;
+    transform: translate(0.6em, 0.3em) rotate(45deg);
+    width: 6px;
+    height: 6px;
+    border: 2px solid var(--text-color);
+    border-left: 0;
+    border-top: 0;
+    transition: var(--transition);
+  }
 }
-.selectTitle span{
-  width: 100%;
-  display: inline-block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-}
-.selectTitle::after{
-  content: '';
-  position: absolute;
-  transform: translate(0.6em, 0.3em) rotate(45deg);
-  width: 6px;
-  height: 6px;
-  border: 2px solid var(--text-color);
-  border-left: 0;
-  border-top: 0;
-  transition: var(--transition);
-}
-.selectTitle:focus:after{
+.selectTitle:focus:after, .selectOptions:focus-within + .selectTitle:after{
   transform: translate(0.6em, 0.3em) rotate(-135deg);
 }
 .selectOptions{
@@ -65,58 +57,78 @@ const SelectStyle = styled.div`
   background: var(--bc-bg);
   backdrop-filter: blur(2.5px);
   box-shadow: var(--shadow);
-  transform: scale(0);
+  transform: scale(0.7);
   opacity: 0;
+  visibility: hidden;
   transition: var(--transition);
   transform-origin: top;
   max-height: 30vh;
   overflow-y: auto;
   z-index: 9000;
+  width: max-content;
   &.uptop{
     transform: scale(0) translate(0, calc(-100% - 3em));
     transform-origin: bottom;
   }
 }
-.selectTitle:focus + .selectOptions{
+.selectTitle:focus + .selectOptions, .selectOptions:focus-within{
   transform: scale(1);
   opacity: 1;
+  visibility: visible;
 }
-.selectTitle:focus + .selectOptions.uptop{
+.selectTitle:focus + .selectOptions.uptop, .selectOptions.uptop:focus-within{
   transform: scale(1) translate(0, calc(-100% - 3em));
   opacity: 1;
+  visibility: visible;
 }
 .selectOption{
   color: #fff;
-  width: 100%;
   padding: 0.6em 1.6em;
   margin: 0;
-  transition: var(--transition);
   max-width: 10em;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.selectOption.selected{
-  font-weight: bolder;
-}
-.selectOption:hover{
+  &.selected{
+    font-weight: bolder;
+  }
+  :hover{
   cursor: pointer;
   background-color: var(--bc-bg-hover);
+  }
+  :focus{
+    outline-offset: -0.2em;
+  }
 }
 `;
 
-const Select: FC<SelectModel> = ({value, options, onChange, styles, optionsUptop}) => {
+interface SelectModel {
+  value: string;
+  options: Option[] 
+  onChange: (newValue:string) => void
+  styles?: React.CSSProperties
+  optionsUptop?: boolean
+  tabIndex?: number
+}
+
+const Select: FC<SelectModel> = ({value, options, onChange, styles, optionsUptop, tabIndex}) => {
+  const selectValue = value;
   const handleSelectSet = (newValue: string) => {
-    if(newValue !== value) {
+    if(newValue !== selectValue) {
       onChange(newValue);
+    }
+  };
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if(e.code === "Enter") {
+      (e.target as HTMLElement).click();
     }
   };
   return (
     <SelectStyle className="select">
-      <button className="input input-outline selectTitle" style={styles}><span>{ options.find(option => option.value === value)?.label || value}</span></button>
+      <button className="input input-outline selectTitle" style={styles} tabIndex={tabIndex}><span>{ options.find(option => option.value === selectValue)?.label || selectValue}</span></button>
       <div className={`selectOptions${optionsUptop ? " uptop" : ""}`}>
         {
           options.filter(item => item.value).map(({label, value}) => {
-            return (<p key={value} className={"selectOption" + ((value === value || label === value) ? " selected" : "")} onMouseDown={() => { value ? handleSelectSet(value) : null; }} >{label}</p>);
+            return (<p key={value} className={"selectOption" + ((value === selectValue || label === selectValue) ? " selected" : "")} onClick={() => { value ? handleSelectSet(value) : null; }} onKeyUp={handleKeyUp} tabIndex={tabIndex}>{label}</p>);
           })
         }
       </div>

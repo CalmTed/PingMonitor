@@ -28,11 +28,7 @@ export default [
           preventAssignment: true
       }),
       commonjs({
-        include: /node_modules/,
-        namedExports: {
-            'react': ["useState", "useEffect"],
-            'styled-components': [ 'styled', 'css', 'ThemeProvider' ]
-        }
+        include: /node_modules/
     })
     ]
   }

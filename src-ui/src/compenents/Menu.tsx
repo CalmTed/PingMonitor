@@ -5,12 +5,13 @@ import styled from "styled-components";
 import { Icon, IconName } from "./Icon";
 import { ACTION_NAME } from "src/utils/reducer";
 import { appWindow } from "@tauri-apps/api/window";
-import { PROMPT_TYPES, VIEW_TYPE } from "src/constants";
-import { EXPORT_TYPE, IMPORT_TYPE, exportData, importData } from "src/utils/importExport";
-import { ConfigListModel, ConfigModel, importConfig, setConfig } from "src/utils/config";
+import { EXPORT_TYPE, IMPORT_TYPE, LAST_UPDATE, ONE, PROMPT_TYPES, VERSION } from "src/constants";
+import {  exportData, importData } from "src/utils/importExport";
+import {  ConfigModel, importConfig } from "src/utils/config";
 
 interface MenuComponentModel{
   store: StoreModel
+  isTabable: boolean
 }
 
 
@@ -35,7 +36,7 @@ const MenuStyle = styled.div`
   }
 `;
 
-export const Menu: FC<MenuComponentModel> = ({store}) => {
+export const Menu: FC<MenuComponentModel> = ({store, isTabable}) => {
   const handleAddRow = () => {
     store.dispatch({
       name: ACTION_NAME.ROW_ADD
@@ -128,23 +129,28 @@ export const Menu: FC<MenuComponentModel> = ({store}) => {
       });
     }, undefined, importOptions);
   };
+  const handleShowCopyright = () => {
+    store.showAlert(`${store.t("copyrightName")} ${VERSION} ${LAST_UPDATE}`, `${store.t("copyrightText")} https://github.com/CalmTed/PingMonitor/releases/`, () => { null; }, () => { null; });
+  };
+  const menuTabIndex: number | undefined = isTabable ? ONE : undefined;
   return <MenuStyle className="horizontal">
-    <ToolItem store={store} icon="ico_menu" title="titleMenu" classes="menuButton" onClick={() => { return; }}/>
+    <ToolItem store={store} icon="ico_menu" title="titleMenu" classes="menuButton" onClick={() => { return; }} tabIndex={menuTabIndex}/>
     <MenuList>
-      <MenuItem store={store} icon="ico_settings" name="menuItemSettings" title="titleSettings" onClick={handleOpenConfig}></MenuItem>
-      <MenuItem store={store} icon="ico_export" name="menuItemExport" title="titleExport" onClick={handleExport}></MenuItem>
-      <MenuItem store={store} icon="ico_import" name="menuItemImport" title="titleImport" onClick={handleImport}></MenuItem>
+      <MenuItem store={store} icon="ico_settings" name="menuItemSettings" title="titleSettings" onClick={handleOpenConfig} tabIndex={menuTabIndex}></MenuItem>
+      <MenuItem store={store} icon="ico_export" name="menuItemExport" title="titleExport" onClick={handleExport} tabIndex={menuTabIndex}></MenuItem>
+      <MenuItem store={store} icon="ico_import" name="menuItemImport" title="titleImport" onClick={handleImport} tabIndex={menuTabIndex}></MenuItem>
+      <MenuItem store={store} icon="pic_pingMonitor" name="menuItemAbout" title="titleAbout" onClick={handleShowCopyright} tabIndex={menuTabIndex}></MenuItem>
 
     </MenuList>
-    <ToolItem store={store} icon="ico_plus" title="titleAdd" onClick={handleAddRow}></ToolItem>
-    <ToolItem store={store} icon="ico_fullscreen" title="titleFullscreen" onClick={handleFullscreen}></ToolItem>
+    <ToolItem store={store} icon="ico_plus" title="titleAdd" onClick={handleAddRow} tabIndex={menuTabIndex}></ToolItem>
+    <ToolItem store={store} icon="ico_fullscreen" title="titleFullscreen" onClick={handleFullscreen} tabIndex={menuTabIndex}></ToolItem>
     {
       String(store.state.rows.filter(row => row.isPaused === false).length) !== "0" && 
-      <ToolItem store={store} icon="ico_pause" title="titlePauseAll" onClick={handlePauseAll}></ToolItem>
+      <ToolItem store={store} icon="ico_pause" title="titlePauseAll" onClick={handlePauseAll} tabIndex={menuTabIndex}></ToolItem>
     }
     {
       String(store.state.rows.filter(row => row.isAlarmed === true).length) !== "0" && 
-      <ToolItem store={store} icon="ico_alarmOff" title="titleUnalarmAll" onClick={handleUnalarmAll}></ToolItem>
+      <ToolItem store={store} icon="ico_alarmOff" title="titleUnalarmAll" onClick={handleUnalarmAll} tabIndex={menuTabIndex}></ToolItem>
     }
   </MenuStyle>;
 };
@@ -156,6 +162,7 @@ interface ToolItemComponentModel{
   onClick: () => void
   disabled?: boolean
   classes?: string
+  tabIndex?: number
 }
 
 const ToolItemStyle = styled.div`
@@ -178,13 +185,18 @@ const ToolItemStyle = styled.div`
   }
 `;
 
-export const ToolItem: FC<ToolItemComponentModel> = ({store, icon, title, onClick, disabled, classes}) => {
-
+export const ToolItem: FC<ToolItemComponentModel> = ({store, icon, title, onClick, disabled, classes, tabIndex}) => {
+  const handleEnterKey = (e: React.KeyboardEvent) => {
+    if(e.code === "Enter") {
+      (e.target as HTMLElement).click();
+    }
+  };
   return <ToolItemStyle 
     className={`bc toolItem${disabled ? " disabled" : ""}${classes ? " " + classes : ""}`}
     title={store.t(title)}
     onClick={() => { disabled ? null : onClick(); }}
-    tabIndex={1}
+    onKeyUp={handleEnterKey}
+    tabIndex={tabIndex}
   >
     <Icon icon={icon} />
   </ToolItemStyle>;
@@ -217,6 +229,7 @@ type MIProps = {
   icon: IconName
   title: Word
   onClick: () => void
+  tabIndex?: number
 };
 
 const MenuItemStyle = styled.div`
@@ -235,14 +248,23 @@ const MenuItemStyle = styled.div`
   &:last-child{
     border-radius: 0 0 var(--radius) var(--radius);
   }
+  :focus{
+    outline-offset: -0.2em;
+  }
 `;
 
-export const MenuItem: FC<MIProps> = ({store, name, icon, title, onClick}) => {
+export const MenuItem: FC<MIProps> = ({store, name, icon, title, onClick, tabIndex}) => {
+  const handleEnterKey = (e: React.KeyboardEvent) => {
+    if(e.code === "Enter") {
+      (e.target as HTMLElement).click();
+    }
+  };
   return <MenuItemStyle
     className="bc"
     onClick={onClick}
     title={store.t(title)}
-    tabIndex={1}
+    tabIndex={tabIndex}
+    onKeyUp={handleEnterKey}
   >
     <Icon icon={icon}/>&nbsp;{store.t(name)}
   </MenuItemStyle>;

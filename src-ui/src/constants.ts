@@ -1,6 +1,15 @@
 export const VERSION = "1.5.0";
+export const LAST_UPDATE = "2023-02-23";
 
 export const TOAST_TIMEOUT = 5000;
+
+export const TILE_ZOOM_SPEED = 10;
+
+export  const HIST_UPDATRE_RATE_MS = 1000;
+export  const HIST_CLASTERING_UPDATE_RATE_MS = 10000;
+
+export const AUTOSAVE_NAME = "autosave.state.pm";
+export const AUTOSAVE_TIME_MIN = 15;
 
 export enum VIEW_TYPE {
   tiles = "tiles",
@@ -44,6 +53,17 @@ export enum PROMPT_TYPES {
   confirm = "confirm",
   select = "select",
   text = "text"
+}
+
+export enum EXPORT_TYPE{
+  config = "config",
+  rowsState = "rowsState",
+  historyInJSON = "historyInJSON"
+}
+
+export enum IMPORT_TYPE{
+  config = "config",
+  rowsState = "rowsState"
 }
 
 export const ZERO = 0, ONE = 1, TWO = 2, FIVE = 5, EIGHT = 8, SIXTEEN = 16, TWENTY_FOUR = 24, HUNDRED = 100, THAUSAND = 1000;

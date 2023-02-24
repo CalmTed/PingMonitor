@@ -9,6 +9,7 @@ interface ButtonModel{
   disabled?: boolean
   icon?: IconName
   css?: React.CSSProperties
+  tabIndex?: number
 }
 
 const ButtonStyle = styled.button`
@@ -61,13 +62,14 @@ const ButtonStyle = styled.button`
   }
 `;
 
-const Button: FC<ButtonModel> = ({onClick, title, type = "primary", disabled = false, icon, css }) => {
+const Button: FC<ButtonModel> = ({onClick, title, type = "primary", disabled = false, icon, css, tabIndex }) => {
   return (
     <ButtonStyle
       className={ "button" + (type ? ` button-${type}` : "") + (disabled ? " disabled" : "") }
       disabled={ disabled }
       onClick={ onClick }
       style={css}
+      tabIndex={tabIndex}
     >
       {icon && <Icon icon={icon} />}
       {title && <>{title}</>}

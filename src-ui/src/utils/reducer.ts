@@ -1,7 +1,8 @@
-import { DAYinSECONDS, ONE, ROW_COLOR, ROW_SIZE, THAUSAND, TWO, ZERO } from "src/constants";
+import { DAYinSECONDS, ONE, ROW_COLOR, ROW_SIZE, TWO, ZERO } from "src/constants";
 import { getADefaultRow } from "src/initials";
 import { RowModel, StateModel, UpdateTimeStrategyModel } from "src/models";
 import { parseResultInterface } from "./ping";
+import addZero from "./addZero";
 
 enum ACTION_GROUP {
   app = "APP",
@@ -76,7 +77,7 @@ export type ActionType = {
   payload: {
     rowId: number,
     result: parseResultInterface,
-    timeToAlarmMS: number
+    timeToAlarmS: number
     isAlarmed?: boolean,
     isMuted?: boolean,
   }
@@ -239,13 +240,18 @@ const rowReducer: (state: StateModel, action: ActionType) => StateModel | null =
         const d = new Date();
         const hour = 3600, min = 60;
         const timeNow = (d.getHours() * hour + d.getMinutes() * min + d.getSeconds());
-        const historyTimeLimit = timeNow - (action.payload.timeToAlarmMS * TWO); //dubling tta time for extra memory
+        const dateNow = `${d.getFullYear()}${addZero((d.getMonth() + ONE).toString(), TWO)}${addZero(d.getDate().toString(), TWO)}`;
+        const historyTimeLimit = timeNow - (action.payload.timeToAlarmS * TWO); //dubling tta time for extra memory
+        const filteredPings = row.lastPings.filter(pingData => 
+        {
+          return pingData.time > historyTimeLimit && pingData.time < timeNow + ONE && pingData.date === dateNow;
+        });
         return {
           ...row,
           isAlarmed: typeof action.payload.isAlarmed !== "undefined" ? action.payload.isAlarmed : row.isAlarmed,
           isMuted: typeof action.payload.isMuted !== "undefined" ? action.payload.isMuted : row.isMuted,
           isBusy: false,
-          lastPings: [...row.lastPings.filter(pingData => pingData.time > historyTimeLimit && pingData.time < timeNow * THAUSAND), action.payload.result]
+          lastPings: [...filteredPings, action.payload.result]
         };
       }
     });

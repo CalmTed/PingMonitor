@@ -12,7 +12,7 @@ const getDirectory = async (name: string = pmPrefix) => {
   }
   return name;
 };
-export const writeFile = async (name: string, newContent: string, append = false) => {
+export const writeFile: (name: string, newContent: string, append?:boolean) => Promise<boolean> = async (name, newContent, append = false) => {
   const path = `${(await getDirectory())}\\${name}`;
   let oldContent = "";
   if (append) {
@@ -22,10 +22,12 @@ export const writeFile = async (name: string, newContent: string, append = false
   }
   const content = oldContent + newContent;
   try{
-    await writeTextFile(path, content, {dir: baseDirectory}); 
+    await writeTextFile(path, content, {dir: baseDirectory});
+    return true;
   }catch (e) {
     console.log(e);
   }
+  return false;
 };
 
 export const readFile = async (name: string) => {

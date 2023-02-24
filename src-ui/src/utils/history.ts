@@ -1,13 +1,11 @@
-import { FIVE, HOST_STATE, HOURinSECONDS, MINUTEinSECONDS, ONE, SIXTEEN, TWO, ZERO } from "src/constants";
+import { FIVE, HIST_CLASTERING_UPDATE_RATE_MS, HIST_UPDATRE_RATE_MS, HOST_STATE, HOURinSECONDS, MINUTEinSECONDS, ONE, SIXTEEN, TWO, ZERO } from "src/constants";
 import addZero from "./addZero";
 import { readFile, readFolderItems, writeFile } from "./fs";
 import { getConfig } from "./config";
 
 
 let histLastUpadte = 0;
-const histUpdateRate = 1000;
 let histLastClastered = 0;
-const histClasteringUpdateRate = 10000;
 export const getHistFileList: () => Promise<string[]> = async () => {
   //lookup for a file
   const items = await readFolderItems("");
@@ -21,8 +19,8 @@ export const getHistFileList: () => Promise<string[]> = async () => {
 export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:string[][]} | null> = async (fileName) => {
   //[(1-67000) 999999 1 0001 001]
   if (!fileName) {
-    const date = new Date(), one = 1, two = 2;
-    fileName = `${date.getFullYear()}${addZero(String(date.getMonth() + one), two)}${addZero(String(date.getDate()), two)}.txt`;
+    const date = new Date();
+    fileName = `${date.getFullYear()}${addZero(String(date.getMonth() + ONE), TWO)}${addZero(String(date.getDate()), TWO)}.txt`;
   }
   //read a file
   const fileContent = await readFile(fileName);
@@ -34,7 +32,6 @@ export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:stri
   const fileBigIntArray = fileArray.filter(item => item.length).map(item => BigInt("0x" + item));
   //get all addreses
   const rowIds = new Set();
-  const zero = 0;
   const substrStart =  14;//from the end
   const substrEnd = 8;
   fileBigIntArray.forEach(item => {
@@ -50,7 +47,7 @@ export const readHistDay: (arg?: string) => Promise<{rowIds: string[], data:stri
     if(!data[index]) {
       data[index] = [];
     }
-    const noIDString = string.substring(zero, string.length - substrStart) + string.substring(string.length - substrEnd, string.length);
+    const noIDString = string.substring(ZERO, string.length - substrStart) + string.substring(string.length - substrEnd, string.length);
     data[index].push(noIDString);
   });
   return {
@@ -69,7 +66,6 @@ interface writeHistModel{
 
 export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time, rowId, state, dellay, ttl}) => {
   const config = getConfig();
-  const one = 1, sixteen = 16, two = 2;
   const targetTTLlength = 3;
   const targetDellayLength = 4;
   const rowIdTargetLenght = 6;
@@ -79,16 +75,16 @@ export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time,
   //convert to hex
   const line = `${time}${addZero(String(rowId), rowIdTargetLenght)}${stateNum}${addZero(String(dellay), targetDellayLength)}${addZero(String(ttl), targetTTLlength)}`;
   const lineNum = BigInt(line);
-  const lineHex = lineNum.toString(sixteen);
+  const lineHex = lineNum.toString(SIXTEEN);
   
   //append to file
   const d = new Date();
-  const fileName = `${d.getFullYear()}${addZero(String(d.getMonth() + one), two)}${addZero(String(d.getDate()), two)}.txt`;
+  const fileName = `${d.getFullYear()}${addZero(String(d.getMonth() + ONE), TWO)}${addZero(String(d.getDate()), TWO)}.txt`;
   const localHistory = localStorage.getItem(`hist_${fileName}`) || "";
   const updatedLocalHistory = `${localHistory} ${lineHex} `;
   
   //clastering every 5 sec
-  if(d.getTime() > histLastClastered + histClasteringUpdateRate) {
+  if(d.getTime() > histLastClastered + HIST_CLASTERING_UPDATE_RATE_MS) {
     histLastClastered = d.getTime();
     const bigIntArray = updatedLocalHistory.split(" ").filter(item => item.length).map(item => BigInt("0x" + item));
     const claster = (array: bigint[]) => {
@@ -179,7 +175,7 @@ export const writeHist: (arg: writeHistModel) => Promise<string> = async ({time,
   
   
   //saving history
-  if(d.getTime() > histLastUpadte + histUpdateRate) {
+  if(d.getTime() > histLastUpadte + HIST_UPDATRE_RATE_MS) {
     histLastUpadte = d.getTime();
     await writeFile(fileName, localStorage.getItem(`hist_${fileName}`) || "");
     //removing other days data

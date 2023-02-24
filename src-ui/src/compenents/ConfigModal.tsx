@@ -4,7 +4,7 @@ import { Option, StoreModel } from "src/models";
 import { ACTION_NAME } from "src/utils/reducer";
 import { ConfigItemType, getConfigList, ConfigListModel, setConfig } from "src/utils/config";
 import { Word } from "src/utils/lang";
-import { CONFIG_TYPE } from "src/constants";
+import { CONFIG_TYPE, TWO } from "src/constants";
 import Select from "./Select";
 import Checkbox from "./Checkbox";
 import Input from "./Input";
@@ -112,16 +112,17 @@ const ConfigItemComponent:FC<ConfigItemComponentModel> = ({store, item}) => {
       };
     });
   };
+  const inputTabIndex = TWO;
   return <ConfigItemComponentStyle>
     <span>{store.t(item.label)}:</span>
     {item.type === CONFIG_TYPE.options && (
-      <Select value={item.value || item.defaultValue} options={translateOptions(item.options)} onChange={handleConfigChange}/>
+      <Select value={item.value || item.defaultValue} options={translateOptions(item.options)} onChange={handleConfigChange} tabIndex={inputTabIndex}/>
     )}
     {item.type === CONFIG_TYPE.boolean && (
-      <Checkbox checked={item.value} onClick={handleCheckboxClick}/>
+      <Checkbox checked={item.value} onClick={handleCheckboxClick} tabIndex={inputTabIndex}/>
     )}
     {item.type === CONFIG_TYPE.number && (
-      <Input value={String(item.value)} onChange={handleConfigChange} />
+      <Input value={String(item.value)} onChange={handleConfigChange} tabIndex={inputTabIndex}/>
     )}
   </ConfigItemComponentStyle>;
 };

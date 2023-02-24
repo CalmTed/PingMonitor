@@ -1,12 +1,6 @@
 import React, { FC } from "react";
 import styled from "styled-components";
 
-export interface CheckboxProps {
-  checked: boolean
-  onClick: () => void
-  title?: string
-  disabled?: boolean
-}
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
@@ -57,19 +51,31 @@ export const CheckboxStyle = styled.span`
   }
 `;
 
-
-
-const Checkbox: FC<CheckboxProps> = ({ onClick, checked, title, disabled = false }) => {
+export interface CheckboxProps {
+  checked: boolean
+  onClick: () => void
+  title?: string
+  disabled?: boolean
+  tabIndex?: number
+}
+const Checkbox: FC<CheckboxProps> = ({ onClick, checked, title, disabled = false, tabIndex }) => {
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if(e.code === "Enter") {
+      (e.target as HTMLInputElement).click();
+    }
+  };
   return (
     <CheckboxLabel 
       className={ (disabled ? " disabled" : "") }
       onClick={ () => { !disabled ? onClick() : null; }}
-      tabIndex={10}
+      tabIndex={tabIndex}
       title={title}
+      onKeyUp={handleKeyUp}
     >
       <CheckboxStyle
         className={ "checkbox " + (checked ? " checked" : "") + (disabled ? " disabled" : "") }
         onClick={ () => { !disabled ? onClick() : null; } }
+        onKeyUp={handleKeyUp}
       />
     </CheckboxLabel>
   );

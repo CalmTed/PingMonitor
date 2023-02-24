@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { DAYinSECONDS, HUNDRED, ONE, PROMPT_TYPES, TWO, VIEW_TYPE, ZERO } from "src/constants";
+import { DAYinSECONDS, HUNDRED, ONE, PROMPT_TYPES, THAUSAND, TWO, VIEW_TYPE, ZERO } from "src/constants";
 import { Option, StoreModel } from "src/models";
 import styled from "styled-components";
 import { TileRow } from "./TileRow";
@@ -10,6 +10,7 @@ import { TimeGrid } from "./TimeGrid";
 import Select from "./Select";
 import addZero from "src/utils/addZero";
 import { SortableList, SortableItem } from "./TimeLineSortable";
+import { Icon } from "./Icon";
 
 const ViewStyle = styled.div`
   &.tiles{
@@ -64,6 +65,11 @@ const ViewStyle = styled.div`
       visibility: hidden;
       transform: translate(0, 5em); 
     } 
+    .sliderBlock:focus, .sliderBlock:focus-within{
+      opacity: 1;
+      visibility: visible;
+      transform: translate(0);
+    } 
     .timeSlider{
       width: 100%;
       height: 100%;
@@ -99,7 +105,7 @@ const ViewStyle = styled.div`
           position: absolute;
           transition: var(--transition);
         }
-        :hover{
+        :hover, :focus{
           :before{
             opacity: 1;          
             transform: translate(-1.8em, -1.9em);
@@ -141,7 +147,13 @@ let currentEnd = ZERO as number;
 let currentDifferenceInTime = ZERO as number; //for optimization
 
 
-export const View: FC<{store: StoreModel}> = ({store}) => {
+export const View: FC<{
+  store: StoreModel
+  isModalOpen: boolean
+}> = ({
+  store,
+  isModalOpen
+}) => {
   
   const [hist, setHist] = useState({
     rowIds: [] as string[],
@@ -176,7 +188,6 @@ export const View: FC<{store: StoreModel}> = ({store}) => {
               PROMPT_TYPES.confirm,
               () => { null; },
               (res:string) => {
-                console.log(res);
                 if(res === "true") {
                   uncreatedRowsIds.map(item => {
                     store.dispatch({
@@ -201,10 +212,10 @@ export const View: FC<{store: StoreModel}> = ({store}) => {
   };
   return <>
     {store.config.view === VIEW_TYPE.tiles && 
-      <TilesView  store={store} getHist={getHist}/>
+      <TilesView  store={store} getHist={getHist} isModalOpen={isModalOpen}/>
     }
     {store.config.view === VIEW_TYPE.timeline && 
-      <TimelineView  store={store} getHist={getHist} handleDateChange={handleDateChange}/>
+      <TimelineView  store={store} getHist={getHist} handleDateChange={handleDateChange} isModalOpen={isModalOpen}/>
     }
   </>;
 };
@@ -212,9 +223,10 @@ export const View: FC<{store: StoreModel}> = ({store}) => {
 interface TilesViewModel{
   store: StoreModel
   getHist: (arg: number) => string[]
+  isModalOpen: boolean
 }
 
-const TilesView: FC<TilesViewModel> = ({store, getHist}) => {
+const TilesView: FC<TilesViewModel> = ({store, getHist, isModalOpen}) => {
   useEffect(() => {
     window.addEventListener("resize", checkSize, {passive: false});
     return () => {
@@ -248,7 +260,14 @@ const TilesView: FC<TilesViewModel> = ({store, getHist}) => {
     className="view tiles"
     style={size}
   >
-    {store.state.rows.map(row => <TileRow key={row.id} store={store} row={row} hist={getHist(row.id)}></TileRow>)}
+    {store.state.rows.map((row, i) => 
+      <TileRow
+        key={row.id}
+        store={store}
+        row={row}
+        hist={getHist(row.id)}
+        tabIndex={isModalOpen ? undefined : TWO + i}
+      ></TileRow>)}
   </ViewStyle>;
 };
 
@@ -256,9 +275,10 @@ interface TimelineViewModel{
   store: StoreModel
   getHist: (arg: number) => string[]
   handleDateChange: (name: string) => void
+  isModalOpen: boolean
 }
 
-const TimelineView: FC<TimelineViewModel> = ({store, getHist, handleDateChange}) => {
+const TimelineView: FC<TimelineViewModel> = ({store, getHist, handleDateChange, isModalOpen}) => {
   const [hoverTime, setHoverTime] = useState(ZERO);
   const [dateOptions, setDateOptions] = useState([] as Option[]);
   const handleMouseDown = (e: React.MouseEvent, target: "start" | "range" | "end") => {
@@ -267,6 +287,19 @@ const TimelineView: FC<TimelineViewModel> = ({store, getHist, handleDateChange})
       mouseDownPixel = e.clientX;  
       currentStart = store.state.timelineStart;
       currentEnd = store.state.timelineEnd;
+    }
+  };
+  const handleKeyDown = (e: React.KeyboardEvent, target: "start" | "range" | "end") => {
+    const speed = e.shiftKey ? THAUSAND : HUNDRED;  
+    if(e.code === "ArrowLeft" || e.code === "ArrowRight") {
+      const direction = e.code === "ArrowLeft" ? -ONE : ONE;
+      store.dispatch({
+        name: ACTION_NAME.APP_SET_TIMELINE_RANGE,
+        payload: {
+          start: target !== "end" ? store.state.timelineStart + (speed * direction) : store.state.timelineStart,
+          end: target !== "start" ? store.state.timelineEnd + (speed * direction) : store.state.timelineEnd
+        }
+      });
     }
   };
   const handleMouseMove = (e: MouseEvent) => {
@@ -360,6 +393,7 @@ const TimelineView: FC<TimelineViewModel> = ({store, getHist, handleDateChange})
       }
     });
   };
+  const toolTabindex = isModalOpen ? undefined : HUNDRED;
   return <ViewStyle
     className="view timeline"
   >
@@ -387,17 +421,20 @@ const TimelineView: FC<TimelineViewModel> = ({store, getHist, handleDateChange})
             onWheelCapture={handleWheelCapture}
             onMouseMoveCapture={handleMouseMoveGraph}
             hoverTime={hoverTime}
+            tabIndex={isModalOpen ? undefined : TWO + i}
           >
           </SortableItem>)} 
       </SortableList>
     </div>
     <div className={`datePicker ${isHistoryShowing ? " history" : ""}`}>
+      <Icon icon="ico_calendar" />
       <Select
         value={store.state.dateOpened || ""}
         options={dateOptions}
         onChange={handleDateChange}
         styles={ isHistoryShowing ? {"borderColor":"var(--red)"} as React.CSSProperties : undefined} 
         optionsUptop={true}
+        tabIndex={toolTabindex}
       />
     </div>
     <div className="sliderBlock">
@@ -413,15 +450,21 @@ const TimelineView: FC<TimelineViewModel> = ({store, getHist, handleDateChange})
             "--beforeContent":`"${toReadibleTime(store.state.timelineStart)}"`
           } as React.CSSProperties}
           onMouseDown={(e) => handleMouseDown(e, "start")}
+          onKeyDown={(e) => handleKeyDown(e, "start")}
+          tabIndex={toolTabindex}
         ></div>
         <div className="endHandle"
           style={{
             "--beforeContent":`"${toReadibleTime(store.state.timelineEnd)}"`
           } as React.CSSProperties}
           onMouseDown={(e) => handleMouseDown(e, "end")}
+          onKeyDown={(e) => handleKeyDown(e, "end")}
+          tabIndex={toolTabindex}
         ></div>
         <div className="rangeHandle"
           onMouseDown={(e) => handleMouseDown(e, "range")}
+          onKeyDown={(e) => handleKeyDown(e, "range")}
+          tabIndex={toolTabindex}
         ></div>
       </div>
     </div>

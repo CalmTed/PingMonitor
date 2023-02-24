@@ -1,21 +1,15 @@
-import React, {FC} from "react";
+import React, {FC, useEffect} from "react";
 import styled from "styled-components";
-
-interface AlertComponentModel {
-  isShown: boolean
-  header: string
-  text: string
-  oncancel: () => void
-  onconfirm : () => void
-}
+import Button from "./Button";
+import { Word } from "src/utils/lang";
+import { ONE } from "src/constants";
 
 const AlertStyle = styled.div`
-
   & .backdrop,& .container{
+    position: fixed;
     opacity: 0;
     visibility: hidden;
     transform: translateY(10px);
-    position: fixed;
   }
   & .backdrop{
     background: var(--backdrop-bg);
@@ -23,11 +17,14 @@ const AlertStyle = styled.div`
     height: 100vh;
     left: 0;
     width: 100vw;
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(2.5px);
     cursor: pointer;
+    :focus{
+      outline-offset: -0.5em;
+    }
   }
   & .container{
-    width: 18em;
+    width: 22em;
     min-height: 8em;
     max-height: 16em;
     left: calc(50vw - 10em);
@@ -51,6 +48,7 @@ const AlertStyle = styled.div`
       max-height: 10em;
       overflow-y: auto;
       word-break: break-all;
+      user-select: text;
     }    
     .buttons{
       height: min-content;
@@ -66,22 +64,35 @@ const AlertStyle = styled.div`
       transition: var(--transition);
       opacity: 1;
       visibility: visible;
-      transform: translate(0px);
+      transform: translateY(0px);
     }
   }
 `;
 
+interface AlertComponentModel {
+  isShown: boolean
+  header: string
+  text: string
+  oncancel: () => void
+  onconfirm : () => void
+  t: (w: Word) => string
+}
 
-const Alert: FC<AlertComponentModel> = ({isShown, header, text, oncancel, onconfirm}) => {
+const Alert: FC<AlertComponentModel> = ({isShown, header, text, oncancel, onconfirm, t}) => {
+  useEffect(() => {
+    if(isShown) {
+      (document.querySelector(".alert .buttons .button") as HTMLElement)?.focus();
+    }
+  });
   return <AlertStyle
-    className={`bc${ isShown ? " shown" : ""}`}
+    className={`alert${ isShown ? " shown" : ""}`}
   >
-    <div className="backdrop" onClick={oncancel}></div>
+    <div className="backdrop" onClick={oncancel} onKeyDown={(e) => { e.code === "Enter" ? (e.target as HTMLElement).click() : null; }} tabIndex={isShown ? ONE : undefined}></div>
     <div className="container bc">
       <div className="header">{header}</div>
       <div className="text">{text}</div>
       <div className="buttons">
-        <div onClick={onconfirm}>[OK]</div>
+        <Button onClick={onconfirm} title={t("ok")} type="primary" tabIndex={isShown ? ONE : undefined}/>
       </div>
     </div>
   </AlertStyle>;

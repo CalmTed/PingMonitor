@@ -3,30 +3,21 @@ import { readHistDay } from "./history";
 import { decodePingReport } from "src/compenents/RowGraph";
 import { save, open } from "@tauri-apps/api/dialog";
 import { BaseDirectory, readTextFile, writeTextFile } from "@tauri-apps/api/fs";
-import { TWO, ZERO } from "src/constants";
+import { AUTOSAVE_NAME, EXPORT_TYPE, IMPORT_TYPE, TWO, VERSION, ZERO } from "src/constants";
 import { ConfigModel, getConfig } from "./config";
+import { readFile, writeFile } from "./fs";
 
 
 
 //export state, config, history reports
 //import the same check for the same id(prompt: overwrite, pass, changeid)
 
-export enum EXPORT_TYPE{
-  config = "config",
-  rowsState = "rowsState",
-  historyInJSON = "historyInJSON"
-}
 
-export enum IMPORT_TYPE{
-  config = "config",
-  rowsState = "rowsState"
-}
 
 export const exportData:(store: StoreModel, type: EXPORT_TYPE) => Promise<boolean> = async (store, type) => {
   let data = "";
   let name = "";
   let extention = "txt";
-  console.log("exporting", type);
   switch(type) {
   case EXPORT_TYPE.historyInJSON:
     const readDay = await readHistDay(store.state.dateOpened);
@@ -42,18 +33,18 @@ export const exportData:(store: StoreModel, type: EXPORT_TYPE) => Promise<boolea
       rowIds: readDay.rowIds,
       data: dayData
     }, null, TWO);
-    name = "PingData.json";
+    name = `PingData${VERSION}.json`;
     extention = "json";
     break;
   case EXPORT_TYPE.rowsState:
     data = JSON.stringify(store.state, null, TWO);
-    name = "State1.5.0.state.pm";
+    name = `State${VERSION}.state.pm`;
     extention = "state.pm";
     break;
   case EXPORT_TYPE.config:
     const config = getConfig();
     data = JSON.stringify(config, null, TWO);
-    name = "Config1.5.0.config.pm";
+    name = `Config${VERSION}.config.pm`;
     extention = "config.pm";
     break;
   }
@@ -75,11 +66,11 @@ export const importData:(store: StoreModel, type: IMPORT_TYPE) => Promise<Config
   let extention = "txt";
   switch(type) {
   case IMPORT_TYPE.rowsState:
-    name = "State1.5.0.state.pm";
+    name = `State${VERSION}.state.pm`;
     extention = "state.pm";
     break;
   case IMPORT_TYPE.config:  
-    name = "Config1.5.0.config.pm";
+    name = `Config${VERSION}.config.pm`;
     extention = "config.pm";
     break;
   }
@@ -102,4 +93,27 @@ export const importData:(store: StoreModel, type: IMPORT_TYPE) => Promise<Config
   }catch(e) {
     return null;
   }
+};
+
+export const autoSave:(store: StoreModel) => Promise<boolean> = async (store) => {
+  const filePath = AUTOSAVE_NAME;
+  const data = JSON.stringify(store.state);
+  const autosaveSuccess = await writeFile(filePath, data);
+  if(autosaveSuccess) {
+    return true;
+  }
+  return false;
+};
+
+export const openAutoSave:() => Promise<StateModel | null> = async () => {
+  const filePath = AUTOSAVE_NAME;
+  const openingResult = await readFile(filePath);
+  if(openingResult) {
+    try{
+      return JSON.parse(openingResult);
+    }catch (e) {
+      return null;
+    }
+  }
+  return null;
 };

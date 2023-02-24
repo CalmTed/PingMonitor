@@ -7,7 +7,7 @@ import { ICONS } from "src/utils/iconsData";
 import Select from "./Select";
 import { Icon } from "./Icon";
 import styled from "styled-components";
-import { HOST_STATE, ROW_COLOR, ROW_SIZE, ZERO } from "src/constants";
+import { HOST_STATE, ONE, ROW_COLOR, ROW_SIZE, ZERO } from "src/constants";
 import { Word } from "src/utils/lang";
 import { getADefaultRow } from "src/initials";
 
@@ -156,30 +156,31 @@ export const RowEditModal:FC<RowEditModalModel> = ({store}) => {
     label: store.t("multiple"),
     value: null
   }];
+  const tabIndex = store.state.rowEditing !== null ? ONE : undefined;
   return <Modal isShown={store.state.rowEditing !== null} onClose={handleClose}>
     <h1>{store.t("headerEditRow")}</h1>
     {rowsData && <RowEditModalStyle>
       <label>
         {store.t("rowTitlePicture")}:
-        <Select value={rowsData.picture} options={picOptions} onChange={(newVal) => { handleParamChange("picture", newVal); }}/>
+        <Select value={rowsData.picture} options={picOptions} onChange={(newVal) => { handleParamChange("picture", newVal); }} tabIndex={tabIndex}/>
         {rowsData.picture && <Icon icon={rowsData.picture}/>}
       </label>
       <label>
         {store.t("rowTitleName")}:
-        <Input value={rowsData.label || ""} placeholder={rowsData.label ? "" : store.t("multiple")} onChange={(newVal) => { handleParamChange("label", newVal); }}/>
+        <Input value={rowsData.label || ""} placeholder={rowsData.label ? "" : store.t("multiple")} onChange={(newVal) => { handleParamChange("label", newVal); }} tabIndex={tabIndex}/>
       </label>
       <label>
         {store.t("rowTitleAddress")}:
-        <Input value={rowsData.address || ""} placeholder={rowsData.address ? "" : store.t("multiple")} onChange={(newVal) => { handleParamChange("address", newVal); }}/>
+        <Input value={rowsData.address || ""} placeholder={rowsData.address ? "" : store.t("multiple")} onChange={(newVal) => { handleParamChange("address", newVal); }} tabIndex={tabIndex}/>
       </label>
       <label>
         {store.t("rowTitleSize")}:
-        <Select value={rowsData.size} options={sizeOptions} onChange={(newVal) => { handleParamChange("size", newVal); }}/>
+        <Select value={rowsData.size} options={sizeOptions} onChange={(newVal) => { handleParamChange("size", newVal); }} tabIndex={tabIndex}/>
         {rowsData.size && <div className={`sizeVisual ${rowsData.size}`} />}
       </label>
       <label>
         {store.t("rowTitleColor")}:
-        <Select value={rowsData.color} options={colorOptions} onChange={(newVal) => { handleParamChange("color", newVal); }}/>
+        <Select value={rowsData.color} options={colorOptions} onChange={(newVal) => { handleParamChange("color", newVal); }} tabIndex={tabIndex}/>
         {rowsData.color && <div className="circle" style={{"backgroundColor": rowsData.color}} />}
       </label>
       <b>{store.t("rowTitleUTS")}:</b>
@@ -187,7 +188,13 @@ export const RowEditModal:FC<RowEditModalModel> = ({store}) => {
         const state = key as HOST_STATE;
         return <label key={state} className="indent">
           {state}
-          <Input value={String(rowsData.updateTimeStrategy?.[state] / k || "")}  placeholder={rowsData.updateTimeStrategy?.[state] ? "" : store.t("multiple")}  onChange={(newVal) => { handleUTSChange(state, newVal); }} css={{"width": "6em"}}/>
+          <Input
+            value={String(rowsData.updateTimeStrategy?.[state] / k || "")}
+            placeholder={rowsData.updateTimeStrategy?.[state] ? "" : store.t("multiple")}
+            onChange={(newVal) => { handleUTSChange(state, newVal); }}
+            css={{"width": "6em"}}
+            tabIndex={tabIndex}
+          />
         </label>;
       }
       )}

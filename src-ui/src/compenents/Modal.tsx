@@ -1,4 +1,5 @@
 import React, { FC } from "react";
+import { ONE } from "src/constants";
 import styled from "styled-components";
 
 interface ModalModel{
@@ -23,6 +24,9 @@ const ModalStyle = styled.div`
     width: 100vw;
     height: 100vh;
     backdrop-filter: blur(0px);
+    :focus{
+      outline-offset: -0.3em;
+    }
   }
   .container{
     top: 5vh;
@@ -44,8 +48,13 @@ const ModalStyle = styled.div`
 `;
 
 export const Modal: FC<ModalModel> = ({isShown, onClose, children}) => {
+  const handleMouseUp = (e: React.KeyboardEvent) => {
+    if(e.code === "Enter") {
+      onClose();
+    }
+  };
   return <ModalStyle className={isShown ? "shown" : ""}>
-    <div className="backdrop" onClick={onClose}></div>
+    <div className="backdrop" onClick={onClose} onKeyUp={handleMouseUp} tabIndex={isShown ? ONE : undefined}></div>
     <div className="container bc">
       {children}
     </div>

@@ -1,5 +1,5 @@
 import React, {FC, useState} from "react";
-import { PROMPT_TYPES } from "src/constants";
+import { ONE, PROMPT_TYPES } from "src/constants";
 import { Option } from "src/models";
 import styled from "styled-components";
 import Button from "./Button";
@@ -35,6 +35,9 @@ const PromptStyle = styled.div`
     width: 100vw;
     backdrop-filter: blur(2.5px);
     cursor: pointer;
+    :focus{
+      outline-offset: -0.5em;
+    }
   }
   & .container{
     width: 22em;
@@ -117,27 +120,27 @@ const Prompt: FC<PromptComponentModel> = ({isShown, header, text, type, oncancel
   return <PromptStyle
     className={`${ isShown ? " shown" : ""}`}
   >
-    <div className="backdrop" onClick={oncancel}></div>
+    <div className="backdrop" onClick={oncancel} onKeyDown={(e) => { e.code === "Enter" ? (e.target as HTMLElement).click() : null; }} tabIndex={isShown ? ONE : undefined}></div>
     <div className="container bc">
       <div className="header">{header}</div>
       <div className="text">{text}</div>
       { type === PROMPT_TYPES.select && 
         ( 
           <div className="inputs">
-            <Select value={selectValue || ""} options={options || []} onChange={(newValue) => { setSelectValue(newValue); } }/>
+            <Select value={selectValue || ""} options={options || []} onChange={(newValue) => { setSelectValue(newValue); } } tabIndex={isShown ? ONE : undefined}/>
           </div>
         )
       }
       { type === PROMPT_TYPES.text && 
         ( 
           <div className="inputs">
-            <Input value={inputValue} onChange={ (newValue) => { setInputValue(newValue); }} onSubmit={ () => handleConfirm(true)} />
+            <Input value={inputValue} onChange={ (newValue) => { setInputValue(newValue); }} onSubmit={ () => handleConfirm(true)} tabIndex={isShown ? ONE : undefined}/>
           </div>
         )
       }
       <div className="buttons">
-        <Button onClick={() => handleConfirm(false)} title={t("cancel")} type="secondary"/>
-        <Button onClick={() => handleConfirm(true)} title={confirmButtonTitle ? confirmButtonTitle : "OK"} type="primary"/>
+        <Button onClick={() => handleConfirm(false)} title={t("cancel")} type="secondary" tabIndex={isShown ? ONE : undefined}/>
+        <Button onClick={() => handleConfirm(true)} title={confirmButtonTitle ? confirmButtonTitle : t("ok")} type="primary" tabIndex={isShown ? ONE : undefined}/>
       </div>
     </div>
   </PromptStyle>;
