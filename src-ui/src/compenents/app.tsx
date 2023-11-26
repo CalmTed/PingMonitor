@@ -138,8 +138,9 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
       };
       //hiding contextmenu
       const isContextMenuItself = hasClass(target, "contextMenuItem") || hasClass(parent1, "contextMenuItem") || hasClass(parent2, "contextMenuItem") || hasClass(parent3, "contextMenuItem") || hasClass(parent4, "contextMenuItem");
+      console.warn("TODO HERE in app handle mouse up");
       if(contextMenuData.isShown && !isContextMenuItself) {
-        store.hideContextMenu();
+        // store.hideContextMenu();
       }
       //unselecting all rows
       const isViewClicked = hasClass(target, "view");
@@ -157,7 +158,7 @@ const App: FC<AppInterface> = ({state, dispatch}) => {
     const handleContextMenu = (e:MouseEvent) => {
       e.preventDefault();
     };
-    //cheking for autosave
+    //checking for autosave
     if(lastAutosave + (AUTOSAVE_TIME_MIN * MINUTEinSECONDS * THAUSAND) < new Date().getTime()) {
       lastAutosave = new Date().getTime();
       autoSave(store).then((result) => {

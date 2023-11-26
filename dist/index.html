@@ -1,0 +1,25 @@
+<!-- Created by Ted Frost in January 2023 for Ukrainian Military Forces for non-commercial use only -->
+<html>
+  <head>
+      <meta charset="UTF-8">
+      <link rel="stylesheet"  href="assets/pm.css"/>
+  </head>
+  <body>
+    <div class="root">
+    </div>
+    <h1 class="fadeIn">Critical error</h1>
+    <h3 class="fadeIn" onmousedown="location.reload()">[reload]</h3>
+    <h3 class="fadeIn clearData" onmousedown="clearLocalData()">[clear data]</h3>
+    <audio id="siren" src="assets/alarm.wav" preload loop></audio>
+  </body>
+  <script src="js/index.js"></script>
+  <script>
+    function clearLocalData (){
+      localStorage.clear();
+      const r = document.querySelector(".clearData");
+      if(r) {
+        r.textContent = JSON.stringify(stateManager.getState());
+      }
+    }
+  </script>
+</html>

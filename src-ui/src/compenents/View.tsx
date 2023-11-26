@@ -36,6 +36,7 @@ const ViewStyle = styled.div`
     transition: var(--transition);
     .rowList{
       margin: 4em 0;
+      width: 100%;
     }
     .datePicker{
       position: fixed;

@@ -48,3 +48,28 @@ Interface for terminal ping function with statistics
 4. Prossed with using as written above in steps 3-5 in Usage for windows 11
 
 Program can be compiled for Mac OS and Linux with tauri, but you have to make is youself.
+
+
+### DEV INSTALATION FOR LINUX ###
+1. Install rust `sudo dnf install rust cargo`
+2. Clone repository `git clone https://github.com/CalmTed/PingMonitor.git`
+(I sure hive you do have git installed)
+3. Go inside newly created directory `cd PingMonitor`
+4. Install packages `yarn install` or `npm install --force`
+5. Minght need to install typescript `npm install -D typescript`
+6. For Fedora you might need to install aditional packages (https://tauri.app/v1/guides/getting-started/prerequisites/#setting-up-linux)
+    ```
+    sudo dnf check-update
+    sudo dnf install webkit2gtk4.0-devel \
+        openssl-devel \
+        curl \
+        wget \
+        file \
+        libappindicator-gtk3-devel \
+        librsvg2-devel
+    sudo dnf group install "C Development Tools and Libraries"
+    ```
+7. For development need three termonals:
+    - `npm run ui-dev` (builds .js files in /dist and wanches for changes)
+    - `npm run localhost` (serves /dist folder on a local network)
+    - `npm run tauri-dev` (getting files from localhost and renders windows)

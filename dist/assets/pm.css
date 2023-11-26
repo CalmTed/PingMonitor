@@ -1,0 +1,68 @@
+:root{
+  --bg-color: #282828;
+  --text-color: #eee;
+  --transition: all .1s ease;
+  --radius: 7px;
+  --radius-button: 11px;
+
+  --bc-bg: #212121aa;
+  --bc-bg-hover: #313131aa;
+  --backdrop-bg: #363636a3;
+
+  --red: #d70000;
+  --yellow: #DECB65;
+  --green: #23d000;
+  --blue: #0388D2;
+  --gray: #5d5d5d;
+
+  --button-bg: var(--blue);
+
+  --shadow: 0 0 10px 1px #21212173;
+
+  --sidebarWidth: 17em;
+}
+html, body{
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  overscroll-behavior: none;
+  overflow: hidden;
+  font-family: 'Roboto', Arial, Helvetica, sans-serif;
+}
+
+.fadeIn{
+  animation: fadeIn 2s linear 0s;
+  cursor: pointer;
+  padding: 2em;
+}
+@keyframes fadeIn {
+  0%, 90%{
+    opacity: 0;
+    visibility: hidden;
+  }
+  100%{
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.bc{
+  background: var(--bc-bg);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+
+*::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+  background-color: transparent;
+  margin-right: 1px;
+}
+*::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: var(--scroll-tumb);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
